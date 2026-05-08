@@ -10,3 +10,4 @@ mediapipe
 numpy
 Pillow
 requests
+scikit-image==0.22.0
