@@ -11,3 +11,4 @@ numpy
 Pillow
 requests
 scikit-image==0.22.0
+fpdf2==2.7.9
