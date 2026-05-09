@@ -109,7 +109,7 @@ CELTIC_CROSS_POSITIONS = [
 
 TAROT_BASE="https://raw.githubusercontent.com/hinshalll/text2kprompt/main/tarot/"
 
-NAV_PAGES=["Dashboard", "Consultation Room", "The Oracle", "Mystic Tarot", "Horoscopes", "Numerology", "Saved Profiles"]
+NAV_PAGES = ["Dashboard", "Consultation Room", "The Oracle", "Mystic Tarot", "Horoscopes", "Numerology", "Palm Reading", "Saved Profiles"]
 
 PLANET_RE = r"(Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu)"
 
