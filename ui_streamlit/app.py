@@ -37,6 +37,7 @@ from ui_streamlit.views.tarot          import show_tarot
 from ui_streamlit.views.horoscopes     import show_horoscopes
 from ui_streamlit.views.numerology     import show_numerology
 from ui_streamlit.views.vault          import show_vault
+from ui_streamlit.views.palmistry      import show_palmistry
 
 # ── page config ───────────────────────────────────────────────────────────────
 APP_NAME = "ASTRO SUITE beta"
@@ -108,6 +109,7 @@ _ROUTES = {
     "Mystic Tarot":      show_tarot,
     "Horoscopes":        show_horoscopes,
     "Numerology":        show_numerology,
+    "Palm Reading":      show_palmistry,
     "Saved Profiles":    show_vault,
 }
 _ROUTES.get(st.session_state.nav_page, show_dashboard)()

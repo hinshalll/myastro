@@ -25,27 +25,24 @@ APP_NAME = "ASTRO SUITE beta"
 
 # ── Share / PDF ───────────────────────────────────────────────────────────────
 
-def render_share_buttons(text, title="Astro Suite"):
-    """Drop-in replacement for render_share_buttons with correct JS/f-string escaping."""
+def render_share_buttons(text, title="Astro Suite", image_b64=None):
+    """Universal PDF Generator: Includes CSS Page Break Fixes."""
     import base64
     import streamlit.components.v1 as components
 
     b64_text = base64.b64encode(text.encode("utf-8")).decode("utf-8")
     safe_title    = title.replace("'", "\\'")
-    safe_filename = title.replace(" ", "_") + "_Reading.pdf"
+    safe_filename = title.replace(" ", "_") + "_Report.pdf"
+    img_b64_str   = image_b64 if image_b64 else ""
 
-    # Build the JS/HTML as a plain string — no f-string — then inject only the
-    # small Python variables via .replace() so curly braces never confuse Python.
     html_template = """
 <div style="font-family:'Source Sans Pro',sans-serif;display:flex;gap:10px;padding:5px;">
-    <button id="pdfBtn" style="flex:1;padding:.5rem 1rem;background:transparent;color:#fff;border:1px solid rgba(250,250,250,.2);border-radius:.5rem;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s"
+    <button id="pdfBtn" style="flex:1;padding:.5rem 1rem;background:linear-gradient(135deg,rgba(144,98,222,0.3),rgba(205,140,80,0.3));color:#fff;border:1px solid rgba(205,140,80,.5);border-radius:.5rem;cursor:pointer;font-size:1rem;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s"
         onmouseover="this.style.borderColor='#ff4b4b';this.style.color='#ff4b4b'"
-        onmouseout="this.style.borderColor='rgba(250,250,250,.2)';this.style.color='#fff'">
-        📄 Save Branded PDF
+        onmouseout="this.style.borderColor='rgba(205,140,80,.5)';this.style.color='#fff'">
+        📄 Save as PDF
     </button>
-    <button id="shareBtn" style="flex:1;padding:.5rem 1rem;background:transparent;color:#fff;border:1px solid rgba(250,250,250,.2);border-radius:.5rem;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s"
-        onmouseover="this.style.borderColor='#ff4b4b';this.style.color='#ff4b4b'"
-        onmouseout="this.style.borderColor='rgba(250,250,250,.2)';this.style.color='#fff'">
+    <button id="shareBtn" style="flex:1;padding:.5rem 1rem;background:transparent;color:#fff;border:1px solid rgba(250,250,250,.2);border-radius:.5rem;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
         Share Reading
     </button>
 </div>
@@ -55,65 +52,52 @@ def render_share_buttons(text, title="Astro Suite"):
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 var raw_text = decodeURIComponent(escape(window.atob('B64_PLACEHOLDER')));
+var b64_img = 'IMG_PLACEHOLDER';
 var msg = document.getElementById('msg');
 function showMsg(t) { msg.innerText = t; msg.style.opacity = 1; setTimeout(function(){ msg.style.opacity = 0; }, 3000); }
-
-document.getElementById('shareBtn').addEventListener('click', function() {
-    if (navigator.share) {
-        navigator.share({ title: 'TITLE_PLACEHOLDER Reading', text: raw_text })
-            .catch(function() { fallback(raw_text); });
-    } else {
-        fallback(raw_text);
-    }
-});
-
-function fallback(txt) {
-    navigator.clipboard.writeText(txt)
-        .then(function() { showMsg('Copied to clipboard!'); })
-        .catch(function() {
-            var el = document.createElement('textarea');
-            el.value = txt;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            showMsg('Copied to clipboard!');
-        });
-}
 
 document.getElementById('pdfBtn').addEventListener('click', function() {
     showMsg('Generating PDF...');
     var parsedHTML = marked.parse(raw_text);
     var wrapper = document.createElement('div');
-    wrapper.style.padding = '40px';
+    
+    wrapper.style.padding = '30px';
+    wrapper.style.backgroundColor = '#ffffff'; 
+    wrapper.style.color = '#1a1a1a'; 
     wrapper.style.fontFamily = 'Helvetica, Arial, sans-serif';
-    wrapper.style.color = '#222';
     wrapper.style.lineHeight = '1.6';
+    
+    var imgHtml = b64_img ? '<div style="text-align:center;margin-bottom:20px;"><img src="data:image/jpeg;base64,' + b64_img + '" style="max-height:300px;border-radius:10px;border:2px solid #D4AF37;"></div>' : '';
+
     wrapper.innerHTML =
-        '<div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #EEE;padding-bottom:20px;">'
-        + '<h1 style="color:#4A148C;font-size:28px;letter-spacing:2px;margin:0;">TITLE_PLACEHOLDER</h1>'
-        + '<p style="color:#777;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">Personalized Cosmic Reading</p>'
+        '<style>.pdf-content p, .pdf-content li, .pdf-content h1, .pdf-content h2, .pdf-content h3 { page-break-inside: avoid; break-inside: avoid; margin-bottom: 12px; }</style>'
+        + '<div style="text-align:center;margin-bottom:30px;border-bottom:2px solid rgba(212, 175, 55, 0.5);padding-bottom:20px;">'
+        + '<h1 style="color:#1a1a1a;font-size:28px;letter-spacing:2px;margin:0;">TITLE_PLACEHOLDER</h1>'
+        + '<p style="color:#555555;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">Personalized Cosmic Reading</p>'
         + '</div>'
-        + '<div style="font-size:14px;">' + parsedHTML + '</div>'
-        + '<div style="margin-top:40px;text-align:center;font-size:10px;color:#999;border-top:1px solid #EEE;padding-top:15px;">Generated securely by TITLE_PLACEHOLDER</div>';
+        + imgHtml
+        + '<div class="pdf-content" style="font-size:14px;color:#1a1a1a;">' + parsedHTML + '</div>'
+        + '<div style="margin-top:40px;text-align:center;font-size:10px;color:#999;border-top:1px solid #eeeeee;padding-top:15px;">Generated securely by Astro Suite Engine</div>';
 
     var opt = {
-        margin: [10, 0, 10, 0],
+        margin: [15, 15, 15, 15],
         filename: 'FILENAME_PLACEHOLDER',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
     };
     html2pdf().set(opt).from(wrapper).save().then(function() { showMsg('PDF Downloaded!'); });
 });
 </script>
 """
-
     html = (html_template
             .replace("B64_PLACEHOLDER",      b64_text)
             .replace("TITLE_PLACEHOLDER",    safe_title)
-            .replace("FILENAME_PLACEHOLDER", safe_filename))
+            .replace("FILENAME_PLACEHOLDER", safe_filename)
+            .replace("IMG_PLACEHOLDER",      img_b64_str))
 
+    import streamlit as st
     st.markdown("<br>", unsafe_allow_html=True)
     components.html(html, height=100)
 
@@ -180,14 +164,14 @@ div[data-testid="stButton"]>button:not([kind="primary"]):hover{background:rgba(2
 
 def render_bottom_nav():
     main_items = [("🌌","Home","Dashboard"),("💬","Chat","Consultation Room"),("🔮","Oracle","The Oracle"),("🃏","Tarot","Mystic Tarot")]
-    more_items = [("🌟","Horoscopes","Horoscopes"),("🔢","Numerology","Numerology"),("📖","Profiles","Saved Profiles")]
+    more_items = [("🌟","Horoscopes","Horoscopes"),("🔢","Numerology","Numerology"),("✋","Palmistry","Palm Reading"),("📖","Profiles","Saved Profiles")]
 
     nav_html = '<div class="bottom-nav"><div class="bottom-nav-inner" style="position:relative;">'
     for icon, label, page in main_items:
         active = "active" if st.session_state.nav_page == page else ""
         nav_html += f'<a class="bnav-btn {active}" target="_self" href="?p={page.replace(" ", "%20")}" title="{label}"><span class="bnav-icon">{icon}</span><span>{label}</span></a>'
 
-    more_active = "active" if st.session_state.nav_page in ["Horoscopes","Numerology","Saved Profiles"] else ""
+    more_active = "active" if st.session_state.nav_page in ["Horoscopes","Numerology","Palm Reading","Saved Profiles"] else ""
     nav_html += f'<input type="checkbox" id="more-toggle"><label for="more-toggle" class="more-label {more_active}" title="More"><span class="bnav-icon">☰</span><span>More</span></label>'
     nav_html += '<label for="more-toggle" class="dropup-overlay"></label>'
     nav_html += '<div class="bnav-dropup">'
@@ -201,9 +185,18 @@ def render_bottom_nav():
 def render_sidebar():
     with st.sidebar:
         st.markdown("<h2 style='text-align:center;margin-bottom:1.5rem;font-size:1.3rem;'>🪐 ASTRO SUITE beta</h2>", unsafe_allow_html=True)
-        pages = [("🌌 Dashboard","Dashboard"),("💬 Consult Room","Consultation Room"),
-                 ("🔮 The Oracle","The Oracle"),("🃏 Mystic Tarot","Mystic Tarot"),
-                 ("🌟 Horoscopes","Horoscopes"),("🔢 Numerology","Numerology"),("📖 Saved Profiles","Saved Profiles")]
+        
+        pages = [
+            ("🌌 Dashboard", "Dashboard"),
+            ("💬 Consult Room", "Consultation Room"),
+            ("🔮 The Oracle", "The Oracle"),
+            ("🃏 Mystic Tarot", "Mystic Tarot"),
+            ("🌟 Horoscopes", "Horoscopes"),
+            ("🔢 Numerology", "Numerology"),
+            ("✋ Palm Reading", "Palm Reading"), 
+            ("📖 Saved Profiles", "Saved Profiles")
+        ]
+        
         for label, page in pages:
             kind = "primary" if st.session_state.nav_page == page else "secondary"
             if st.button(label, use_container_width=True, type=kind, key=f"side_{page}"):
@@ -406,105 +399,49 @@ def resolve_profile(item):
 
 # ── Streaming AI chat (used by every page) ────────────────────────────────────
 
-def stream_ai_with_followup(prompt, memory_key, spinner_text="Interpreting...", knowledge_files=None, preferred_model=None):
-    """
-    Universal streaming AI component with full fallback chain and follow-up chat.
-    Lives here so every page can import it from one place.
-    """
-    st.markdown("---")
-    st.markdown("### ✨ AI Reading")
-
-    content_to_send = knowledge_files + [prompt] if knowledge_files else [prompt]
-    newly_generated = False
-
-    if preferred_model and preferred_model in FREE_MODELS:
-        models_for_initial = [preferred_model] + [m for m in FREE_MODELS if m != preferred_model]
-    else:
-        models_for_initial = FREE_MODELS
-
-    # ── Generate main reading ─────────────────────────────────────────────────
-    if memory_key not in st.session_state or not st.session_state[memory_key]:
+def stream_ai_with_followup(prompt, memory_key, spinner_text="Interpreting...", knowledge_files=None, preferred_model=None, image_b64=None, show_share_buttons=True, hide_user_prompt=False):
+    """Universal AI Streamer: Now supports entirely hiding the user's chat bubble."""
+    import streamlit as st
+    from ai_engine.gemini_client import generate_content_with_fallback
+    
+    if memory_key not in st.session_state:
         st.session_state[memory_key] = []
-        newly_generated = True
-
-        with st.chat_message("assistant"):
-            res_ph = st.empty()
-            with st.spinner(spinner_text):
-                success = False
-                for m_id in models_for_initial:
-                    if success: break
-                    for attempt in range(3):
-                        try:
-                            model = get_ai_model_by_name(m_id)
-                            chat  = model.start_chat(history=[])
-                            resp  = chat.send_message(content_to_send, stream=True)
-                            f_res = ""
-                            for chunk in resp:
-                                f_res += chunk.text
-                                res_ph.markdown(f_res + "▌")
-                            res_ph.markdown(f_res)
-                            st.session_state[memory_key].append({"role":"user",  "parts":[prompt]})
-                            st.session_state[memory_key].append({"role":"model", "parts":[f_res]})
-                            success = True
-                            break
-                        except Exception as e:
-                            err = str(e)
-                            is_rate     = any(x in err for x in ["429","quota","RESOURCE_EXHAUSTED","rate limit"])
-                            is_overflow = any(x in err for x in ["400","InvalidArgument","token count exceeds","maximum number of tokens"])
-                            if is_overflow: break
-                            elif is_rate and attempt < 2: time_module.sleep((2**attempt)*3); continue
-                            else: break
-
-                if not success:
-                    res_ph.warning("⏳ All AI models are briefly at capacity. Please wait a moment and try again.")
-                    return
-
-    # ── Render existing history ───────────────────────────────────────────────
-    if st.session_state[memory_key] and not newly_generated:
-        for i, msg in enumerate(st.session_state[memory_key]):
-            if i == 0: continue
-            role = "assistant" if msg["role"] == "model" else "user"
-            with st.chat_message(role):
-                st.markdown(msg["parts"][-1])
-
-    # ── Follow-up chat ────────────────────────────────────────────────────────
-    if follow_up := st.chat_input("Ask a follow-up question...", key=f"chatin_{memory_key}"):
-        with st.chat_message("user"):
-            st.markdown(follow_up)
-        with st.chat_message("assistant"):
-            res_ph = st.empty()
-            with st.spinner("Thinking..."):
-                success = False
-                for m_id in FREE_MODELS:
-                    if success: break
-                    for attempt in range(3):
-                        try:
-                            model = get_ai_model_by_name(m_id)
-                            chat  = model.start_chat(history=st.session_state[memory_key])
-                            res   = chat.send_message(follow_up, stream=True)
-                            f_res = ""
-                            for chunk in res:
-                                f_res += chunk.text
-                                res_ph.markdown(f_res + "▌")
-                            res_ph.markdown(f_res)
-                            st.session_state[memory_key].append({"role":"user",  "parts":[follow_up]})
-                            st.session_state[memory_key].append({"role":"model", "parts":[f_res]})
-                            success = True
-                            st.rerun()
-                            break
-                        except Exception as e:
-                            err = str(e)
-                            is_rate     = any(x in err for x in ["429","quota","RESOURCE_EXHAUSTED","rate limit"])
-                            is_overflow = any(x in err for x in ["400","InvalidArgument","token count exceeds","maximum number of tokens"])
-                            if is_overflow or not is_rate: break
-                            elif is_rate and attempt < 2: time_module.sleep((2**attempt)*3); continue
-                            else: break
-                if not success:
-                    res_ph.warning("⏳ Models are briefly at capacity. Please try again in a moment.")
-
-    # ── Share / save buttons ──────────────────────────────────────────────────
+        
+    for msg in st.session_state[memory_key]:
+        # Only render the message if it's not flagged as hidden
+        if not msg.get("hidden", False):
+            with st.chat_message(msg["role"], avatar="🪐" if msg["role"]=="model" else "👤"):
+                st.markdown(msg.get("display", msg["parts"][-1]))
+            
+    # Save the prompt to memory, but mark it as hidden if requested
+    st.session_state[memory_key].append({"role": "user", "parts": [prompt], "display": prompt, "hidden": hide_user_prompt})
+    
+    if not hide_user_prompt:
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(prompt)
+        
+    with st.chat_message("model", avatar="🪐"):
+        with st.spinner(spinner_text):
+            response_placeholder = st.empty()
+            full_response = ""
+            
+            ai_output = generate_content_with_fallback(prompt)
+            if isinstance(ai_output, str):
+                full_response = ai_output
+                response_placeholder.markdown(full_response)
+            else:
+                for chunk in ai_output:
+                    full_response += chunk
+                    response_placeholder.markdown(full_response + "▌")
+                response_placeholder.markdown(full_response)
+            
+    st.session_state[memory_key].append({"role": "model", "parts": [full_response], "hidden": False})
+    
     if st.session_state.get(memory_key):
-        full_text = "\n\n---\n\n".join(
-            msg["parts"][-1] for msg in st.session_state[memory_key] if msg["role"] == "model"
-        )
-        render_share_buttons(full_text, title=APP_NAME)
+        if show_share_buttons: 
+            full_text = "\n\n---\n\n".join(
+                msg["parts"][-1] for msg in st.session_state[memory_key] if msg["role"] == "model"
+            )
+            render_share_buttons(full_text, title=APP_NAME, image_b64=image_b64)
+            
+    return full_response
