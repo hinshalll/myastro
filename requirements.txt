@@ -6,10 +6,11 @@ timezonefinder
 streamlit-local-storage
 imageio
 imageio-ffmpeg
-mediapipe
-numpy<2.0.0
+mediapipe==0.10.14
+numpy==2.4.4
 Pillow
 requests
-scikit-image==0.22.0
+scikit-image==0.26.0
 fpdf2==2.7.9
 opencv-python-headless
+scipy==1.17.1
