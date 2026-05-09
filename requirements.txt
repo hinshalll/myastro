@@ -7,7 +7,7 @@ streamlit-local-storage
 imageio
 imageio-ffmpeg
 mediapipe==0.10.14
-numpy==2.4.4
+numpy
 Pillow
 requests
 scikit-image==0.26.0
