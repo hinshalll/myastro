@@ -333,7 +333,7 @@ def _run_full_report(dp, palm_data, diag_xray,
 
     # Step 2 — Symbol detection on original crops
     status.info("👁️ Running Vision Engine on original palm crops…")
-    ref_grid = (fetch_reference_grid("aiguide/reference_grid_56.jpg")
+    ref_grid = (fetch_reference_grid("palm_images/reference_grid_56.jpg")
                 or fetch_reference_grid("reference_grid_56.jpg"))
 
     verified_symbols    = ["None detected"]
