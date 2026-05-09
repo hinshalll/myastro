@@ -865,9 +865,11 @@ def build_premium_palmistry_prompt(
     astro_dossier,
     mount_symbol_detail=None,
     mount_elevations=None,
+    finger_analysis=None,
 ):
     mount_symbol_detail = mount_symbol_detail or []
     mount_elevations    = mount_elevations    or {}
+    finger_analysis     = finger_analysis     or {}
 
     zone = palm_data.get("zone_scores", {})
     topo = palm_data.get("topology", {})
@@ -882,111 +884,115 @@ def build_premium_palmistry_prompt(
         return "Absent / Not Detected"
 
     hs=zone.get("heart_line",0); hd=zone.get("head_line",0)
-    li=zone.get("life_line",0);  ft=zone.get("fate_line",0)
-    su=zone.get("sun_line",0)
-
+    li=zone.get("life_line",0);  ft=zone.get("fate_line",0); su=zone.get("sun_line",0)
     fks=topo.get("line_forks",0); eps=topo.get("line_endpoints",0)
     sim=topo.get("simian_line",False); cx=topo.get("line_complexity",0)
 
     line_block = f"""
-FRANGI RIDGE ENGINE — PER-LINE MATHEMATICAL SCORES (0–100):
-  Heart Line  : {hs:>3}/100 → {lbl(hs)}
-  Head Line   : {hd:>3}/100 → {lbl(hd)}
-  Life Line   : {li:>3}/100 → {lbl(li)}
-  Fate Line   : {ft:>3}/100 → {lbl(ft)}
-  Sun Line    : {su:>3}/100 → {lbl(su)}
+FRANGI RIDGE ENGINE — PER-LINE SCORES (0–100):
+  Heart Line : {hs:>3}/100 → {lbl(hs)}
+  Head Line  : {hd:>3}/100 → {lbl(hd)}
+  Life Line  : {li:>3}/100 → {lbl(li)}
+  Fate Line  : {ft:>3}/100 → {lbl(ft)}
+  Sun Line   : {su:>3}/100 → {lbl(su)}
 
-SKELETON TOPOLOGY:
-  Branch Points (forks)    : {fks}  {'← complex multi-path destiny' if fks>15 else '← clean focused lines'}
-  Endpoints (breaks/gaps)  : {eps}  {'← many interruptions' if eps>22 else '← largely continuous'}
-  Complexity Score         : {cx}/100
-  Line Persistence         : {pr}%  {'← deeply etched genuine lines' if pr>=60 else '← moderate clarity' if pr>=35 else '← delicate sensitive lines'}
-  SIMIAN LINE              : {'YES — EXTREMELY RARE & SIGNIFICANT' if sim else 'Not detected'}
+TOPOLOGY:
+  Forks: {fks}  Endpoints: {eps}  Complexity: {cx}/100
+  Persistence: {pr}%
+  Simian Line: {'YES — EXTREMELY RARE' if sim else 'Not detected'}
 """
 
-    finger_block = f"""
-HAND GEOMETRY:
-  Western Hand Type : {fd.get('hand_type','Unknown')}
-  Vedic Hasta Type  : {fd.get('hand_type_vedic','Unknown')}
-  2D:4D Digit Ratio : {fd.get('ratio_2d4d',0):.3f}
-  Ratio Meaning     : {fd.get('ratio_reading','')}
-  Dominant Finger   : {fd.get('dominant_finger','Unknown')}
-""" if fd else "\nHAND GEOMETRY: Landmarks not detected — interpret from line data only.\n"
+    geo_block = f"""
+MEDIAPIPE GEOMETRY:
+  Hand Type  : {fd.get('hand_type','?')} / {fd.get('hand_type_vedic','?')}
+  2D:4D Ratio: {fd.get('ratio_2d4d',0):.3f} — {fd.get('ratio_reading','')}
+  Dominant   : {fd.get('dominant_finger','?')}
+""" if fd else "\nGEOMETRY: Landmarks not detected.\n"
 
-    vitality_block = f"""
-HSV VITALITY SENSOR (Venus mount):
-  Ayurvedic State : {palm_data.get('vitality_hsv','Unknown')}
+    if finger_analysis:
+        def _f(k):
+            fi=finger_analysis.get(k,{})
+            if not fi: return "Not detected"
+            p=[]
+            if fi.get("tip_shape"): p.append(f"tip:{fi['tip_shape']}")
+            for x in ("length_vs_middle","length_vs_index","straight","low_set"):
+                if x in fi: p.append(f"{x}:{fi[x]}")
+            if fi.get("samudrika_note"): p.append(f"→{fi['samudrika_note']}")
+            return ", ".join(p)
+        ai_finger_block = f"""
+FINGER ANALYSIS (Gemini Vision — Samudrika Shastra):
+  Thumb  : {_f('thumb')}
+  Index  : {_f('index')}
+  Middle : {_f('middle')}
+  Ring   : {_f('ring')}
+  Little : {_f('little')}
+  Joints : {finger_analysis.get('joints','?')}
+  Spacing: {finger_analysis.get('finger_spacing','?')}
+  Curve  : {finger_analysis.get('finger_curve','?')}
+  Overall: {finger_analysis.get('overall_character','?')}
 """
+    else:
+        ai_finger_block = "\nFINGER ANALYSIS: Not available.\n"
+
+    vitality_block = f"\nVITALITY (Venus mount HSV): {palm_data.get('vitality_hsv','Unknown')}\n"
 
     if mount_symbol_detail:
         sym_lines = "\n".join(
-            f"  • {d.get('mount','?')} mount — {d.get('symbol','?')} "
-            f"({d.get('vedic_name','')}), confidence {d.get('confidence_score',0)}%, "
-            f"position: {d.get('position','?')}"
+            f"  • {d.get('mount','?')} — {d.get('symbol','?')} ({d.get('vedic_name','')}), "
+            f"conf {d.get('confidence_score',0)}%, pos: {d.get('position','?')}"
             for d in mount_symbol_detail)
-        symbol_block = f"VERIFIED AUSPICIOUS MARKS (≥75% confidence):\n{sym_lines}"
+        symbol_block = f"VERIFIED MARKS (≥75%):\n{sym_lines}"
     else:
-        symbol_block = "VERIFIED AUSPICIOUS MARKS: None detected above confidence threshold."
+        symbol_block = "VERIFIED MARKS: None detected above threshold."
 
     if mount_elevations:
-        used_depth = palm_data.get("used_depth_model", False)
-        method = "Depth Anything V2 depth map" if used_depth else "brightness heuristic (relative)"
-        elev_lines = "\n".join(
-            f"  {m}: {v['elevation']} (relative score {v['score']}/100)"
-            for m, v in mount_elevations.items())
+        used_depth = palm_data.get("used_depth_model",False)
+        method = "Depth Anything V2" if used_depth else "brightness heuristic (relative)"
+        elev_lines = "\n".join(f"  {m}: {v['elevation']} ({v['score']}/100)" for m,v in mount_elevations.items())
         mount_block = f"MOUNT ELEVATION ({method}):\n{elev_lines}"
     else:
         mount_block = "MOUNT ELEVATION: Not available."
 
     kundli_guide = """
-KUNDLI CROSS-REFERENCE PROTOCOL:
-  Heart Line  ↔  Venus, Moon, 4H/7H strength
-  Head Line   ↔  Mercury, 3H/5H, lagna lord
-  Life Line   ↔  Sun, 1H, lagna lord vitality
-  Fate Line   ↔  Saturn, 10H KP promise, current Dasha
-  Sun Line    ↔  Sun dignity, 9H/10H, Rajayoga presence
-  Simian Line ↔  Strong Rahu, intense Lagna, Graha Yuddha in 1H/10H
-  Jupiter Mt  ↔  Jupiter dignity, 9H
-  Venus Mt    ↔  Venus dignity, 2H/7H, Malavya yoga
-  Saturn Mt   ↔  Saturn dignity, 10H KP verdict
-  Mercury Mt  ↔  Mercury strength, 3H/6H, Bhadra yoga
-  Luna Mt     ↔  Moon strength, 4H, Chandra yogas
-
-  AGREEMENT   → label "High-Confidence Confirmation"
-  DIVERGENCE  → label "Karmic Tension — free will overriding natal blueprint"
+CROSS-REFERENCE PROTOCOL:
+  Heart Line ↔ Venus, Moon, 4H/7H | Head Line ↔ Mercury, 3H/5H
+  Life Line  ↔ Sun, 1H, lagna lord | Fate Line ↔ Saturn, 10H KP, Dasha
+  Sun Line   ↔ Sun dignity, 9H/10H, Rajayoga
+  Jupiter Mt ↔ Jupiter, 9H | Venus Mt ↔ Venus, 2H/7H | Saturn Mt ↔ Saturn, 10H
+  Mercury Mt ↔ Mercury, 3H/6H | Luna Mt ↔ Moon, 4H
+  AGREEMENT → "High-Confidence Confirmation" | DIVERGENCE → "Karmic Tension"
 """
 
     simian_section = """
-## 6. THE SIMIAN LINE — A Rare and Powerful Marking ★
-Dedicate a full section to this finding:
-- The Simian line means Heart and Head lines have fused into one dominant horizontal crease.
-- In Samudrika Shastra this indicates undivided singular focus — emotion and intellect cannot be separated.
-- Discuss the dual nature: immense drive and capacity for mastery vs difficulty with moderation.
-- Cross-reference with natal chart: strong Rahu, intense Lagna, or Graha Yuddha in 1H/10H?
-- Mention its rarity (< 4% of population). Contextualise the power of this marking.
+## 6. THE SIMIAN LINE ★ — A Rare Marking
+Heart and Head lines fused into one dominant horizontal crease.
+In Samudrika Shastra: undivided singular focus, emotion and intellect inseparable.
+Discuss: immense drive and mastery vs difficulty with moderation.
+Cross-reference: Rahu influence, intense Lagna, Graha Yuddha in 1H/10H.
+Rarity: < 4% of the population.
 """ if sim else ""
 
-    section6 = ("## 6. THE SIMIAN LINE ★" if sim
-                else "## 6. Mount Energies & Planetary Prominences")
+    section6 = "## 6. THE SIMIAN LINE ★" if sim else "## 6. Mount Energies & Planetary Prominences"
 
     return f"""<instructions>
 You are an elite Vedic Palmist writing a premium paid Samudrika Shastra report.
 
-CRITICAL RULES:
-1. Frangi scores and topology numbers are ground truth from a clinical ridge-detection engine. Never contradict them.
-2. Every section must anchor its interpretation in the specific scores provided.
-3. Section 7 Kundli Confirmation is MANDATORY — cross-check each line against the protocol below.
+RULES:
+1. Frangi scores are ground truth from a clinical engine. Never contradict them.
+2. Every section anchors its interpretation in the specific scores provided.
+3. Section 7 Kundli Confirmation is MANDATORY.
 4. Where palm and chart AGREE → state "High-Confidence Confirmation" explicitly.
-5. Where they DIVERGE → explain as "Karmic Tension".
-6. If Simian line is present, it MUST get its own dedicated section.
-7. Write as a warm, authoritative expert. No generic platitudes.
-8. Minimum 800 words. This is a paid premium report.
-9. Do not use ** for bolding. Use ## and ### for headers only.
+5. Where they DIVERGE → explain as "Karmic Tension."
+6. Section 5b finger profile is MANDATORY when finger data is provided.
+7. Simian line gets its own section if detected.
+8. Warm, authoritative, expert tone. No generic platitudes.
+9. Minimum 900 words. Use ## and ### for headers only.
 </instructions>
 
 <hard_palm_data>
 {line_block}
-{finger_block}
+{geo_block}
+{ai_finger_block}
 {vitality_block}
 {symbol_block}
 {mount_block}
@@ -997,7 +1003,7 @@ CRITICAL RULES:
 </kundli_cross_reference_protocol>
 
 <ancient_book_excerpts>
-{sniper_text if sniper_text else "No ancient text passages matched — interpret from mathematical data and classical Samudrika Shastra principles."}
+{sniper_text if sniper_text else "No ancient text matched — use classical Samudrika Shastra principles."}
 </ancient_book_excerpts>
 
 <mathematical_birth_chart>
@@ -1006,32 +1012,38 @@ CRITICAL RULES:
 
 <report_structure>
 ## 1. The Hand Canvas — Constitution & Elemental Nature
-Hand type ({fd.get('hand_type','') if fd else 'unknown'} / {fd.get('hand_type_vedic','') if fd else ''}), persistence ({pr}%), overall constitutional reading. Anchor Hasta type in classical Samudrika Shastra meaning.
+Hand type ({fd.get('hand_type','') if fd else '?'} / {fd.get('hand_type_vedic','') if fd else '?'}), persistence {pr}%, constitutional reading. Anchor Hasta type in classical Samudrika meaning.
 
 ## 2. The Life Line — Vitality, Longevity & Physical Force
-Score {li}/100 ({lbl(li)}). Interpret depth, length, breaks (endpoints: {eps}). Cross-reference Sun, 1H, lagna lord.
+Score {li}/100 ({lbl(li)}). Depth, continuity, breaks. Cross-reference Sun, 1H, lagna lord.
 
 ## 3. The Heart Line — Emotional World & Relationship Dharma
-Score {hs}/100 ({lbl(hs)}). Emotional nature, capacity for love. Cross-reference Venus, Moon, 4H, 7H.
+Score {hs}/100 ({lbl(hs)}). Emotional nature, relationship dharma. Cross-reference Venus, Moon, 4H, 7H.
 
 ## 4. The Head Line — Intelligence, Decision-Making & Mental Faculty
-Score {hd}/100 ({lbl(hd)}). Analytical vs intuitive style. Cross-reference Mercury, 3H/5H, lagna lord.
+Score {hd}/100 ({lbl(hd)}). Analytical vs intuitive. Cross-reference Mercury, 3H/5H.
 
 ## 5. The Fate & Sun Lines — Karma, Career & Destiny Thread
-Fate {ft}/100 ({lbl(ft)}) | Sun {su}/100 ({lbl(su)}). Missing Fate line = self-made path, not negative. Cross-reference Saturn, 10H KP promise, current Mahadasha, 9H.
+Fate {ft}/100 | Sun {su}/100. Absent Fate = self-made path (not negative). Cross-reference Saturn, 10H KP, Mahadasha.
+
+## 5b. Finger Profile — Samudrika Shastra Hasta Reading
+MANDATORY when finger data is provided.
+For each finger interpret tip shape (conic=psychic, square=practical, spatulate=energetic, rounded=balanced).
+Knuckle type interpretation. Low-set Mercury significance if present.
+Finger spacing and curve. Overall Hasta character synthesis — how fingers modify the palm line reading.
 
 {simian_section}
 
 {section6}
-{'Interpret each of the 7 mount prominence scores. Cross-reference each with its ruling planet in the natal chart.' if not sim else 'Also interpret mount prominence.'}
+Interpret mount prominence. Cross-reference each with ruling planet in natal chart.
 
 ## 7. Kundli Confirmation — Where Heaven and Hand Agree
-THE MOST IMPORTANT SECTION. For each of the 5 main lines: palm finding → chart finding → verdict (Confirmed / Divergent / Mixed). Use the cross-reference protocol exactly.
+For each of the 5 lines: palm → chart → verdict. Follow protocol exactly.
 
 ## 8. Auspicious Marks & Ancient Text
-{f"Report the verified mark(s): {', '.join(verified_symbols)}. Use ancient text excerpts for classical interpretation — which mount, what is promised." if verified_symbols != ['None detected'] else "No marks detected above threshold. A clean palm = unencumbered destiny — explain this positively."}
+{f"Report: {', '.join(verified_symbols)}. Use ancient text for classical interpretation." if verified_symbols != ['None detected'] else "No marks detected. Clean palm = unencumbered destiny."}
 
 ## 9. Practical Guidance & Remedies
-Based on weakest lines and chart afflictions confirmed by palm: mantras, gemstones, lifestyle — only for genuinely weak areas. One powerful daily action grounded in both systems. Close with a personalised one-paragraph summary.
+Mantras, gemstones, lifestyle for genuinely weak areas only. One daily action. One-paragraph personalised summary.
 </report_structure>
 """

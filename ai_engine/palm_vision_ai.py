@@ -1,4 +1,5 @@
 import json
+import re
 import requests
 import io
 import cv2
@@ -22,82 +23,95 @@ def fetch_reference_grid(filename):
 
 def scan_mount_for_symbols(orig_crops_raw, reference_pil):
     """
-    Sends CLAHE-enhanced original palm crops to Gemini Vision — not the heatmap.
-    Labels each crop with its mount name so Gemini has spatial context.
-    Confidence threshold: 75%.
+    Sends CLAHE-enhanced original palm crops to gemini-3.1-flash-lite-preview.
+    JSON extracted via regex — immune to any conversational filler the LLM adds.
     """
-    model      = get_ai_model_by_name("gemini-2.5-flash")
-    target_h   = 350
-    composites = []
+    model    = get_ai_model_by_name("gemini-3.1-flash-lite-preview")
+    target_h = 350
+    parts    = []
     mount_order = []
 
     for mount_name, crop in orig_crops_raw.items():
         if crop is None or (isinstance(crop, np.ndarray) and crop.size == 0):
             continue
-        # Apply stronger CLAHE so Gemini actually sees lines, not flat skin
-        if isinstance(crop, np.ndarray):
-            crop_enh = enhance_crop_for_ai(crop)
-            crop_pil = PIL.Image.fromarray(crop_enh)
-        else:
-            crop_pil = crop
-
-        ow, oh = crop_pil.size
+        crop_enh = enhance_crop_for_ai(crop) if isinstance(crop, np.ndarray) else np.array(crop)
+        pil = PIL.Image.fromarray(crop_enh)
+        ow, oh = pil.size
         nw = int(ow * target_h / max(oh, 1))
-        arr = np.array(crop_pil.resize((nw, target_h), PIL.Image.LANCZOS))
-
-        # Burn label — black outline + white text so it's legible on any skin tone
-        cv2.putText(arr, mount_name, (5, 22), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65, (0, 0, 0), 3, cv2.LINE_AA)
-        cv2.putText(arr, mount_name, (5, 22), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65, (255, 255, 255), 1, cv2.LINE_AA)
-        composites.append(arr)
+        arr = np.array(pil.resize((nw, target_h), PIL.Image.LANCZOS))
+        cv2.putText(arr, mount_name, (5, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0,0,0), 3, cv2.LINE_AA)
+        cv2.putText(arr, mount_name, (5, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255,255,255), 1, cv2.LINE_AA)
+        parts.append(arr)
         mount_order.append(mount_name)
 
-    if not composites:
+    if not parts:
         return []
 
-    canvas     = np.hstack(composites)
-    canvas_pil = PIL.Image.fromarray(canvas)
-
+    canvas_pil = PIL.Image.fromarray(np.hstack(parts))
     prompt = f"""You are an expert Vedic palmist and Samudrika Shastra specialist.
+IMAGE 1: Palm mount crops labelled: {', '.join(mount_order)}.
+IMAGE 2: Reference chart of auspicious/inauspicious Vedic palm symbols.
+Compare each mount against Image 2. Only report if confidence >= 75. Output JSON only.
+{{"findings":[{{"mount":"Jupiter","symbol":"Trident","confidence_score":88,"position":"centre","vedic_name":"Trishul"}}]}}
+If nothing found: {{"findings":[]}}"""
 
-IMAGE 1: A composite of {len(mount_order)} palm mount crops. Each is labelled at the top: {', '.join(mount_order)}.
-IMAGE 2: A reference chart of auspicious and inauspicious Vedic palm symbols.
-
-YOUR TASK:
-For each labelled mount in Image 1, carefully examine the skin markings, fine creases, and ridge patterns.
-Compare them against the symbols in Image 2.
-
-STRICT RULES:
-- Only report a symbol if you see a clear geometric match — not just a random crease or skin texture.
-- Do NOT report a symbol if confidence < 75.
-- If no clear symbol is found on a mount, omit it entirely from findings.
-- Report the mount name EXACTLY as labelled above.
-- Report position within the mount: "centre", "upper", "lower", "left-edge", "right-edge".
-
-OUTPUT: Valid JSON only. No markdown. No explanation outside the JSON.
-{{
-  "findings": [
-    {{
-      "mount": "Jupiter",
-      "symbol": "Trident",
-      "confidence_score": 88,
-      "position": "centre",
-      "vedic_name": "Trishul"
-    }}
-  ]
-}}
-
-If absolutely no symbols are found: {{"findings": []}}
-"""
     try:
         resp  = model.generate_content([canvas_pil, reference_pil, prompt])
-        clean = (resp.text.strip()
-                 .removeprefix("```json").removeprefix("```")
-                 .removesuffix("```").strip())
-        return json.loads(clean).get("findings", [])
+        match = re.search(r'\{.*\}', resp.text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0)).get("findings", [])
+        return []
     except Exception:
         return []
+
+
+def analyze_fingers_with_ai(full_hand_pil, finger_geo_data):
+    """
+    Sends the full CLAHE-enhanced hand image to gemini-3.1-flash-lite-preview.
+    Reads qualitative finger features: tip shape, knuckle type, Mercury set,
+    finger spacing, curve, and overall Samudrika Shastra Hasta character.
+    JSON extracted via regex.
+    """
+    if full_hand_pil is None:
+        return {}
+
+    model = get_ai_model_by_name("gemini-3.1-flash-lite-preview")
+
+    geo_ctx = ""
+    if finger_geo_data:
+        geo_ctx = (f"MediaPipe data (reference): hand type={finger_geo_data.get('hand_type','?')}, "
+                   f"2D:4D={finger_geo_data.get('ratio_2d4d','?')}, "
+                   f"dominant finger={finger_geo_data.get('dominant_finger','?')}")
+
+    prompt = f"""You are an expert Vedic palmist specialising in Samudrika Shastra finger analysis.
+{geo_ctx}
+
+Examine this hand image. For each finger report tip shape and a Samudrika note.
+Tip shapes: conic=pointed/intuitive, square=practical, rounded=balanced, spatulate=energetic/restless.
+Also check if the little (Mercury) finger is set notably lower than the ring finger base — this is a key Samudrika marker.
+Report joints (smooth=artistic or knotted=philosophical), finger spacing (wide=independent/close=cautious), curve direction.
+
+Output valid JSON only. No markdown. No extra text.
+{{
+  "thumb":   {{"tip_shape":"conic",     "samudrika_note":"strong will, independent thinking"}},
+  "index":   {{"tip_shape":"square",    "length_vs_middle":"shorter","samudrika_note":"practical leadership"}},
+  "middle":  {{"tip_shape":"rounded",   "straight":true,  "samudrika_note":"balanced responsibility"}},
+  "ring":    {{"tip_shape":"conic",     "length_vs_index":"equal",  "samudrika_note":"creative and aesthetic"}},
+  "little":  {{"tip_shape":"spatulate", "low_set":false,  "samudrika_note":"expressive communicator"}},
+  "joints":  "smooth",
+  "finger_spacing":"moderate",
+  "finger_curve":"slight inward",
+  "overall_character":"Two sentences interpreting the finger profile in Samudrika Shastra."
+}}"""
+
+    try:
+        resp  = model.generate_content([full_hand_pil, prompt])
+        match = re.search(r'\{.*\}', resp.text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+        return {}
+    except Exception:
+        return {}
 
 
 @st.cache_data(show_spinner=False)
@@ -110,29 +124,26 @@ def snipe_ancient_text(json_path, glossary_path, english_symbols):
     except Exception:
         return "Ancient texts unavailable."
 
-    clean_syms = [s for s in english_symbols
-                  if s and s not in ("None detected", "None", "")]
-    if not clean_syms:
-        return ""
+    clean_syms = [s for s in english_symbols if s and s not in ("None detected","None","")]
+    if not clean_syms: return ""
 
     search_terms = []
     for sym in clean_syms:
         vedic = gloss.get(sym, sym)
         search_terms.append(vedic)
-        if vedic != sym:
-            search_terms.append(sym)
+        if vedic != sym: search_terms.append(sym)
 
     text_blocks = []
-    def _extract(node):
+    def _ex(node):
         if isinstance(node, dict):
-            for v in node.values(): _extract(v)
+            for v in node.values(): _ex(v)
             if "content" in node and isinstance(node["content"], str):
                 text_blocks.append(node["content"])
         elif isinstance(node, list):
-            for i in node: _extract(i)
+            for i in node: _ex(i)
         elif isinstance(node, str) and len(node) > 20:
             text_blocks.append(node)
-    _extract(book)
+    _ex(book)
     full = " ".join(text_blocks)
 
     snippets = []; seen = set()
@@ -156,6 +167,5 @@ def snipe_ancient_text(json_path, glossary_path, english_symbols):
 
 
 def estimate_mount_elevations_relative(orig_crops_raw):
-    """Imported and called from palmistry.py — kept here for backward compat."""
     from math_engine.palm_vision import estimate_mount_elevations_relative as _fn
     return _fn(orig_crops_raw)
