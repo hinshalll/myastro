@@ -17,3 +17,5 @@ qdrant-client
 langchain-qdrant
 langchain
 opencv-python-headless
+langchain-huggingface
+sentence-transformers
