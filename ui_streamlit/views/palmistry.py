@@ -1,700 +1,686 @@
+"""
+ui_streamlit/views/palmistry.py
+================================
+Clean, accuracy-first palmistry UI.
+
+Design principles:
+  - One photo upload, one reading.
+  - Show only what's reliably knowable, in detail.
+  - The reading is the main content, beautifully formatted.
+  - "What I actually observed" disclosure builds trust without cluttering.
+  - Kundli-palm agreement badge is the unique differentiator.
+
+What's gone vs the old UI:
+  - Frangi Ridge Map (lied via the X-ray)
+  - Mount Diagnostic grid + xray crops
+  - "What the AI actually reads" expander with stitched canvas
+  - Mount Prominence bars (measured lighting, not elevation)
+  - Classical Marks panel with emojis (was noise classification)
+  - Minor Lines panel (was presence-thresholding skin texture)
+  - Dermatoglyphic Profile (impossible from non-macro photos)
+  - Frangi Line Analysis with score/length/depth metrics (wrong components)
+
+What's kept:
+  - The user's actual palm (CLAHE-enhanced + landmark overlay)
+  - Hand type, 2D:4D, dominant finger, vitality (deterministic, accurate)
+  - The reading itself
+  - Quality warnings (actionable for the user)
+"""
+
+import io
+import base64
 import streamlit as st
 import PIL.Image
-import base64
-import io
-import cv2
 import numpy as np
 
-from math_engine.palm_vision import (
-    analyze_palm_hybrid,
-    slice_xray_mounts,
-    score_to_label,
-    LINE_LABELS,
-    estimate_mount_elevations_relative,
-    enhance_crop_for_ai,
-)
+from math_engine.palm_vision import analyze_palm
 from math_engine.dossier_builder import generate_astrology_dossier
-from ai_engine.prompts import build_premium_palmistry_prompt
-from ai_engine.palm_vision_ai import (
-    fetch_reference_grid,
-    scan_mount_for_symbols,
-    snipe_ancient_text,
-    analyze_fingers_with_ai,
-    stitch_palm_for_llm,
-)
-from ui_streamlit.components import stream_ai_with_followup
+from ai_engine.palm_vision_ai import read_palm
 from ui_streamlit.state import get_default_profile
 
+# Optional integrations — graceful fallback if missing
+try:
+    from ai_engine.palm_knowledge_lookup import get_palm_context
+except Exception:
+    get_palm_context = None
 
-# ══════════════════════════════════════════════════════════════════════
+try:
+    from ai_engine.palmistry_qdrant import query_palmistry
+except Exception:
+    query_palmistry = None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # HELPERS
-# ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 def _to_pil(arr):
     if arr is None:
         return None
     if isinstance(arr, PIL.Image.Image):
         return arr
-    if arr.ndim == 3 and arr.shape[2] == 3:
-        return PIL.Image.fromarray(arr.astype(np.uint8))
-    return PIL.Image.fromarray(cv2.cvtColor(arr.astype(np.uint8), cv2.COLOR_BGR2RGB))
+    return PIL.Image.fromarray(arr.astype(np.uint8))
 
 
-def _arr_b64(rgb_arr):
-    buf = io.BytesIO()
-    _to_pil(rgb_arr).save(buf, format="JPEG", quality=90)
-    return base64.b64encode(buf.getvalue()).decode()
+def _build_legacy_palm_data(analysis):
+    """
+    Adapter for palm_knowledge_lookup.get_palm_context which expects the OLD
+    palm_data schema. We construct a minimal compatible shape from the new
+    analysis dict.
+    """
+    hm = analysis.get("hand_metrics", {})
+    vit = analysis.get("vitality", {})
+    return {
+        "finger_data": {
+            "hand_type":         hm.get("hand_type", ""),
+            "hand_type_vedic":   hm.get("hand_type_vedic", ""),
+            "ratio_2d4d":        hm.get("ratio_2d4d", 0),
+            "ratio_reading":     hm.get("ratio_reading", ""),
+            "dominant_finger":   hm.get("dominant_finger", ""),
+        },
+        "vitality_hsv":      vit.get("note", ""),
+        "ui_vitality":       vit.get("class", ""),
+        # Empty — VLM produces these now, so they're not pre-known
+        "traced_lines":      {},
+        "marks":             [],
+        "minor_lines":       {},
+        "fingerprints":      {},
+    }
 
 
-def _pil_b64(pil_img):
-    buf = io.BytesIO()
-    pil_img.save(buf, format="JPEG", quality=85)
-    return base64.b64encode(buf.getvalue()).decode()
-
-
-def _score_bar(score, color_override=None):
-    pct = int(score)
-    col = color_override or (
-        "#6adb8e" if pct >= 60 else
-        "#d4a84b" if pct >= 35 else
-        "#9a6ab5"
-    )
-    return (
-        f"<div style='background:rgba(255,255,255,0.08);border-radius:6px;"
-        f"height:8px;margin:3px 0 10px'>"
-        f"<div style='width:{pct}%;background:{col};height:8px;border-radius:6px'>"
-        f"</div></div>"
-    )
-
-
-def _mount_grid(crops_dict, cols=4, caption_prefix="Mt."):
-    keys = list(crops_dict.keys())
-    for row_start in range(0, len(keys), cols):
-        row_keys = keys[row_start:row_start + cols]
-        cs = st.columns(len(row_keys))
-        for i, k in enumerate(row_keys):
-            with cs[i]:
-                img = crops_dict[k]
-                st.image(
-                    _to_pil(img) if isinstance(img, np.ndarray) else img,
-                    caption=f"{caption_prefix} {k}",
-                    use_container_width=True,
-                )
-
-
-_FP_VEDIC = {
-    "arch":  "Dhanusha — stable, practical, earth nature",
-    "loop":  "Balanced (most common) — adaptable, harmonious",
-    "whorl": "Chakra / Chandra — intense, unique, leadership marked",
-}
-
-_FP_EMOJI = {"arch": "〰️", "loop": "🔄", "whorl": "🌀", "unknown": "❓"}
-
-_MINOR_LINE_LABELS = {
-    "girdle_of_venus":    ("Girdle of Venus", "✨", "Heightened sensitivity and empathy"),
-    "ring_of_solomon":    ("Ring of Solomon", "🔮", "Wisdom, psychic insight, occult knowledge"),
-    "ring_of_saturn":     ("Ring of Saturn",  "⚠️",  "Obstacles, saturnine temperament"),
-    "marriage_lines":     ("Marriage Lines",  "💑", "Significant relationships and partnerships"),
-    "bracelets":          ("Bracelets (Rascettes)", "⬜", "Health and longevity markers"),
-    "intuition_crescent": ("Intuition Crescent", "🌙", "Heightened intuition and lunar sensitivity"),
-    "mystic_cross":       ("Mystic Cross",    "✝️",  "Occult abilities, mysticism, philosophical mind"),
-}
-
-_MARK_LABELS = {
-    "cross":    ("✚ Cross",    "Obstacle, karmic challenge, or crossroads decision"),
-    "star":     ("★ Star",     "Sudden events, brilliance, or shock — context of mount matters"),
-    "triangle": ("▲ Triangle", "Special talent or gift related to mount's domain"),
-    "square":   ("■ Square",   "Protection, preservation — guards against negative influences"),
-    "island":   ("◯ Island",   "Period of weakness or divided energy"),
-}
-
-
-# ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # MAIN PAGE
-# ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 
 def show_palmistry():
+    _inject_styles()
+
+    # ── Header ────────────────────────────────────────────────────────────────
     st.markdown(
-        "<h1 style='margin-bottom:0.2rem'>✋ Diagnostic Palmistry</h1>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<p style='color:rgba(200,190,220,.6);font-size:.9rem;margin-top:0'>"
-        "Samudrika Shastra · Frangi Ridge Engine · Kundli Cross-Reference</p>",
+        """<div class='palm-header'>
+            <h1>Palmistry</h1>
+            <p>Samudrika Shastra · Kundli-aware reading</p>
+        </div>""",
         unsafe_allow_html=True,
     )
 
     dp, _ = get_default_profile()
     if not dp:
-        st.warning("⚠️ Set a ⭐ Default Profile in 'Saved Profiles' first.")
+        st.warning("Set a default profile in 'Saved Profiles' first — your kundli powers the reading.")
         return
 
+    # ── Upload ────────────────────────────────────────────────────────────────
     uploaded_file = st.file_uploader(
-        "Upload a clear, well-lit photo of your palm "
-        "(flat, fingers together, full hand visible in frame)",
+        "Upload a photo of your dominant palm",
         type=["jpg", "jpeg", "png"],
-        help="Best: natural daylight, no shadows across lines, "
-             "full hand including all fingers in frame.",
+        help="Flat hand, fingers slightly apart, full palm visible, even daylight.",
     )
 
     if uploaded_file is None:
-        _render_tips()
+        _render_capture_tips()
         return
 
-    st.markdown("---")
     file_bytes = uploaded_file.getvalue()
     cache_key  = uploaded_file.name + str(len(file_bytes))
 
+    # ── Run math (cached per upload) ──────────────────────────────────────────
     if (st.session_state.get("palm_cache_key") != cache_key
-            or "palm_scan_cache" not in st.session_state):
-        with st.spinner("✨ Running Frangi Ridge Engine & Anatomical Mapping…"):
-            palm_data, diag_xray, best_frame, lm_dict = analyze_palm_hybrid(file_bytes)
-            enh_rgb = palm_data.get("enhanced_rgb")
-            xray_crops, orig_crops, orig_crops_raw = slice_xray_mounts(
-                best_frame, diag_xray, lm_dict, enh_rgb
-            )
-            st.session_state.palm_scan_cache = (
-                palm_data, diag_xray, best_frame,
-                lm_dict, xray_crops, orig_crops, orig_crops_raw,
-            )
+            or "palm_analysis" not in st.session_state):
+        with st.spinner("Analyzing palm geometry..."):
+            analysis = analyze_palm(file_bytes)
+            st.session_state.palm_analysis = analysis
             st.session_state.palm_cache_key = cache_key
-            st.session_state.pop("premium_report_text", None)
-            st.session_state.pop("palm_sync_chat", None)
+            st.session_state.pop("palm_reading", None)
 
-    (palm_data, diag_xray, best_frame,
-     lm_dict, xray_crops, orig_crops, orig_crops_raw) = st.session_state.palm_scan_cache
+    analysis = st.session_state.palm_analysis
 
-    # ── QUALITY GATE ──────────────────────────────────────────────────
-    quality       = palm_data.get("quality", {})
-    quality_issues = palm_data.get("quality_issues", [])
-    cw            = palm_data.get("consistency_warnings", [])
+    # ── Hard fail: no hand detected ───────────────────────────────────────────
+    if not analysis["landmarks_found"]:
+        st.error(
+            "Could not detect a hand in this photo. Re-upload a clearer photo "
+            "of an open palm with all fingers visible."
+        )
+        _render_capture_tips()
+        return
 
-    if quality_issues:
-        for issue in quality_issues:
-            st.warning(f"📷 {issue}")
-    if cw:
-        for w in cw:
-            st.info(f"⚠️ Analysis note: {w}")
+    # ── Quality warnings (soft — user can still proceed) ──────────────────────
+    for issue in analysis["quality_issues"]:
+        st.warning(issue)
 
-    # ── TOP ROW: Ridge Map + Quick Stats ─────────────────────────────
-    col_img, col_stats = st.columns([1, 2], gap="large")
+    # ── Palm + signals row ────────────────────────────────────────────────────
+    col_palm, col_signals = st.columns([1, 1.15], gap="large")
 
-    with col_img:
+    with col_palm:
         st.image(
-            _to_pil(cv2.cvtColor(diag_xray, cv2.COLOR_BGR2RGB)),
-            caption="Frangi Ridge Map (annotated)",
+            _to_pil(analysis["landmark_overlay"]),
+            caption="Your palm (geometry mapped)",
             use_container_width=True,
         )
-        if not palm_data.get("landmarks_found"):
-            st.warning("⚠️ Landmarks not detected. Try a clearer photo.")
-        if quality.get("blur_score"):
-            st.caption(
-                f"Sharpness: {quality['blur_score']} · "
-                f"Exposure: {quality['mean_v']:.0f} · "
-                f"Resolution: {quality.get('resolution','?')}"
-            )
 
-    with col_stats:
-        st.markdown("### 🔬 Geometric Profile")
-        st.markdown(f"**Energy Signature:** {palm_data.get('ui_vitality', '—')}")
-        st.markdown(f"*{palm_data.get('vitality_hsv', '')}*")
-        st.markdown("<br>", unsafe_allow_html=True)
+    with col_signals:
+        _render_signals_card(analysis)
 
-        fd = palm_data.get("finger_data", {})
-        if fd:
-            st.markdown(f"**Hand Type:** {fd.get('hand_type', '—')}")
-            st.markdown(
-                f"<span style='color:rgba(200,185,220,.7);font-size:.82rem'>"
-                f"{fd.get('hand_type_vedic', '')}</span>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"**2D:4D Ratio:** `{fd.get('ratio_2d4d', 0):.3f}` — "
-                f"<span style='color:rgba(200,185,220,.7);font-size:.82rem'>"
-                f"{fd.get('ratio_reading', '')}</span>",
-                unsafe_allow_html=True,
-            )
-            st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
 
-        pr = int(palm_data.get("persistence_ratio", 0) * 100)
-        st.markdown(f"**Line Persistence:** `{pr}%`")
-        st.markdown(_score_bar(pr), unsafe_allow_html=True)
+    # ── Reading section ───────────────────────────────────────────────────────
+    if "palm_reading" not in st.session_state:
+        st.session_state.palm_reading = None
 
-        topo = palm_data.get("topology", {})
-        if topo.get("simian_line"):
-            st.markdown(
-                "<div style='background:rgba(205,140,80,.18);border:1px solid "
-                "rgba(205,140,80,.5);border-radius:8px;padding:8px 14px;"
-                "margin-top:8px;font-size:.88rem;color:#d4944a'>"
-                "⚡ <b>Simian Line Detected</b> — Head and Heart lines fused. "
-                "Singular focus, intense destiny.</div>",
-                unsafe_allow_html=True,
-            )
-
-    # ── FRANGI LINE ANALYSIS (rich traced features) ───────────────────
-    st.markdown("---")
-    st.markdown("### 📊 Frangi Line Analysis")
-    st.markdown(
-        "<p style='color:rgba(200,190,220,.6);font-size:.83rem;margin-top:-8px'>"
-        "Per-line skeleton tracing — depth, length, curvature, branches, start/end zones.</p>",
-        unsafe_allow_html=True,
-    )
-
-    traced_lines = palm_data.get("traced_lines", {})
-    zone_scores  = palm_data.get("zone_scores", {})
-
-    if traced_lines:
-        for line_key, feat in traced_lines.items():
-            label = LINE_LABELS.get(line_key, line_key)
-            score = (feat or {}).get("score", zone_scores.get(line_key, 0))
-            present = (feat or {}).get("present", score > 8)
-
-            with st.expander(
-                f"{'✅' if present else '➖'} {label}  —  "
-                f"`{score}/100` {score_to_label(score)}",
-                expanded=False,
-            ):
-                if not present or feat is None:
-                    st.caption("Not detected in this palm.")
-                    continue
-
-                st.markdown(_score_bar(score), unsafe_allow_html=True)
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Length", f"{feat.get('length_pct',0)}%")
-                c2.metric("Depth (raw)", feat.get("mean_depth", 0))
-                c3.metric("Branches ↑", feat.get("branches_up", 0))
-                c4.metric("Branches ↓", feat.get("branches_down", 0))
-
-                st.markdown(
-                    f"**Curvature:** {feat.get('curvature','?')} "
-                    f"— {feat.get('curve_direction','?')}  \n"
-                    f"**Starts:** {feat.get('start_zone','?')}  \n"
-                    f"**Ends:** {feat.get('end_zone','?')}  \n"
-                    f"**Angle from horizontal:** {feat.get('angle_from_horiz','?')}°"
-                )
+    if st.session_state.palm_reading is None:
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            if st.button("✨ Generate Full Reading", type="primary", use_container_width=True):
+                _run_reading(dp, analysis)
+                st.rerun()
     else:
-        # Fallback: simple score bars (old behaviour)
-        zone_scores_disp = zone_scores or {}
-        if zone_scores_disp:
-            z_cols = st.columns(len(zone_scores_disp))
-            for i, (key, score) in enumerate(zone_scores_disp.items()):
-                with z_cols[i]:
-                    label = LINE_LABELS.get(key, key.replace("_", " ").title())
-                    st.markdown(
-                        f"<div style='text-align:center'>"
-                        f"<div style='font-size:.78rem;color:rgba(200,185,220,.7)'>{label}</div>"
-                        f"<div style='font-size:1.5rem;font-weight:700'>{score}</div>"
-                        f"<div style='font-size:.72rem;color:rgba(200,185,220,.55)'>"
-                        f"{score_to_label(score)}</div></div>",
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(_score_bar(score), unsafe_allow_html=True)
+        _render_reading(st.session_state.palm_reading)
 
-    # Topology metrics
-    if topo:
-        t1, t2, t3 = st.columns(3)
-        t1.metric("Line Forks / Branches", topo.get("line_forks", 0))
-        t2.metric("Line Breaks / Endpoints", topo.get("line_endpoints", 0))
-        t3.metric("Complexity Score", topo.get("line_complexity", 0))
 
-    # ── MARKS ─────────────────────────────────────────────────────────
-    marks = palm_data.get("marks", [])
-    if marks:
-        st.markdown("---")
-        st.markdown("### 🔺 Classical Marks Detected")
-        st.markdown(
-            "<p style='color:rgba(200,190,220,.6);font-size:.83rem;margin-top:-8px'>"
-            "Identified from residual skeleton after major lines removed. "
-            "Treat as indicative — confirm with symbol scan below.</p>",
-            unsafe_allow_html=True,
-        )
-        m_cols = st.columns(min(len(marks), 4))
-        for i, mark in enumerate(marks):
-            with m_cols[i % 4]:
-                mtype = mark.get("type", "unknown")
-                sym, desc = _MARK_LABELS.get(mtype, (mtype.title(), ""))
-                st.markdown(
-                    f"<div style='background:rgba(255,255,255,.04);"
-                    f"border-radius:8px;padding:8px 10px;margin-bottom:6px'>"
-                    f"<div style='font-size:.9rem;font-weight:600'>{sym}</div>"
-                    f"<div style='font-size:.72rem;color:rgba(200,185,220,.7);margin-top:2px'>"
-                    f"{mark.get('position','?')}</div>"
-                    f"<div style='font-size:.72rem;color:rgba(200,185,220,.55);margin-top:2px'>"
-                    f"{desc}</div></div>",
-                    unsafe_allow_html=True,
-                )
+# ══════════════════════════════════════════════════════════════════════════════
+# SIGNALS CARD
+# ══════════════════════════════════════════════════════════════════════════════
 
-    # ── MINOR LINES ───────────────────────────────────────────────────
-    minor_lines = palm_data.get("minor_lines", {})
-    if minor_lines:
-        st.markdown("---")
-        st.markdown("### 〰️ Minor Lines")
-        st.markdown(
-            "<p style='color:rgba(200,190,220,.6);font-size:.83rem;margin-top:-8px'>"
-            "Detected from residual skeleton. False-positive rate ~15-20%; "
-            "treat as supplementary context.</p>",
-            unsafe_allow_html=True,
-        )
-        ml_cols = st.columns(min(len(minor_lines), 4))
-        for i, (key, val) in enumerate(minor_lines.items()):
-            label, emoji, meaning = _MINOR_LINE_LABELS.get(
-                key, (key.replace("_", " ").title(), "◦", "")
-            )
-            count_str = f" ×{val}" if isinstance(val, int) and val > 1 else ""
-            with ml_cols[i % 4]:
-                st.markdown(
-                    f"<div style='background:rgba(255,255,255,.04);"
-                    f"border-radius:8px;padding:8px 10px;margin-bottom:6px'>"
-                    f"<div style='font-size:.88rem;font-weight:600'>"
-                    f"{emoji} {label}{count_str}</div>"
-                    f"<div style='font-size:.71rem;color:rgba(200,185,220,.6);margin-top:2px'>"
-                    f"{meaning}</div></div>",
-                    unsafe_allow_html=True,
-                )
+def _render_signals_card(analysis):
+    """Compact card. Only math-reliable signals. No false precision."""
+    hm = analysis.get("hand_metrics", {})
+    vit = analysis.get("vitality", {})
 
-    # ── FINGERPRINT PATTERNS (math engine) ───────────────────────────
-    fingerprints = palm_data.get("fingerprints", {})
-    if fingerprints:
-        st.markdown("---")
-        st.markdown("### 🔍 Dermatoglyphic Profile")
-        st.markdown(
-            "<p style='color:rgba(200,190,220,.6);font-size:.83rem;margin-top:-8px'>"
-            "Gradient orientation field — arch / loop / whorl per fingertip. "
-            "Cross-checked against Gemini Vision in the report generation step.</p>",
-            unsafe_allow_html=True,
-        )
-        fp_cols = st.columns(5)
-        for i, fname in enumerate(["thumb", "index", "middle", "ring", "pinky"]):
-            pat = fingerprints.get(fname, "unknown")
-            vedic = _FP_VEDIC.get(pat, "")
-            emoji = _FP_EMOJI.get(pat, "❓")
-            with fp_cols[i]:
-                st.markdown(
-                    f"<div style='text-align:center'>"
-                    f"<div style='font-size:1.4rem'>{emoji}</div>"
-                    f"<div style='font-size:.75rem;font-weight:600'>{fname.title()}</div>"
-                    f"<div style='font-size:.7rem;color:rgba(200,185,220,.7)'>{pat.title()}</div>"
-                    f"<div style='font-size:.62rem;color:rgba(200,185,220,.5);margin-top:2px'>"
-                    f"{vedic.split('—')[0].strip() if vedic else ''}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-
-    # ── MOUNT DIAGNOSTIC FEED ─────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("### 👁️ AI Diagnostic Feed — Planetary Mounts")
     st.markdown(
-        "<p style='color:rgba(200,190,220,.6);font-size:.83rem;margin-top:-8px'>"
-        "Heatmap slices — all 7 mounts, square-padded. "
-        "Symbol detection uses original crops of top-3 most visually rich mounts.</p>",
+        f"""<div class='signals-card'>
+
+            <div class='sig-label'>Hand Type</div>
+            <div class='sig-value-lg'>{hm.get('hand_type', '—')}</div>
+            <div class='sig-sub'>{hm.get('hand_type_vedic', '')} · {hm.get('hand_type_gloss', '')}</div>
+
+            <div class='sig-divider'></div>
+
+            <div class='sig-grid'>
+                <div>
+                    <div class='sig-label'>2D:4D Ratio</div>
+                    <div class='sig-value'>{hm.get('ratio_2d4d', '—')}</div>
+                    <div class='sig-sub-sm'>{hm.get('ratio_reading', '')}</div>
+                </div>
+                <div>
+                    <div class='sig-label'>Vitality</div>
+                    <div class='sig-value'>{vit.get('class', '—')}</div>
+                    <div class='sig-sub-sm'>{vit.get('note', '')}</div>
+                </div>
+            </div>
+
+            <div class='sig-divider'></div>
+
+            <div class='sig-grid'>
+                <div>
+                    <div class='sig-label'>Dominant Finger</div>
+                    <div class='sig-value-sm'>{hm.get('dominant_finger', '—')}</div>
+                </div>
+                <div>
+                    <div class='sig-label'>Thumb Proportion</div>
+                    <div class='sig-value-sm'>{hm.get('thumb_proportion', '—')}</div>
+                </div>
+            </div>
+        </div>""",
         unsafe_allow_html=True,
     )
-    if xray_crops:
-        _mount_grid(xray_crops, cols=4)
 
-    # ── WHAT THE AI ACTUALLY SEES ─────────────────────────────────────
-    st.markdown("---")
-    with st.expander("🔬 What the AI is actually reading (CLAHE-enhanced original crops)"):
-        st.markdown(
-            "<p style='color:rgba(200,190,220,.6);font-size:.82rem'>"
-            "Left panel sent to report LLM: CLAHE palm + annotated ridge map stitched side by side.</p>",
-            unsafe_allow_html=True,
-        )
-        full_hand = palm_data.get("enhanced_rgb")
-        if full_hand is not None:
-            stitched = stitch_palm_for_llm(full_hand, diag_xray)
-            if stitched:
-                st.image(stitched, caption="Stitched image sent to report LLM",
-                         use_container_width=True)
-            st.markdown("---")
-        if orig_crops:
-            st.markdown("**Mount Crops (sent for symbol detection):**")
-            _mount_grid(orig_crops, cols=4, caption_prefix="Original —")
 
-    # ── MOUNT ELEVATION ───────────────────────────────────────────────
-    elevations = (
-        palm_data.get("depth_elevations")
-        or estimate_mount_elevations_relative(orig_crops_raw)
+# ══════════════════════════════════════════════════════════════════════════════
+# READING PIPELINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _run_reading(dp, analysis):
+    """Single VLM call, parse, store in session state. Synchronous."""
+    placeholder = st.empty()
+    placeholder.markdown(
+        """<div class='loading-block'>
+            <div class='loading-spinner'>✨</div>
+            <div class='loading-text'>Reading your palm...</div>
+            <div class='loading-sub'>This usually takes 5–15 seconds.</div>
+        </div>""",
+        unsafe_allow_html=True,
     )
-    method_label = ("Depth Anything V2" if palm_data.get("used_depth_model")
-                    else "brightness heuristic (relative)")
 
-    if elevations:
-        st.markdown("---")
-        st.markdown("### 🏔️ Mount Prominence Estimates")
-        st.caption(f"Method: {method_label}")
-        ev_cols = st.columns(len(elevations))
-        for i, (mname, ev) in enumerate(elevations.items()):
-            with ev_cols[i]:
-                st.markdown(
-                    f"<div style='text-align:center;font-size:.76rem'>"
-                    f"<div style='color:rgba(200,185,220,.7)'>{mname}</div>"
-                    f"<div style='font-size:.72rem;color:#e2e0ec'>"
-                    f"{ev['elevation']}</div></div>",
-                    unsafe_allow_html=True,
-                )
-                st.markdown(_score_bar(ev["score"]), unsafe_allow_html=True)
+    # ── Build context ─────────────────────────────────────────────────────────
+    dossier = generate_astrology_dossier(dp) or ""
+    legacy_data = _build_legacy_palm_data(analysis)
 
-    # ── GENERATE REPORT ───────────────────────────────────────────────
-    st.markdown("---")
-    if "premium_report_text" not in st.session_state:
-        st.session_state.premium_report_text = ""
-
-    if st.button(
-        "✨ Generate Full Palm Reading",
-        type="primary",
-        use_container_width=True,
-    ):
-        _run_full_report(
-            dp, palm_data, diag_xray,
-            orig_crops_raw, elevations, orig_crops,
-        )
-
-
-# ══════════════════════════════════════════════════════════════════════
-# REPORT GENERATION PIPELINE
-# ══════════════════════════════════════════════════════════════════════
-
-def _run_full_report(dp, palm_data, diag_xray,
-                     orig_crops_raw, elevations, orig_crops_padded):
-    status = st.empty()
-
-    # Step 1 — Finger + fingerprint analysis (single Gemini call)
-    status.info("🖐️ Analysing finger profile (Samudrika Shastra + dermatoglyphics)…")
-    finger_analysis = {}
-    full_hand_rgb   = palm_data.get("enhanced_rgb")
-    math_fps        = palm_data.get("fingerprints", {})
-
-    if full_hand_rgb is not None:
+    knowledge_context = ""
+    if get_palm_context:
         try:
-            full_hand_enh = enhance_crop_for_ai(full_hand_rgb)
-            full_hand_pil = PIL.Image.fromarray(full_hand_enh)
-            finger_analysis = analyze_fingers_with_ai(
-                full_hand_pil,
-                palm_data.get("finger_data", {}),
-                math_fingerprints=math_fps or None,
-            )
+            ctx = get_palm_context(legacy_data, {}, dossier)
+            if ctx and isinstance(ctx, dict):
+                knowledge_context = ctx.get("formatted_block", "") or ""
         except Exception:
-            finger_analysis = {}
+            knowledge_context = ""
 
-    # Step 2 — Symbol detection (top-3 mounts, 2-pass)
-    status.info("👁️ Running Vision Engine on top-3 palm mounts…")
-    ref_grid = (
-        fetch_reference_grid("palm_images/reference_grid_56.jpg")
-        or fetch_reference_grid("reference_grid_56.jpg")
-    )
-
-    verified_symbols    = ["None detected"]
-    mount_symbol_detail = []
-
-    if ref_grid and orig_crops_raw:
-        findings = scan_mount_for_symbols(orig_crops_raw, ref_grid)
-        valid = [
-            f for f in findings
-            if isinstance(f, dict) and f.get("confidence_score", 0) >= 75
-        ]
-        if valid:
-            verified_symbols    = [f.get("symbol", "?") for f in valid]
-            mount_symbol_detail = valid
-            st.toast(f"👁️ {len(valid)} mark(s) verified at 75%+ confidence!")
-        else:
-            st.toast("👁️ No symbols met the confidence threshold.")
-    elif not ref_grid:
-        st.warning("⚠️ Reference grid unavailable.")
-
-    # Step 3 — Ancient text sniper (tuple key for lru_cache)
-    status.info("📜 Sniping ancient Vedic texts…")
-    sniper_text = snipe_ancient_text(
-        "aiguide/palm_miner_output.json",
-        "aiguide/palm_glossary.json",
-        tuple(verified_symbols),
-    )
-
-    # Step 4 — Kundli dossier
-    status.info("🪐 Loading Kundli dossier…")
-    dossier = generate_astrology_dossier(dp)
-
-    # Step 5 — Build prompt with all new data
-    prompt = build_premium_palmistry_prompt(
-        palm_data,
-        verified_symbols,
-        sniper_text,
-        dossier,
-        mount_symbol_detail=mount_symbol_detail,
-        mount_elevations=elevations,
-        finger_analysis=finger_analysis,
-        traced_lines=palm_data.get("traced_lines", {}),
-        marks=palm_data.get("marks", []),
-        minor_lines=palm_data.get("minor_lines", {}),
-        fingerprints=math_fps,
-    )
-
-    # Step 6 — Stitch palm + xray for the report LLM
-    status.info("🖼️ Preparing diagnostic images…")
-    stitched_pil   = stitch_palm_for_llm(full_hand_rgb, diag_xray)
-    stitched_b64   = _pil_b64(stitched_pil) if stitched_pil else ""
-
-    # Also keep the ridge map b64 for PDF
-    main_b64 = _arr_b64(cv2.cvtColor(diag_xray, cv2.COLOR_BGR2RGB))
-
-    crop_b64_list = []
-    for mname, crop in orig_crops_padded.items():
-        if crop is None:
-            continue
+    qdrant_context = ""
+    if query_palmistry:
         try:
-            pil = _to_pil(crop) if isinstance(crop, np.ndarray) else crop
-            crop_b64_list.append((mname, _pil_b64(pil)))
+            qdrant_context = query_palmistry(legacy_data, {}) or ""
         except Exception:
-            pass
+            qdrant_context = ""
 
-    full_hand_b64 = ""
-    if full_hand_rgb is not None:
-        try:
-            full_hand_b64 = _arr_b64(full_hand_rgb)
-        except Exception:
-            pass
-
-    status.empty()
-
-    report_text = stream_ai_with_followup(
-        prompt=prompt,
-        memory_key="palm_sync_chat",
-        spinner_text="✨ Weaving your Samudrika Shastra reading…",
-        # Send stitched image (original + xray) — much more informative than heatmap alone
-        image_b64=stitched_b64 or main_b64,
-        hide_user_prompt=True,
-        show_share_buttons=False,
+    # ── Single VLM call ───────────────────────────────────────────────────────
+    result = read_palm(
+        enhanced_palm     = analysis["enhanced_palm"],
+        mount_crops       = analysis["mount_crops"],
+        hand_metrics      = analysis["hand_metrics"],
+        vitality          = analysis["vitality"],
+        quality_metrics   = analysis["quality_metrics"],
+        dossier           = dossier,
+        knowledge_context = knowledge_context,
+        qdrant_context    = qdrant_context,
     )
 
-    st.session_state.premium_report_text = report_text
-
-    if report_text:
-        _render_palm_pdf(report_text, main_b64, crop_b64_list, full_hand_b64)
+    placeholder.empty()
+    st.session_state.palm_reading = result
 
 
-# ══════════════════════════════════════════════════════════════════════
-# PDF GENERATOR
-# ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# READING RENDER
+# ══════════════════════════════════════════════════════════════════════════════
 
-def _render_palm_pdf(report_text, main_xray_b64, crop_b64_list, full_hand_b64=""):
-    import streamlit.components.v1 as components
-    import base64 as b64mod
+def _render_reading(result):
+    """Render parsed VLM output. Phase B is the main reading; Phase A is collapsible."""
+    if result.get("error"):
+        st.error(result["error"])
+        return
 
-    b64_text = b64mod.b64encode(report_text.encode("utf-8")).decode("utf-8")
+    phase_a = result.get("phase_a", {}) or {}
+    phase_b = (result.get("phase_b", "") or "").strip()
 
-    crops_html = ""
-    if crop_b64_list:
-        crops_html = (
-            "<div style='margin:14px 0'>"
-            "<h3 style='color:#1a1a1a;font-size:13px;margin-bottom:8px'>"
-            "AI Diagnostic Feed — Mount Crops</h3>"
-            "<div style='display:grid;grid-template-columns:repeat(4,1fr);gap:6px'>"
-        )
-        for mname, b64 in crop_b64_list:
-            crops_html += (
-                f"<div style='text-align:center'>"
-                f"<img src='data:image/jpeg;base64,{b64}' "
-                f"style='width:100%;border-radius:4px;border:1px solid #ddd'>"
-                f"<div style='font-size:8px;color:#666;margin-top:2px'>"
-                f"Mt. {mname}</div></div>"
-            )
-        crops_html += "</div></div>"
+    # Image quality block
+    img_quality = phase_a.get("image_quality", "")
+    if img_quality == "poor" or not phase_b:
+        msg = phase_a.get("image_issues", "") or "The image quality isn't sufficient."
+        st.error(f"📷 {msg}")
+        with st.expander("Show raw response (debug)"):
+            st.text((result.get("raw") or "")[:3000])
+        return
 
-    full_hand_html = ""
-    if full_hand_b64:
-        full_hand_html = (
-            f"<div style='text-align:center;margin:10px 0'>"
-            f"<img src='data:image/jpeg;base64,{full_hand_b64}' "
-            f"style='max-height:200px;border-radius:8px;border:1px solid #D4AF37'>"
-            f"<div style='font-size:9px;color:#666;margin-top:3px'>"
-            f"Full Hand — CLAHE Enhanced</div></div>"
-        )
+    # Kundli-palm agreement badge (the differentiator)
+    agreement = phase_a.get("kundli_palm_agreement", "")
+    agreement_note = phase_a.get("kundli_palm_agreement_note", "")
+    if agreement and agreement != "cannot_assess":
+        _render_agreement_badge(agreement, agreement_note)
 
-    html = f"""
-<div style="font-family:'Source Sans Pro',sans-serif;padding:5px">
-  <button id="pdfBtn" style="width:100%;padding:.5rem 1rem;
-    background:linear-gradient(135deg,rgba(144,98,222,.3),rgba(205,140,80,.3));
-    color:#fff;border:1px solid rgba(205,140,80,.5);border-radius:.5rem;
-    cursor:pointer;font-size:1rem;font-weight:bold">
-    📄 Save as PDF
-  </button>
-</div>
-<div id="msg" style="text-align:center;font-size:.8rem;margin-top:5px;
-  color:#999;opacity:0;transition:opacity .3s"></div>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script>
-var rawText   = decodeURIComponent(escape(window.atob('{b64_text}')));
-var mainImg   = '{main_xray_b64}';
-var cropsHtml = `{crops_html}`;
-var fullHand  = `{full_hand_html}`;
-var msg       = document.getElementById('msg');
-
-function showMsg(t) {{
-  msg.innerText = t; msg.style.opacity = 1;
-  setTimeout(function() {{ msg.style.opacity = 0; }}, 3000);
-}}
-
-document.getElementById('pdfBtn').addEventListener('click', function() {{
-  showMsg('Generating PDF…');
-  var parsed  = marked.parse(rawText);
-  var wrapper = document.createElement('div');
-  wrapper.style.cssText = 'padding:28px;background:#fff;color:#1a1a1a;' +
-    'font-family:Helvetica,Arial,sans-serif;line-height:1.6;font-size:12px';
-  var mainImgHtml = mainImg
-    ? '<div style="text-align:center;margin-bottom:12px">' +
-      '<img src="data:image/jpeg;base64,' + mainImg + '" ' +
-      'style="max-height:260px;border-radius:8px;border:2px solid #D4AF37">' +
-      '<div style="font-size:9px;color:#666;margin-top:3px">Frangi Ridge Map</div></div>'
-    : '';
-  wrapper.innerHTML =
-    '<style>p,li,h1,h2,h3{{page-break-inside:avoid;break-inside:avoid;margin-bottom:10px}}</style>' +
-    '<div style="text-align:center;margin-bottom:20px;border-bottom:2px solid ' +
-    'rgba(212,175,55,.5);padding-bottom:14px">' +
-    '<h1 style="color:#1a1a1a;font-size:22px;letter-spacing:2px;margin:0">' +
-    'PALMISTRY READING</h1>' +
-    '<p style="color:#555;font-size:10px;text-transform:uppercase;margin-top:3px">' +
-    'Samudrika Shastra · Astro Suite</p></div>' +
-    mainImgHtml + fullHand + cropsHtml +
-    '<div style="font-size:12px;color:#1a1a1a">' + parsed + '</div>' +
-    '<div style="margin-top:28px;text-align:center;font-size:9px;color:#999;' +
-    'border-top:1px solid #eee;padding-top:10px">' +
-    'Generated by Astro Suite Engine</div>';
-  html2pdf().set({{
-    margin: [12, 12, 12, 12],
-    filename: 'Palm_Reading_Report.pdf',
-    image: {{ type: 'jpeg', quality: 0.95 }},
-    html2canvas: {{ scale: 1.5, useCORS: true, backgroundColor: '#ffffff', logging: false }},
-    jsPDF: {{ unit: 'mm', format: 'a4', orientation: 'portrait' }},
-    pagebreak: {{ mode: ['css', 'legacy'] }}
-  }}).from(wrapper).save().then(function() {{ showMsg('PDF Downloaded!'); }});
-}});
-</script>
-"""
-    st.markdown("<br>", unsafe_allow_html=True)
-    components.html(html, height=85)
-
-
-# ══════════════════════════════════════════════════════════════════════
-# UPLOAD TIPS
-# ══════════════════════════════════════════════════════════════════════
-
-def _render_tips():
-    st.markdown("<br>", unsafe_allow_html=True)
+    # Main reading card
     st.markdown(
-        """
-<div style='background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
-border-radius:14px;padding:1.4rem 1.6rem'>
-<h4 style='margin-top:0'>📸 For the most accurate reading:</h4>
-<ul style='color:rgba(200,185,220,.75);font-size:.88rem;line-height:1.8'>
-  <li>Use <strong>natural daylight</strong> — avoid flash or harsh overhead light</li>
-  <li>Hold palm <strong>flat and fully open</strong>, all fingers visible in frame</li>
-  <li>Camera <strong>directly above</strong>, not at an angle</li>
-  <li>No shadows across the palm lines</li>
-  <li>Use your <strong>dominant hand</strong> for primary reading</li>
-  <li>Minimum resolution: <strong>1080p</strong></li>
-  <li>Tap your camera screen on the palm to focus before capturing</li>
-</ul></div>
-        """,
+        f"""<div class='reading-card'>
+            {_format_markdown_for_display(phase_b)}
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+    # Disclosure expander — what the AI actually saw
+    with st.expander("🔍 What I actually observed in your photo", expanded=False):
+        st.caption(
+            "This is what the AI could and could not see. The reading above only "
+            "interprets confirmed observations. Anything marked 'not_assessable' "
+            "or 'not_visible' was deliberately left out of the reading."
+        )
+        _render_phase_a(phase_a)
+
+    # Footer actions
+    st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
+    fc1, fc2, fc3 = st.columns([1, 1, 1])
+
+    with fc1:
+        # Download as markdown
+        md_bytes = _build_markdown_export(phase_b, phase_a).encode("utf-8")
+        st.download_button(
+            "⬇  Download (.md)",
+            data=md_bytes,
+            file_name="palm_reading.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+
+    with fc2:
+        if st.button("🔄 Regenerate", use_container_width=True):
+            st.session_state.palm_reading = None
+            st.rerun()
+
+    with fc3:
+        if st.button("📷 New Photo", use_container_width=True):
+            for k in ("palm_reading", "palm_analysis", "palm_cache_key"):
+                st.session_state.pop(k, None)
+            st.rerun()
+
+
+def _render_agreement_badge(level, note):
+    color_map = {
+        "strong":   ("#6adb8e", "#1e3d28"),
+        "moderate": ("#d4a84b", "#3d2f1a"),
+        "weak":     ("#c87a8c", "#3d1e26"),
+    }
+    fg, bg = color_map.get(level, ("#a0a0a0", "#2a2a2a"))
+    st.markdown(
+        f"""<div class='agreement-badge' style='border-color:{fg}66;background:{bg}33'>
+            <div class='agreement-row'>
+                <div class='agreement-label'>Kundli ↔ Palm Agreement</div>
+                <div class='agreement-value' style='color:{fg}'>{level.title()}</div>
+            </div>
+            {f'<div class="agreement-note">{note}</div>' if note else ''}
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_phase_a(phase_a):
+    """Render structured observations honestly."""
+    if not isinstance(phase_a, dict):
+        return
+
+    lines = phase_a.get("lines", {}) or {}
+    mounts = phase_a.get("mounts", {}) or {}
+
+    # Lines
+    if lines:
+        st.markdown("**Major lines visible:**")
+        line_order = [
+            ("heart", "Heart Line"),
+            ("head",  "Head Line"),
+            ("life",  "Life Line"),
+            ("fate",  "Fate Line"),
+            ("sun",   "Sun Line"),
+        ]
+        emoji_map = {
+            "clear":          ("✓", "#6adb8e"),
+            "faint":          ("~", "#d4a84b"),
+            "fragmented":     ("·", "#d4a84b"),
+            "not_visible":    ("✗", "#9a6ab5"),
+            "not_assessable": ("?", "#888"),
+        }
+        for key, display in line_order:
+            ld = lines.get(key, {}) or {}
+            vis = ld.get("visibility", "—")
+            path = ld.get("path", "") or ""
+            emoji, color = emoji_map.get(vis, ("·", "#888"))
+            path_html = ""
+            if path and vis not in ("not_assessable", "not_visible"):
+                path_html = (
+                    f"<div class='obs-path'>{path}</div>"
+                )
+            st.markdown(
+                f"""<div class='obs-row'>
+                    <span class='obs-icon' style='color:{color}'>{emoji}</span>
+                    <span class='obs-name'>{display}</span>
+                    <span class='obs-vis'>{vis}</span>
+                    {path_html}
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+        simian = lines.get("simian", {}) or {}
+        if simian.get("present"):
+            st.markdown(
+                f"<div class='obs-row'><span class='obs-icon' style='color:#d4a84b'>⚡</span> "
+                f"<b>Simian pattern detected</b> "
+                f"<span class='obs-vis'>(confidence: {simian.get('confidence', 'low')})</span></div>",
+                unsafe_allow_html=True,
+            )
+
+    # Mounts
+    if mounts:
+        st.markdown("<br>**Mount observations:**", unsafe_allow_html=True)
+        for mount_name in ["Jupiter", "Saturn", "Sun", "Mercury", "Venus", "Mars", "Luna"]:
+            md = mounts.get(mount_name, {}) or {}
+            full = md.get("fullness", "—")
+            marks = md.get("marks", "") or ""
+            marks_html = ""
+            if marks and "no notable" not in marks.lower() and marks != "—":
+                marks_html = f" · <span style='color:#d4af37'>{marks}</span>"
+            st.markdown(
+                f"<div class='obs-row'><b>{mount_name}</b>: "
+                f"<span class='obs-vis'>{full}</span>{marks_html}</div>",
+                unsafe_allow_html=True,
+            )
+
+    # Fingers + thumb
+    fingers = phase_a.get("fingers", {}) or {}
+    thumb = phase_a.get("thumb", {}) or {}
+    if fingers or thumb:
+        st.markdown("<br>**Finger and thumb observations:**", unsafe_allow_html=True)
+        rows = []
+        if fingers.get("tip_shape_dominant"):
+            rows.append(f"Dominant tip shape: <b>{fingers['tip_shape_dominant']}</b>")
+        if fingers.get("knotted_joints"):
+            rows.append(f"Knotted joints: <b>{fingers['knotted_joints']}</b>")
+        if fingers.get("spacing"):
+            rows.append(f"Spacing: <b>{fingers['spacing']}</b>")
+        if thumb.get("set"):
+            rows.append(f"Thumb set: <b>{thumb['set']}</b>")
+        if thumb.get("flexibility_estimate"):
+            rows.append(f"Thumb flexibility: <b>{thumb['flexibility_estimate']}</b>")
+        for r in rows:
+            st.markdown(f"<div class='obs-row'>{r}</div>", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MARKDOWN FORMATTING + EXPORT
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _format_markdown_for_display(md):
+    """Convert minimal markdown to styled HTML for the reading card."""
+    import re
+    md = md.replace("\r\n", "\n")
+    # H2 → styled header
+    md = re.sub(
+        r'^##\s+(.+)$',
+        r'<h2 class="reading-h2">\1</h2>',
+        md, flags=re.MULTILINE,
+    )
+    # Bold
+    md = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', md)
+    # Italic
+    md = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'<i>\1</i>', md)
+    # Paragraphs
+    md = re.sub(r'\n\n+', '</p><p class="reading-p">', md)
+    md = '<p class="reading-p">' + md + '</p>'
+    md = re.sub(r'<p[^>]*>\s*(<h2[^>]*>)', r'\1', md)
+    md = re.sub(r'(</h2>)\s*</p>', r'\1', md)
+    md = re.sub(r'<p[^>]*>\s*</p>', '', md)
+    return md
+
+
+def _build_markdown_export(phase_b, phase_a):
+    """Build a clean markdown file for download."""
+    out = ["# Palm Reading", "", "*Samudrika Shastra · Astro Suite*", "", "---", "", phase_b.strip(), ""]
+
+    agreement = phase_a.get("kundli_palm_agreement", "") if isinstance(phase_a, dict) else ""
+    if agreement and agreement != "cannot_assess":
+        note = phase_a.get("kundli_palm_agreement_note", "") if isinstance(phase_a, dict) else ""
+        out.extend(["---", "", f"**Kundli–Palm Agreement:** {agreement.title()}", "", note, ""])
+
+    out.extend(["---", "", "## What was actually observed", ""])
+
+    lines = (phase_a or {}).get("lines", {}) or {}
+    if lines:
+        out.append("### Lines")
+        for key in ["heart", "head", "life", "fate", "sun"]:
+            ld = lines.get(key, {}) or {}
+            vis = ld.get("visibility", "—")
+            path = ld.get("path", "") or ""
+            out.append(f"- **{key.title()} line:** {vis}" + (f" — {path}" if path and vis not in ("not_assessable", "not_visible") else ""))
+        out.append("")
+
+    mounts = (phase_a or {}).get("mounts", {}) or {}
+    if mounts:
+        out.append("### Mounts")
+        for m in ["Jupiter", "Saturn", "Sun", "Mercury", "Venus", "Mars", "Luna"]:
+            md = mounts.get(m, {}) or {}
+            full = md.get("fullness", "—")
+            marks = md.get("marks", "") or ""
+            extra = f" · {marks}" if marks and "no notable" not in marks.lower() else ""
+            out.append(f"- **{m}:** {full}{extra}")
+        out.append("")
+
+    return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CAPTURE TIPS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _render_capture_tips():
+    st.markdown(
+        """<div class='tips-card'>
+            <div class='sig-label'>For the most accurate reading</div>
+            <div class='tips-list'>
+                <div>• <b>Natural daylight</b> — no flash, no harsh overhead light</div>
+                <div>• <b>Hand flat and fully open</b>, fingers slightly apart</div>
+                <div>• <b>Camera directly above</b>, not at an angle</div>
+                <div>• <b>No shadows</b> falling across the palm</div>
+                <div>• Use your <b>dominant hand</b></div>
+                <div>• <b>Crop tightly</b> — palm should fill most of the frame</div>
+                <div>• Minimum resolution <b>1080p</b></div>
+            </div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STYLES (single block, scoped class names)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _inject_styles():
+    st.markdown(
+        """<style>
+        /* Header */
+        .palm-header { padding: 0.6rem 0 1rem; }
+        .palm-header h1 {
+            margin: 0; font-size: 1.95rem; font-weight: 600;
+            color: #f0e9ff; letter-spacing: -0.01em;
+        }
+        .palm-header p {
+            margin: 0.25rem 0 0; color: rgba(200,190,220,0.6);
+            font-size: 0.9rem; letter-spacing: 0.4px;
+        }
+
+        /* Signals card */
+        .signals-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 1.2rem 1.4rem;
+        }
+        .sig-label {
+            font-size: 0.7rem; color: rgba(200,190,220,0.55);
+            text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 0.25rem;
+        }
+        .sig-value-lg {
+            font-size: 1.3rem; font-weight: 500; color: #f0e9ff; line-height: 1.2;
+        }
+        .sig-value {
+            font-size: 1.05rem; font-weight: 500; color: #f0e9ff; line-height: 1.2;
+        }
+        .sig-value-sm {
+            font-size: 0.95rem; font-weight: 500; color: #f0e9ff; line-height: 1.2;
+        }
+        .sig-sub {
+            font-size: 0.82rem; color: rgba(200,190,220,0.7); margin-top: 0.15rem;
+        }
+        .sig-sub-sm {
+            font-size: 0.74rem; color: rgba(200,190,220,0.65);
+            line-height: 1.35; margin-top: 0.1rem;
+        }
+        .sig-divider {
+            height: 1px; background: rgba(255,255,255,0.06); margin: 1rem 0;
+        }
+        .sig-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;
+        }
+
+        /* Loading */
+        .loading-block {
+            text-align: center; padding: 3rem 0;
+            color: rgba(200,190,220,0.75);
+        }
+        .loading-spinner {
+            font-size: 2.4rem; margin-bottom: 1rem;
+            animation: spin 2.5s linear infinite;
+            display: inline-block;
+        }
+        .loading-text { font-size: 1rem; margin-bottom: 0.4rem; }
+        .loading-sub { font-size: 0.8rem; color: rgba(200,190,220,0.5); }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        /* Agreement badge */
+        .agreement-badge {
+            border: 1px solid;
+            border-radius: 12px; padding: 0.85rem 1.1rem;
+            margin: 0.4rem 0 1rem;
+        }
+        .agreement-row {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .agreement-label {
+            font-size: 0.72rem; color: rgba(200,190,220,0.65);
+            text-transform: uppercase; letter-spacing: 1.2px;
+        }
+        .agreement-value {
+            font-size: 1.05rem; font-weight: 600; letter-spacing: 0.3px;
+        }
+        .agreement-note {
+            font-size: 0.82rem; color: rgba(220,210,240,0.75);
+            margin-top: 0.4rem; line-height: 1.45;
+        }
+
+        /* Reading card */
+        .reading-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+            border: 1px solid rgba(212,175,55,0.20);
+            border-radius: 18px;
+            padding: 2rem 2.3rem;
+            color: #e8e2f0;
+        }
+        .reading-h2 {
+            color: #d4af37; font-size: 1.18rem; font-weight: 600;
+            margin: 1.7rem 0 0.7rem; letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(212,175,55,0.15);
+            padding-bottom: 0.4rem;
+        }
+        .reading-h2:first-child { margin-top: 0; }
+        .reading-p {
+            margin: 0 0 1rem; line-height: 1.78; font-size: 1rem;
+        }
+
+        /* Observations (Phase A disclosure) */
+        .obs-row {
+            font-size: 0.88rem; padding: 0.25rem 0;
+            color: rgba(220,210,240,0.85); line-height: 1.45;
+        }
+        .obs-icon {
+            display: inline-block; width: 1.4rem;
+            font-weight: 700; text-align: center;
+        }
+        .obs-name { font-weight: 600; }
+        .obs-vis {
+            color: rgba(200,190,220,0.7); margin-left: 0.4rem;
+        }
+        .obs-path {
+            font-size: 0.78rem; color: rgba(200,190,220,0.55);
+            margin: 0.15rem 0 0.2rem 1.4rem; line-height: 1.4;
+        }
+
+        /* Tips card */
+        .tips-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 1.4rem 1.6rem;
+            margin-top: 0.8rem;
+        }
+        .tips-list {
+            color: rgba(220,210,240,0.85); font-size: 0.9rem;
+            line-height: 1.95; margin-top: 0.5rem;
+        }
+        </style>""",
         unsafe_allow_html=True,
     )
