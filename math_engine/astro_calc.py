@@ -83,8 +83,16 @@ def get_western_transits_today():
 
 
 def geocode_place(pt):
-    try: loc=Nominatim(user_agent="kundli_ai_suite").geocode(pt,exactly_one=True,timeout=10); return (loc.latitude,loc.longitude,loc.address) if loc else None
-    except: return None
+    try: 
+        loc = Nominatim(user_agent="kundli_ai_suite").geocode(pt, exactly_one=True, timeout=10)
+        return (loc.latitude, loc.longitude, loc.address) if loc else None
+    except Exception as e: 
+        print("\n" + "="*50)
+        print(f"🚨 GEOCODING ERROR TRIGGERED 🚨")
+        print(f"Location attempted: '{pt}'")
+        print(f"Error Details: {e}")
+        print("="*50 + "\n")
+        return None
 
 
 def timezone_for_latlon(lat,lon): return TimezoneFinder().timezone_at(lat=lat,lng=lon)
