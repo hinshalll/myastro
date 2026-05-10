@@ -7,13 +7,14 @@ streamlit-local-storage
 imageio
 imageio-ffmpeg
 mediapipe==0.10.14
-numpy
+numpy<2.0
 Pillow
 requests
 scikit-image==0.26.0
 fpdf2==2.7.9
-opencv-python-headless
-scipy==1.17.1
+opencv-python-headless==4.10.0.84
+scipy
+protobuf==3.20.3
 qdrant-client
 langchain-qdrant
 langchain
