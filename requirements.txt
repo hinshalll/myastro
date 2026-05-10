@@ -1,5 +1,6 @@
 streamlit
-opencv-python-headless==4.13.0.92
+numpy<2.0
+opencv-python-headless==4.11.0.86
 google-generativeai
 pyswisseph
 geopy
@@ -8,7 +9,6 @@ streamlit-local-storage
 imageio
 imageio-ffmpeg
 mediapipe==0.10.14
-numpy<2.0
 Pillow
 requests
 scikit-image==0.26.0
