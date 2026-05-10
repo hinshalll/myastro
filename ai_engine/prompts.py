@@ -859,451 +859,202 @@ RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def build_premium_palmistry_prompt(
-    palm_data,
-    verified_symbols,
-    ancient_text,
-    dossier="",
-    *,
-    mount_symbol_detail=None,
-    mount_elevations=None,
-    finger_analysis=None,
-    # ── NEW ────────────────────────────────────────────────────────────
-    traced_lines=None,
-    marks=None,
-    minor_lines=None,
-    fingerprints=None,
-):
+"""
+ai_engine/prompts.py
+=====================
+Prompt builder for the palmistry VLM call.
+
+Architecture: a single two-phase prompt.
+
+  Phase A — Visual identification. The VLM looks at the actual palm photo
+            and the mount crops, then reports what it observes in structured
+            JSON. The value "not_assessable" is allowed and encouraged for
+            anything unclear. This eliminates hallucination by separating
+            'what is visible' from 'what does it mean'.
+
+  Phase B — Samudrika Shastra interpretation. The VLM writes the reading
+            using only what it confirmed in Phase A, plus the math-derived
+            facts (deterministic), the kundli dossier, structured Vedic
+            knowledge, and Qdrant-retrieved classical passages.
+
+Why this works better than the previous XML feature-dump approach:
+  - The model never receives false claims about lines/marks/etc.
+  - The model itself decides what's visible, so it can't contradict itself.
+  - "not_assessable" is a first-class output, so the model isn't pressured
+    to fabricate detail to fill required fields.
+  - Phase A is auditable — the UI can show the user exactly what the model
+    saw vs didn't see, building trust.
+"""
+
+
+def build_palm_reading_prompt(
+    hand_metrics: dict,
+    vitality: dict,
+    quality_metrics: dict,
+    n_mount_crops: int,
+    dossier: str = "",
+    knowledge_context: str = "",
+    qdrant_context: str = "",
+) -> str:
     """
-    Build the full Samudrika Shastra reading prompt.
-    Returns a string ready to pass to stream_ai_with_followup().
+    Build the full two-phase prompt. Returns a string ready to send alongside
+    the image inputs (full palm + mount crops + reference book image).
+
+    Args:
+        hand_metrics:      from math_engine.palm_vision._compute_hand_metrics
+        vitality:          from math_engine.palm_vision._vitality_class
+        quality_metrics:   from math_engine.palm_vision._assess_quality
+        n_mount_crops:     how many mount crops will be sent (for accurate count)
+        dossier:           kundli astrology dossier text
+        knowledge_context: structured Vedic knowledge (planet, nakshatra, dosha)
+        qdrant_context:    classical text passages retrieved by reliable signals
     """
+    hm = hand_metrics or {}
+    vit = vitality or {}
+    qm = quality_metrics or {}
 
-    # ── Helpers ───────────────────────────────────────────────────────
-    def _safe(d, *keys, default="unknown"):
-        val = d
-        for k in keys:
-            if not isinstance(val, dict):
-                return default
-            val = val.get(k, default)
-        return val if val not in (None, "", {}, []) else default
-
-    def _label(score):
-        if score >= 65: return "Deep & Prominent"
-        if score >= 45: return "Clear & Defined"
-        if score >= 25: return "Moderate"
-        if score >= 10: return "Faint"
-        return "Absent / Not Detected"
-
-    # ── Safety defaults ───────────────────────────────────────────────
-    traced_lines   = traced_lines  or {}
-    marks          = marks         or []
-    minor_lines    = minor_lines   or {}
-    fingerprints   = fingerprints  or {}
-
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 1 — TRACED LINE DATA (replaces flat zone scores)
-    # ══════════════════════════════════════════════════════════════════
-    traced_block_parts = []
-    line_display_names = {
-        "heart_line": "Heart Line (Hridaya Rekha)",
-        "head_line":  "Head Line (Matri Rekha)",
-        "life_line":  "Life Line (Jeevan Rekha)",
-        "fate_line":  "Fate Line (Bhagya Rekha)",
-        "sun_line":   "Sun / Apollo Line (Surya Rekha)",
-    }
-    for line_key, display in line_display_names.items():
-        feat = traced_lines.get(line_key)
-        if feat is None:
-            traced_block_parts.append(
-                f"  <line name='{display}'>\n"
-                f"    <present>false</present>\n"
-                f"    <note>Not detected — possible absence, poor contrast, or cropping issue</note>\n"
-                f"  </line>"
-            )
-            continue
-        if not feat.get("present"):
-            traced_block_parts.append(
-                f"  <line name='{display}'>\n"
-                f"    <present>false</present>\n"
-                f"    <score>0</score>\n"
-                f"  </line>"
-            )
-            continue
-
-        lp   = feat.get("length_pct", 0)
-        dept = feat.get("mean_depth", 0)
-        dep_label = _label(feat.get("score", 0))
-        cur  = feat.get("curvature", "unknown")
-        cdir = feat.get("curve_direction", "unknown")
-        bu   = feat.get("branches_up", 0)
-        bd   = feat.get("branches_down", 0)
-        bt   = feat.get("branch_total", 0)
-        sz   = feat.get("start_zone", "unknown")
-        ez   = feat.get("end_zone", "unknown")
-        ang  = feat.get("angle_from_horiz", "?")
-
-        traced_block_parts.append(
-            f"  <line name='{display}'>\n"
-            f"    <present>true</present>\n"
-            f"    <score>{feat.get('score',0)}/100</score>\n"
-            f"    <depth_label>{dep_label}</depth_label>\n"
-            f"    <mean_ridge_intensity>{dept}/255</mean_ridge_intensity>\n"
-            f"    <length>{lp}% of palm reference dimension</length>\n"
-            f"    <curvature>{cur}</curvature>\n"
-            f"    <curve_direction>{cdir}</curve_direction>\n"
-            f"    <angle_from_horizontal>{ang}°</angle_from_horizontal>\n"
-            f"    <branches_toward_fingers>{bu}</branches_toward_fingers>\n"
-            f"    <branches_toward_wrist>{bd}</branches_toward_wrist>\n"
-            f"    <total_branch_points>{bt}</total_branch_points>\n"
-            f"    <starts_at>{sz}</starts_at>\n"
-            f"    <ends_at>{ez}</ends_at>\n"
-            f"  </line>"
-        )
-
-    traced_block = "\n".join(traced_block_parts)
-
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 2 — MARKS
-    # ══════════════════════════════════════════════════════════════════
-    if marks:
-        marks_parts = []
-        for m in marks:
-            mtype = m.get("type", "unknown")
-            pos   = m.get("position", "unknown position")
-            marks_parts.append(
-                f"    <mark><type>{mtype}</type><position>{pos}</position></mark>"
-            )
-        marks_block = (
-            "  <classical_marks>\n"
-            + "\n".join(marks_parts)
-            + "\n  </classical_marks>"
-        )
-    else:
-        marks_block = "  <classical_marks>None detected by skeleton analysis</classical_marks>"
-
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 3 — MINOR LINES
-    # ══════════════════════════════════════════════════════════════════
-    _minor_descriptions = {
-        "girdle_of_venus":    "Girdle of Venus — heightened sensitivity, emotional depth",
-        "ring_of_solomon":    "Ring of Solomon — wisdom, psychic / occult inclination",
-        "ring_of_saturn":     "Ring of Saturn — obstacles, saturnine temperament",
-        "marriage_lines":     "Marriage / relationship lines",
-        "bracelets":          "Bracelets (Rascettes) — health and longevity",
-        "intuition_crescent": "Intuition Crescent — lunar sensitivity, precognition",
-        "mystic_cross":       "Mystic Cross — philosophical or occult mind",
-    }
-    if minor_lines:
-        ml_parts = []
-        for key, val in minor_lines.items():
-            desc = _minor_descriptions.get(key, key.replace("_", " ").title())
-            count_str = f" (count: {val})" if isinstance(val, int) and val > 1 else ""
-            ml_parts.append(f"    <minor_line>{desc}{count_str}</minor_line>")
-        minor_block = (
-            "  <minor_lines>\n"
-            + "\n".join(ml_parts)
-            + "\n  </minor_lines>"
-        )
-    else:
-        minor_block = "  <minor_lines>None detected above threshold</minor_lines>"
-
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 4 — FINGERPRINTS (math + AI cross-check)
-    # ══════════════════════════════════════════════════════════════════
-    _fp_vedic = {
-        "arch":    "Dhanusha — stable, practical, grounded earth nature; strong Saturn energy",
-        "loop":    "Balanced / Jal-Vayu — adaptable, harmonious; most common pattern (~65% of people)",
-        "whorl":   "Chakra / Chandra — intense, unique, leadership; strong Sun or Moon energy",
-        "unknown": "Not detected (insufficient image clarity at fingertip)",
-    }
-    _ai_fps = {}
-    if finger_analysis:
-        for fname in ["thumb", "index", "middle", "ring", "pinky"]:
-            ai_fp = _safe(finger_analysis, fname, "fingerprint", default="")
-            if ai_fp:
-                _ai_fps[fname] = ai_fp
-
-    fp_parts = []
-    for fname in ["thumb", "index", "middle", "ring", "pinky"]:
-        math_pat = fingerprints.get(fname, "unknown")
-        ai_pat   = _ai_fps.get(fname, "")
-        vedic    = _fp_vedic.get(math_pat, "")
-        agree    = ""
-        if ai_pat and ai_pat != "unknown":
-            agree = f" [Gemini confirms: {ai_pat}]" if ai_pat == math_pat else \
-                    f" [Gemini differs: {ai_pat} — use your visual judgment]"
-        fp_parts.append(
-            f"    <finger name='{fname}'>"
-            f"<pattern>{math_pat}{agree}</pattern>"
-            f"<vedic_meaning>{vedic}</vedic_meaning>"
-            f"</finger>"
-        )
-    fingerprints_block = (
-        "  <dermatoglyphics>\n"
-        + "\n".join(fp_parts)
-        + "\n  </dermatoglyphics>"
+    # ── Math signals (deterministic, treat as ground truth) ───────────────────
+    math_signals = (
+        f"- Hand type: {hm.get('hand_type', 'unknown')} "
+        f"({hm.get('hand_type_vedic', '')}) — {hm.get('hand_type_gloss', '')}\n"
+        f"- 2D:4D ratio: {hm.get('ratio_2d4d', '?')} — {hm.get('ratio_reading', '')}\n"
+        f"- Dominant finger by length: {hm.get('dominant_finger', '?')}\n"
+        f"- Thumb proportion (length / palm length): {hm.get('thumb_proportion', '?')}\n"
+        f"- Vitality bucket: {vit.get('class', '?')} — {vit.get('note', '')}\n"
+        f"- Image quality: blur={qm.get('blur_score', '?')}, "
+        f"exposure={qm.get('mean_v', '?')}, resolution={qm.get('resolution', '?')}\n"
     )
 
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 5 — GEOMETRY & VITALITY (unchanged from old prompt)
-    # ══════════════════════════════════════════════════════════════════
-    fd = palm_data.get("finger_data", {})
-    geo_block = f"""  <geometry>
-    <hand_type>{_safe(fd, 'hand_type')} / {_safe(fd, 'hand_type_vedic')}</hand_type>
-    <ratio_2d4d>{_safe(fd, 'ratio_2d4d')}</ratio_2d4d>
-    <ratio_reading>{_safe(fd, 'ratio_reading')}</ratio_reading>
-    <dominant_finger>{_safe(fd, 'dominant_finger')}</dominant_finger>
-    <palm_ratio>{_safe(fd, 'palm_ratio')}</palm_ratio>
-  </geometry>
-  <vitality>
-    <reading>{palm_data.get('vitality_hsv', 'unknown')}</reading>
-    <ui_label>{palm_data.get('ui_vitality', 'unknown')}</ui_label>
-  </vitality>
-  <overall_line_clarity>
-    <score>{palm_data.get('line_clarity_score', 0)}/100</score>
-    <label>{palm_data.get('ui_line', 'unknown')}</label>
-    <persistence_ratio>{int(palm_data.get('persistence_ratio', 0)*100)}%</persistence_ratio>
-  </overall_line_clarity>"""
-
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 6 — TOPOLOGY
-    # ══════════════════════════════════════════════════════════════════
-    topo = palm_data.get("topology", {})
-    topo_block = f"""  <topology>
-    <simian_line>{topo.get('simian_line', False)}</simian_line>
-    <line_forks>{topo.get('line_forks', 0)}</line_forks>
-    <line_endpoints>{topo.get('line_endpoints', 0)}</line_endpoints>
-    <complexity_score>{topo.get('line_complexity', 0)}</complexity_score>
-  </topology>"""
-
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 7 — FINGER ANALYSIS (from Gemini Vision)
-    # ══════════════════════════════════════════════════════════════════
-    def _finger_block(fa):
-        if not fa:
-            return "  <finger_analysis>Not performed this session</finger_analysis>"
-        parts = ["  <finger_analysis>"]
-        for fname in ["thumb", "index", "middle", "ring", "little"]:
-            fdata = fa.get(fname) or fa.get(fname.replace("little", "pinky"), {})
-            if not fdata:
-                continue
-            tip    = fdata.get("tip_shape", "?")
-            fp_pat = fdata.get("fingerprint", "?")
-            note   = fdata.get("samudrika_note", "")
-            parts.append(
-                f"    <finger name='{fname}'>"
-                f"<tip_shape>{tip}</tip_shape>"
-                f"<fingerprint_confirmed>{fp_pat}</fingerprint_confirmed>"
-                f"<note>{note}</note>"
-                f"</finger>"
-            )
-        parts.append(
-            f"    <low_set_mercury>{fa.get('little', {}).get('low_set', fa.get('pinky', {}).get('low_set', 'unknown'))}</low_set_mercury>"
+    # ── Optional context blocks ───────────────────────────────────────────────
+    knowledge_block = ""
+    if knowledge_context and len(knowledge_context.strip()) > 50:
+        knowledge_block = (
+            f"\n<vedic_knowledge>\n"
+            f"The following structured knowledge is keyed to this person's chart "
+            f"(planet, nakshatra, dosha). Use it to enrich planetary interpretations.\n\n"
+            f"{knowledge_context}\n"
+            f"</vedic_knowledge>\n"
         )
-        parts.append(f"    <joint_type>{fa.get('joints', '?')}</joint_type>")
-        parts.append(f"    <finger_spacing>{fa.get('finger_spacing', '?')}</finger_spacing>")
-        parts.append(f"    <finger_curve>{fa.get('finger_curve', '?')}</finger_curve>")
-        parts.append(f"    <overall_character>{fa.get('overall_character', '')}</overall_character>")
-        parts.append("  </finger_analysis>")
-        return "\n".join(parts)
 
-    finger_block = _finger_block(finger_analysis)
+    qdrant_block = ""
+    if qdrant_context and len(qdrant_context.strip()) > 50:
+        qdrant_block = (
+            f"\n<classical_passages>\n"
+            f"Passages from classical Vedic palmistry texts, retrieved for "
+            f"features matching this hand's profile:\n\n"
+            f"{qdrant_context}\n"
+            f"</classical_passages>\n"
+        )
 
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 8 — MOUNT ELEVATIONS
-    # ══════════════════════════════════════════════════════════════════
-    def _mount_block(elev):
-        if not elev:
-            return "  <mount_elevations>Not available</mount_elevations>"
-        lines = ["  <mount_elevations>"]
-        for mname, ev in elev.items():
-            lines.append(
-                f"    <mount name='{mname}'>"
-                f"<elevation>{ev['elevation']}</elevation>"
-                f"<score>{ev['score']}/100</score>"
-                f"</mount>"
-            )
-        lines.append("  </mount_elevations>")
-        return "\n".join(lines)
+    dossier_block = ""
+    if dossier and len(dossier.strip()) > 30:
+        dossier_block = (
+            f"\n<kundli_dossier>\n"
+            f"This person's birth chart and astrological profile:\n\n"
+            f"{dossier}\n"
+            f"</kundli_dossier>\n"
+        )
 
-    mount_block = _mount_block(mount_elevations)
+    # ── The prompt itself ─────────────────────────────────────────────────────
+    return f"""You are an expert Vedic palmist trained in classical Samudrika Shastra. You are reading a real photograph of a real human's hand. Your job is to be honest about what you can see, and to interpret only what you actually observe.
 
-    # ══════════════════════════════════════════════════════════════════
-    # BLOCK 9 — SYMBOLS (from AI scan)
-    # ══════════════════════════════════════════════════════════════════
-    sym_block_inner = ""
-    if mount_symbol_detail:
-        sym_parts = []
-        for f in mount_symbol_detail:
-            sym_parts.append(
-                f"    <symbol>"
-                f"<mount>{f.get('mount','?')}</mount>"
-                f"<type>{f.get('symbol','?')}</type>"
-                f"<vedic_name>{f.get('vedic_name','?')}</vedic_name>"
-                f"<confidence>{f.get('confidence_score','?')}%</confidence>"
-                f"<position>{f.get('position','?')}</position>"
-                f"</symbol>"
-            )
-        sym_block_inner = "\n".join(sym_parts)
-    if not sym_block_inner:
-        sym_block_inner = "    <note>No symbols met 75% confidence threshold</note>"
+═══ INPUT IMAGES ═══
+1. FULL PALM (labelled top-left) — the user's actual hand, CLAHE-enhanced for line visibility
+2. {n_mount_crops} MOUNT CROPS (each labelled at top) — focused close-ups of the seven planetary mounts: Jupiter, Saturn, Sun, Mercury, Venus, Mars, Luna. These give you many more pixels per mount than the full palm alone.
+3. REFERENCE — classical hand diagram showing planet names and guna zones
 
-    sym_block = f"  <detected_symbols>\n{sym_block_inner}\n  </detected_symbols>"
+═══ MATH-DERIVED FACTS (deterministic, treat as ground truth) ═══
+{math_signals}{dossier_block}{knowledge_block}{qdrant_block}
 
-    # ══════════════════════════════════════════════════════════════════
-    # QUALITY & CONSISTENCY NOTES
-    # ══════════════════════════════════════════════════════════════════
-    quality_note = ""
-    q = palm_data.get("quality", {})
-    qi = palm_data.get("quality_issues", [])
-    cw = palm_data.get("consistency_warnings", [])
-    if qi or cw:
-        qa_parts = []
-        if qi:
-            for issue in qi:
-                qa_parts.append(f"    <image_quality_issue>{issue}</image_quality_issue>")
-        if cw:
-            for w in cw:
-                qa_parts.append(f"    <consistency_warning>{w}</consistency_warning>")
-        quality_note = f"  <analysis_caveats>\n" + "\n".join(qa_parts) + "\n  </analysis_caveats>"
+═══ YOUR TASK — TWO PHASES IN ONE RESPONSE ═══
 
-    # ══════════════════════════════════════════════════════════════════
-    # ANCIENT TEXT
-    # ══════════════════════════════════════════════════════════════════
-    ancient_block = ""
-    if ancient_text and len(ancient_text.strip()) > 30:
-        ancient_block = f"""
-<ancient_text_references>
-{ancient_text}
-</ancient_text_references>"""
+═══ PHASE A — VISUAL IDENTIFICATION (output JSON first) ═══
 
-    # ══════════════════════════════════════════════════════════════════
-    # DOSSIER CONTEXT
-    # ══════════════════════════════════════════════════════════════════
-    dossier_block = f"<kundli_dossier>\n{dossier}\n</kundli_dossier>" if dossier else ""
+Look carefully at the FULL PALM image. For each major line, state what you actually observe.
 
-    # ══════════════════════════════════════════════════════════════════
-    # ASSEMBLE FULL PROMPT
-    # ══════════════════════════════════════════════════════════════════
-    return f"""<role>
-You are Jyotish-Pandit, an elite Vedic palmist trained in classical Samudrika Shastra texts.
-You are reading the palm of the person described in the dossier below.
-You have a dual view: the CLAHE-enhanced original palm photograph (left panel) AND
-the Frangi Ridge Map with labelled detected lines (right panel).
+CRITICAL: Use "not_assessable" generously. If a line is unclear, very faint, partially out of frame, or the photo quality blocks confident identification, mark it not_assessable. DO NOT GUESS to fill in values. An honest "I cannot see this clearly" is far more valuable than a confident wrong answer.
 
-Interpret the ridge map labels as starting points, but always defer to what you visually
-confirm in the original palm photograph. If the map label and the photograph disagree,
-state the discrepancy and interpret what you see.
-</role>
+Then look at each MOUNT CROP individually. For each mount, describe its visible appearance and note any clearly visible marks (cross, star, triangle, square, island, grille, fish). Mark observations as "no notable marks" if you don't see any clear marks — DO NOT report skin texture or shadows as marks.
 
-<hard_palm_data>
-{geo_block}
+Output ONLY this JSON, wrapped in ```json``` fences. Nothing before the fence:
 
-  <major_lines>
-{traced_block}
-  </major_lines>
+```json
+{{
+  "image_quality": "good|acceptable|poor",
+  "image_issues": "brief note or empty string",
+  "lines": {{
+    "heart":  {{ "visibility": "clear|faint|fragmented|not_visible|not_assessable", "path": "brief description or 'not_assessable'", "endpoint": "Jupiter|Saturn|between_them|other|not_assessable" }},
+    "head":   {{ "visibility": "...", "path": "...", "joined_to_life": "yes|no|not_assessable" }},
+    "life":   {{ "visibility": "...", "path": "...", "curve": "tight|moderate|wide|not_assessable" }},
+    "fate":   {{ "visibility": "...", "path": "...", "starts_at": "wrist|life_line|head_line|center|absent|not_assessable" }},
+    "sun":    {{ "visibility": "...", "path": "..." }},
+    "simian": {{ "present": false, "confidence": "low|medium|high" }}
+  }},
+  "mounts": {{
+    "Jupiter": {{ "fullness": "prominent|moderate|flat|not_assessable", "marks": "no notable marks|description" }},
+    "Saturn":  {{ "fullness": "...", "marks": "..." }},
+    "Sun":     {{ "fullness": "...", "marks": "..." }},
+    "Mercury": {{ "fullness": "...", "marks": "..." }},
+    "Venus":   {{ "fullness": "...", "marks": "..." }},
+    "Mars":    {{ "fullness": "...", "marks": "..." }},
+    "Luna":    {{ "fullness": "...", "marks": "..." }}
+  }},
+  "fingers": {{
+    "tip_shape_dominant": "conic|square|spatulate|rounded|mixed|not_assessable",
+    "knotted_joints": "yes|no|not_assessable",
+    "spacing": "wide|moderate|close|not_assessable"
+  }},
+  "thumb": {{
+    "set": "high|medium|low|not_assessable",
+    "tip_shape": "conic|square|spatulate|not_assessable",
+    "flexibility_estimate": "stiff|firm|flexible|not_assessable"
+  }},
+  "kundli_palm_agreement": "strong|moderate|weak|cannot_assess",
+  "kundli_palm_agreement_note": "one sentence explaining why"
+}}
+```
 
-{marks_block}
+═══ PHASE B — THE READING (output Markdown after the JSON) ═══
 
-{minor_block}
+After the JSON block, write the actual Samudrika Shastra reading. Hard rules:
 
-{fingerprints_block}
+1. Anchor every claim to one of: (a) a feature you marked visible in Phase A, (b) a math-derived fact above, (c) the kundli dossier, or (d) a passage from <classical_passages>.
 
-{finger_block}
+2. NEVER make claims about anything Phase A marked "not_assessable" or "not_visible". If the head line is not_assessable, do not write about the head line. Skip that section honestly.
 
-{mount_block}
+3. Weave the kundli dossier throughout — this is the user's real birth chart, not generic. Reference specific planets, nakshatra, ascendant where relevant.
 
-{sym_block}
+4. Tone: warm, authoritative, intimate — like a senior Vedic palmist who knows them personally.
 
-{topo_block}
+5. Flowing paragraphs only. NO bullet lists, NO sub-headers inside paragraphs.
 
-{quality_note}
-</hard_palm_data>
-{ancient_block}
-{dossier_block}
+6. Length: 700–950 words.
 
-<report_structure>
-Write a flowing, deeply personalised Samudrika Shastra reading. No generic filler.
-Every claim must be anchored to specific features in <hard_palm_data> or the image.
+Use exactly these section headers (markdown H2):
 
-Use this structure:
+## First Glance
+One paragraph. What stands out about this hand. Use hand type + dominant finger + vitality + the strongest visible line. Set the tone.
 
-## 1. Palmist's First Impression
-One vivid paragraph describing what immediately stands out about this palm —
-the overall energy, texture, dominant lines, any marks. Treat this as a palmist's
-live observation, not a mechanical summary.
+## The Major Lines
+2–4 paragraphs. One paragraph per line you confirmed visible (skip not_assessable / not_visible ones entirely). Use the path and endpoint observations. Where a classical passage matches the line's character, weave it in naturally.
 
-## 2. The Major Lines — Story of This Life
+## Mounts and Planetary Architecture
+1–2 paragraphs. Synthesize the mount observations into a planetary character profile. Use the structured Vedic knowledge if provided (planet traits, nakshatra qualities). Reference visible marks only, never speculate.
 
-For each detected major line, write a dedicated paragraph.
-Use the traced data (length, curvature, branches, start/end zones) to be SPECIFIC.
-Examples of specificity:
-  - "Your heart line runs {{length_pct}}% of the palm width, arcing {{curve_direction}}
-     with {{branches_up}} upward branches — each branch points to a specific person or
-     phase that opened your emotional capacity."
-  - "Your fate line is {{depth_label}}, emerging from {{start_zone}} — this means..."
-  - "Your head line shows {{branches_down}} downward branches — these are periods of
-     introspection or difficult decisions the mind turned inward to process."
+## Hand Architecture
+One paragraph. Hand type meaning, 2D:4D significance, finger profile, thumb if assessable.
 
-For absent lines, state it briefly and interpret the classical meaning.
-If the simian line is present, dedicate a paragraph to it.
+## Where the Palm Meets the Chart
+One paragraph. Specific convergences and tensions between palm observations and the kundli. Mention the kundli_palm_agreement rating naturally if relevant. This section is the differentiator — make it specific, not generic.
 
-## 3. Mounts — Planetary Architecture
+## The Path Forward
+One paragraph. 2–3 specific, grounded suggestions tied to what you actually observed. Not horoscope filler — practical Samudrika-aligned guidance.
 
-Interpret the 7 mounts using elevation scores. Do not list scores as numbers —
-weave them into sentences. A highly developed mount becomes a gift and a shadow.
-A flat mount becomes an absence that drives compensatory behaviour elsewhere.
+═══ HARD CONSTRAINTS ═══
+• If image_quality is "poor", write a brief Phase B that honestly tells the user the photo isn't usable, and request a better one. Do not fabricate a reading.
+• Do not cite raw geometry numbers (palm_aspect, finger_to_palm, etc.) as if they were palm-line claims — they are measurements, not lines.
+• Never claim a line, mark, or mount feature exists if Phase A marked it not_assessable.
+• If a section has no anchorable observations, shorten it honestly rather than padding.
+• No filler. No generic horoscope phrasing. Every sentence should be specific to this person.
 
-## 4. Hand Type & Finger Profile
-
-Synthesise hand type (Western + Vedic), 2D:4D ratio reading, and the finger analysis
-from Gemini Vision. Include observations about tip shapes, joint type, and spacing.
-
-## 5. Dermatoglyphics — Fingerprint Reading
-
-For each finger where a pattern was detected, give the Samudrika Shastra
-interpretation of arch / loop / whorl. Note any disagreements between the math
-engine and Gemini Vision and how you are resolving them.
-
-## 5b. Classical Marks & Minor Lines
-
-If marks (cross, star, triangle, square, island) were detected, interpret each in
-context of its mount or zone location. Be specific about what the position means —
-a star on Jupiter is very different from a star on Saturn.
-
-For each detected minor line (girdle, rings, marriage lines, mystic cross, etc.),
-give a classical Samudrika Shastra interpretation.
-
-## 6. Symbols from Vision Scan
-
-Interpret any verified mount symbols (confidence ≥ 75%). If none, briefly note
-"the palm is free of auspicious or inauspicious mount symbols at this time."
-
-If ancient text references are provided, weave one or two relevant passages into
-this section or Section 2 — cite them as "According to classical texts…"
-
-## 7. Kundli–Palm Convergences
-
-Reference the astrological dossier. Where does the palm confirm the chart?
-Where does it complicate or contradict it? (e.g., Saturn strong in chart but
-fate line absent — what does that tension mean for this person?)
-
-## 8. Shadows & Cautions
-
-What does this palm warn about? Be honest. A palmist who only flatters
-is useless. Note potential health, relationship, or karmic cautions —
-but frame them as areas requiring attention, not inevitabilities.
-
-## 9. The Path Forward — Practical Guidance
-
-Close with 3-4 specific, actionable suggestions grounded in the reading.
-What energy should this person cultivate? What patterns should they consciously
-interrupt? Connect to both Samudrika Shastra and practical modern life.
-
----
-Tone: authoritative, warm, intimate. No bullet lists — flowing paragraphs only.
-No generic palmistry filler phrases ("Your heart line shows…" without specifics).
-Every sentence should be something that could ONLY be written about this specific palm.
-Length: aim for 900–1200 words.
-</report_structure>"""
+Now produce the response. JSON first (Phase A in fences), then Phase B markdown."""
