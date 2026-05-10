@@ -5,7 +5,7 @@ import swisseph as swe
 from functools import lru_cache
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
-from geopy.geocoders import Nominatim
+from geopy.geocoders import Photon
 from timezonefinder import TimezoneFinder
 from math_engine.constants import *
 
@@ -84,14 +84,11 @@ def get_western_transits_today():
 
 def geocode_place(pt):
     try: 
-        loc = Nominatim(user_agent="kundli_ai_suite").geocode(pt, exactly_one=True, timeout=10)
+        # Using Photon to bypass Streamlit Cloud IP blocks
+        loc = Photon(user_agent="astro_suite_cloud").geocode(pt, exactly_one=True, timeout=10)
         return (loc.latitude, loc.longitude, loc.address) if loc else None
     except Exception as e: 
-        print("\n" + "="*50)
-        print(f"🚨 GEOCODING ERROR TRIGGERED 🚨")
-        print(f"Location attempted: '{pt}'")
-        print(f"Error Details: {e}")
-        print("="*50 + "\n")
+        print(f"Geocoding Error: {e}")
         return None
 
 
