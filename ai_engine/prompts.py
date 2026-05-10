@@ -858,192 +858,452 @@ RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN.
 # Paste this function replacing the existing one. Everything else unchanged.
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def build_premium_palmistry_prompt(
     palm_data,
     verified_symbols,
-    sniper_text,
-    astro_dossier,
+    ancient_text,
+    dossier="",
+    *,
     mount_symbol_detail=None,
     mount_elevations=None,
     finger_analysis=None,
+    # ── NEW ────────────────────────────────────────────────────────────
+    traced_lines=None,
+    marks=None,
+    minor_lines=None,
+    fingerprints=None,
 ):
-    mount_symbol_detail = mount_symbol_detail or []
-    mount_elevations    = mount_elevations    or {}
-    finger_analysis     = finger_analysis     or {}
+    """
+    Build the full Samudrika Shastra reading prompt.
+    Returns a string ready to pass to stream_ai_with_followup().
+    """
 
-    zone = palm_data.get("zone_scores", {})
-    topo = palm_data.get("topology", {})
-    pr   = int(palm_data.get("persistence_ratio", 0) * 100)
-    fd   = palm_data.get("finger_data", {})
+    # ── Helpers ───────────────────────────────────────────────────────
+    def _safe(d, *keys, default="unknown"):
+        val = d
+        for k in keys:
+            if not isinstance(val, dict):
+                return default
+            val = val.get(k, default)
+        return val if val not in (None, "", {}, []) else default
 
-    def lbl(s):
-        if s>=65: return "Deep & Prominent"
-        if s>=45: return "Clear & Defined"
-        if s>=25: return "Moderate"
-        if s>=10: return "Faint"
+    def _label(score):
+        if score >= 65: return "Deep & Prominent"
+        if score >= 45: return "Clear & Defined"
+        if score >= 25: return "Moderate"
+        if score >= 10: return "Faint"
         return "Absent / Not Detected"
 
-    hs=zone.get("heart_line",0); hd=zone.get("head_line",0)
-    li=zone.get("life_line",0);  ft=zone.get("fate_line",0); su=zone.get("sun_line",0)
-    fks=topo.get("line_forks",0); eps=topo.get("line_endpoints",0)
-    sim=topo.get("simian_line",False); cx=topo.get("line_complexity",0)
+    # ── Safety defaults ───────────────────────────────────────────────
+    traced_lines   = traced_lines  or {}
+    marks          = marks         or []
+    minor_lines    = minor_lines   or {}
+    fingerprints   = fingerprints  or {}
 
-    line_block = f"""
-FRANGI RIDGE ENGINE — PER-LINE SCORES (0–100):
-  Heart Line : {hs:>3}/100 → {lbl(hs)}
-  Head Line  : {hd:>3}/100 → {lbl(hd)}
-  Life Line  : {li:>3}/100 → {lbl(li)}
-  Fate Line  : {ft:>3}/100 → {lbl(ft)}
-  Sun Line   : {su:>3}/100 → {lbl(su)}
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 1 — TRACED LINE DATA (replaces flat zone scores)
+    # ══════════════════════════════════════════════════════════════════
+    traced_block_parts = []
+    line_display_names = {
+        "heart_line": "Heart Line (Hridaya Rekha)",
+        "head_line":  "Head Line (Matri Rekha)",
+        "life_line":  "Life Line (Jeevan Rekha)",
+        "fate_line":  "Fate Line (Bhagya Rekha)",
+        "sun_line":   "Sun / Apollo Line (Surya Rekha)",
+    }
+    for line_key, display in line_display_names.items():
+        feat = traced_lines.get(line_key)
+        if feat is None:
+            traced_block_parts.append(
+                f"  <line name='{display}'>\n"
+                f"    <present>false</present>\n"
+                f"    <note>Not detected — possible absence, poor contrast, or cropping issue</note>\n"
+                f"  </line>"
+            )
+            continue
+        if not feat.get("present"):
+            traced_block_parts.append(
+                f"  <line name='{display}'>\n"
+                f"    <present>false</present>\n"
+                f"    <score>0</score>\n"
+                f"  </line>"
+            )
+            continue
 
-TOPOLOGY:
-  Forks: {fks}  Endpoints: {eps}  Complexity: {cx}/100
-  Persistence: {pr}%
-  Simian Line: {'YES — EXTREMELY RARE' if sim else 'Not detected'}
-"""
+        lp   = feat.get("length_pct", 0)
+        dept = feat.get("mean_depth", 0)
+        dep_label = _label(feat.get("score", 0))
+        cur  = feat.get("curvature", "unknown")
+        cdir = feat.get("curve_direction", "unknown")
+        bu   = feat.get("branches_up", 0)
+        bd   = feat.get("branches_down", 0)
+        bt   = feat.get("branch_total", 0)
+        sz   = feat.get("start_zone", "unknown")
+        ez   = feat.get("end_zone", "unknown")
+        ang  = feat.get("angle_from_horiz", "?")
 
-    geo_block = f"""
-MEDIAPIPE GEOMETRY:
-  Hand Type  : {fd.get('hand_type','?')} / {fd.get('hand_type_vedic','?')}
-  2D:4D Ratio: {fd.get('ratio_2d4d',0):.3f} — {fd.get('ratio_reading','')}
-  Dominant   : {fd.get('dominant_finger','?')}
-""" if fd else "\nGEOMETRY: Landmarks not detected.\n"
+        traced_block_parts.append(
+            f"  <line name='{display}'>\n"
+            f"    <present>true</present>\n"
+            f"    <score>{feat.get('score',0)}/100</score>\n"
+            f"    <depth_label>{dep_label}</depth_label>\n"
+            f"    <mean_ridge_intensity>{dept}/255</mean_ridge_intensity>\n"
+            f"    <length>{lp}% of palm reference dimension</length>\n"
+            f"    <curvature>{cur}</curvature>\n"
+            f"    <curve_direction>{cdir}</curve_direction>\n"
+            f"    <angle_from_horizontal>{ang}°</angle_from_horizontal>\n"
+            f"    <branches_toward_fingers>{bu}</branches_toward_fingers>\n"
+            f"    <branches_toward_wrist>{bd}</branches_toward_wrist>\n"
+            f"    <total_branch_points>{bt}</total_branch_points>\n"
+            f"    <starts_at>{sz}</starts_at>\n"
+            f"    <ends_at>{ez}</ends_at>\n"
+            f"  </line>"
+        )
 
+    traced_block = "\n".join(traced_block_parts)
+
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 2 — MARKS
+    # ══════════════════════════════════════════════════════════════════
+    if marks:
+        marks_parts = []
+        for m in marks:
+            mtype = m.get("type", "unknown")
+            pos   = m.get("position", "unknown position")
+            marks_parts.append(
+                f"    <mark><type>{mtype}</type><position>{pos}</position></mark>"
+            )
+        marks_block = (
+            "  <classical_marks>\n"
+            + "\n".join(marks_parts)
+            + "\n  </classical_marks>"
+        )
+    else:
+        marks_block = "  <classical_marks>None detected by skeleton analysis</classical_marks>"
+
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 3 — MINOR LINES
+    # ══════════════════════════════════════════════════════════════════
+    _minor_descriptions = {
+        "girdle_of_venus":    "Girdle of Venus — heightened sensitivity, emotional depth",
+        "ring_of_solomon":    "Ring of Solomon — wisdom, psychic / occult inclination",
+        "ring_of_saturn":     "Ring of Saturn — obstacles, saturnine temperament",
+        "marriage_lines":     "Marriage / relationship lines",
+        "bracelets":          "Bracelets (Rascettes) — health and longevity",
+        "intuition_crescent": "Intuition Crescent — lunar sensitivity, precognition",
+        "mystic_cross":       "Mystic Cross — philosophical or occult mind",
+    }
+    if minor_lines:
+        ml_parts = []
+        for key, val in minor_lines.items():
+            desc = _minor_descriptions.get(key, key.replace("_", " ").title())
+            count_str = f" (count: {val})" if isinstance(val, int) and val > 1 else ""
+            ml_parts.append(f"    <minor_line>{desc}{count_str}</minor_line>")
+        minor_block = (
+            "  <minor_lines>\n"
+            + "\n".join(ml_parts)
+            + "\n  </minor_lines>"
+        )
+    else:
+        minor_block = "  <minor_lines>None detected above threshold</minor_lines>"
+
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 4 — FINGERPRINTS (math + AI cross-check)
+    # ══════════════════════════════════════════════════════════════════
+    _fp_vedic = {
+        "arch":    "Dhanusha — stable, practical, grounded earth nature; strong Saturn energy",
+        "loop":    "Balanced / Jal-Vayu — adaptable, harmonious; most common pattern (~65% of people)",
+        "whorl":   "Chakra / Chandra — intense, unique, leadership; strong Sun or Moon energy",
+        "unknown": "Not detected (insufficient image clarity at fingertip)",
+    }
+    _ai_fps = {}
     if finger_analysis:
-        def _f(k):
-            fi=finger_analysis.get(k,{})
-            if not fi: return "Not detected"
-            p=[]
-            if fi.get("tip_shape"): p.append(f"tip:{fi['tip_shape']}")
-            for x in ("length_vs_middle","length_vs_index","straight","low_set"):
-                if x in fi: p.append(f"{x}:{fi[x]}")
-            if fi.get("samudrika_note"): p.append(f"→{fi['samudrika_note']}")
-            return ", ".join(p)
-        ai_finger_block = f"""
-FINGER ANALYSIS (Gemini Vision — Samudrika Shastra):
-  Thumb  : {_f('thumb')}
-  Index  : {_f('index')}
-  Middle : {_f('middle')}
-  Ring   : {_f('ring')}
-  Little : {_f('little')}
-  Joints : {finger_analysis.get('joints','?')}
-  Spacing: {finger_analysis.get('finger_spacing','?')}
-  Curve  : {finger_analysis.get('finger_curve','?')}
-  Overall: {finger_analysis.get('overall_character','?')}
-"""
-    else:
-        ai_finger_block = "\nFINGER ANALYSIS: Not available.\n"
+        for fname in ["thumb", "index", "middle", "ring", "pinky"]:
+            ai_fp = _safe(finger_analysis, fname, "fingerprint", default="")
+            if ai_fp:
+                _ai_fps[fname] = ai_fp
 
-    vitality_block = f"\nVITALITY (Venus mount HSV): {palm_data.get('vitality_hsv','Unknown')}\n"
+    fp_parts = []
+    for fname in ["thumb", "index", "middle", "ring", "pinky"]:
+        math_pat = fingerprints.get(fname, "unknown")
+        ai_pat   = _ai_fps.get(fname, "")
+        vedic    = _fp_vedic.get(math_pat, "")
+        agree    = ""
+        if ai_pat and ai_pat != "unknown":
+            agree = f" [Gemini confirms: {ai_pat}]" if ai_pat == math_pat else \
+                    f" [Gemini differs: {ai_pat} — use your visual judgment]"
+        fp_parts.append(
+            f"    <finger name='{fname}'>"
+            f"<pattern>{math_pat}{agree}</pattern>"
+            f"<vedic_meaning>{vedic}</vedic_meaning>"
+            f"</finger>"
+        )
+    fingerprints_block = (
+        "  <dermatoglyphics>\n"
+        + "\n".join(fp_parts)
+        + "\n  </dermatoglyphics>"
+    )
 
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 5 — GEOMETRY & VITALITY (unchanged from old prompt)
+    # ══════════════════════════════════════════════════════════════════
+    fd = palm_data.get("finger_data", {})
+    geo_block = f"""  <geometry>
+    <hand_type>{_safe(fd, 'hand_type')} / {_safe(fd, 'hand_type_vedic')}</hand_type>
+    <ratio_2d4d>{_safe(fd, 'ratio_2d4d')}</ratio_2d4d>
+    <ratio_reading>{_safe(fd, 'ratio_reading')}</ratio_reading>
+    <dominant_finger>{_safe(fd, 'dominant_finger')}</dominant_finger>
+    <palm_ratio>{_safe(fd, 'palm_ratio')}</palm_ratio>
+  </geometry>
+  <vitality>
+    <reading>{palm_data.get('vitality_hsv', 'unknown')}</reading>
+    <ui_label>{palm_data.get('ui_vitality', 'unknown')}</ui_label>
+  </vitality>
+  <overall_line_clarity>
+    <score>{palm_data.get('line_clarity_score', 0)}/100</score>
+    <label>{palm_data.get('ui_line', 'unknown')}</label>
+    <persistence_ratio>{int(palm_data.get('persistence_ratio', 0)*100)}%</persistence_ratio>
+  </overall_line_clarity>"""
+
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 6 — TOPOLOGY
+    # ══════════════════════════════════════════════════════════════════
+    topo = palm_data.get("topology", {})
+    topo_block = f"""  <topology>
+    <simian_line>{topo.get('simian_line', False)}</simian_line>
+    <line_forks>{topo.get('line_forks', 0)}</line_forks>
+    <line_endpoints>{topo.get('line_endpoints', 0)}</line_endpoints>
+    <complexity_score>{topo.get('line_complexity', 0)}</complexity_score>
+  </topology>"""
+
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 7 — FINGER ANALYSIS (from Gemini Vision)
+    # ══════════════════════════════════════════════════════════════════
+    def _finger_block(fa):
+        if not fa:
+            return "  <finger_analysis>Not performed this session</finger_analysis>"
+        parts = ["  <finger_analysis>"]
+        for fname in ["thumb", "index", "middle", "ring", "little"]:
+            fdata = fa.get(fname) or fa.get(fname.replace("little", "pinky"), {})
+            if not fdata:
+                continue
+            tip    = fdata.get("tip_shape", "?")
+            fp_pat = fdata.get("fingerprint", "?")
+            note   = fdata.get("samudrika_note", "")
+            parts.append(
+                f"    <finger name='{fname}'>"
+                f"<tip_shape>{tip}</tip_shape>"
+                f"<fingerprint_confirmed>{fp_pat}</fingerprint_confirmed>"
+                f"<note>{note}</note>"
+                f"</finger>"
+            )
+        parts.append(
+            f"    <low_set_mercury>{fa.get('little', {}).get('low_set', fa.get('pinky', {}).get('low_set', 'unknown'))}</low_set_mercury>"
+        )
+        parts.append(f"    <joint_type>{fa.get('joints', '?')}</joint_type>")
+        parts.append(f"    <finger_spacing>{fa.get('finger_spacing', '?')}</finger_spacing>")
+        parts.append(f"    <finger_curve>{fa.get('finger_curve', '?')}</finger_curve>")
+        parts.append(f"    <overall_character>{fa.get('overall_character', '')}</overall_character>")
+        parts.append("  </finger_analysis>")
+        return "\n".join(parts)
+
+    finger_block = _finger_block(finger_analysis)
+
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 8 — MOUNT ELEVATIONS
+    # ══════════════════════════════════════════════════════════════════
+    def _mount_block(elev):
+        if not elev:
+            return "  <mount_elevations>Not available</mount_elevations>"
+        lines = ["  <mount_elevations>"]
+        for mname, ev in elev.items():
+            lines.append(
+                f"    <mount name='{mname}'>"
+                f"<elevation>{ev['elevation']}</elevation>"
+                f"<score>{ev['score']}/100</score>"
+                f"</mount>"
+            )
+        lines.append("  </mount_elevations>")
+        return "\n".join(lines)
+
+    mount_block = _mount_block(mount_elevations)
+
+    # ══════════════════════════════════════════════════════════════════
+    # BLOCK 9 — SYMBOLS (from AI scan)
+    # ══════════════════════════════════════════════════════════════════
+    sym_block_inner = ""
     if mount_symbol_detail:
-        sym_lines = "\n".join(
-            f"  • {d.get('mount','?')} — {d.get('symbol','?')} ({d.get('vedic_name','')}), "
-            f"conf {d.get('confidence_score',0)}%, pos: {d.get('position','?')}"
-            for d in mount_symbol_detail)
-        symbol_block = f"VERIFIED MARKS (≥75%):\n{sym_lines}"
-    else:
-        symbol_block = "VERIFIED MARKS: None detected above threshold."
+        sym_parts = []
+        for f in mount_symbol_detail:
+            sym_parts.append(
+                f"    <symbol>"
+                f"<mount>{f.get('mount','?')}</mount>"
+                f"<type>{f.get('symbol','?')}</type>"
+                f"<vedic_name>{f.get('vedic_name','?')}</vedic_name>"
+                f"<confidence>{f.get('confidence_score','?')}%</confidence>"
+                f"<position>{f.get('position','?')}</position>"
+                f"</symbol>"
+            )
+        sym_block_inner = "\n".join(sym_parts)
+    if not sym_block_inner:
+        sym_block_inner = "    <note>No symbols met 75% confidence threshold</note>"
 
-    if mount_elevations:
-        used_depth = palm_data.get("used_depth_model",False)
-        method = "Depth Anything V2" if used_depth else "brightness heuristic (relative)"
-        elev_lines = "\n".join(f"  {m}: {v['elevation']} ({v['score']}/100)" for m,v in mount_elevations.items())
-        mount_block = f"MOUNT ELEVATION ({method}):\n{elev_lines}"
-    else:
-        mount_block = "MOUNT ELEVATION: Not available."
+    sym_block = f"  <detected_symbols>\n{sym_block_inner}\n  </detected_symbols>"
 
-    kundli_guide = """
-CROSS-REFERENCE PROTOCOL:
-  Heart Line ↔ Venus, Moon, 4H/7H | Head Line ↔ Mercury, 3H/5H
-  Life Line  ↔ Sun, 1H, lagna lord | Fate Line ↔ Saturn, 10H KP, Dasha
-  Sun Line   ↔ Sun dignity, 9H/10H, Rajayoga
-  Jupiter Mt ↔ Jupiter, 9H | Venus Mt ↔ Venus, 2H/7H | Saturn Mt ↔ Saturn, 10H
-  Mercury Mt ↔ Mercury, 3H/6H | Luna Mt ↔ Moon, 4H
-  AGREEMENT → "High-Confidence Confirmation" | DIVERGENCE → "Karmic Tension"
-"""
+    # ══════════════════════════════════════════════════════════════════
+    # QUALITY & CONSISTENCY NOTES
+    # ══════════════════════════════════════════════════════════════════
+    quality_note = ""
+    q = palm_data.get("quality", {})
+    qi = palm_data.get("quality_issues", [])
+    cw = palm_data.get("consistency_warnings", [])
+    if qi or cw:
+        qa_parts = []
+        if qi:
+            for issue in qi:
+                qa_parts.append(f"    <image_quality_issue>{issue}</image_quality_issue>")
+        if cw:
+            for w in cw:
+                qa_parts.append(f"    <consistency_warning>{w}</consistency_warning>")
+        quality_note = f"  <analysis_caveats>\n" + "\n".join(qa_parts) + "\n  </analysis_caveats>"
 
-    simian_section = """
-## 6. THE SIMIAN LINE ★ — A Rare Marking
-Heart and Head lines fused into one dominant horizontal crease.
-In Samudrika Shastra: undivided singular focus, emotion and intellect inseparable.
-Discuss: immense drive and mastery vs difficulty with moderation.
-Cross-reference: Rahu influence, intense Lagna, Graha Yuddha in 1H/10H.
-Rarity: < 4% of the population.
-""" if sim else ""
+    # ══════════════════════════════════════════════════════════════════
+    # ANCIENT TEXT
+    # ══════════════════════════════════════════════════════════════════
+    ancient_block = ""
+    if ancient_text and len(ancient_text.strip()) > 30:
+        ancient_block = f"""
+<ancient_text_references>
+{ancient_text}
+</ancient_text_references>"""
 
-    section6 = "## 6. THE SIMIAN LINE ★" if sim else "## 6. Mount Energies & Planetary Prominences"
+    # ══════════════════════════════════════════════════════════════════
+    # DOSSIER CONTEXT
+    # ══════════════════════════════════════════════════════════════════
+    dossier_block = f"<kundli_dossier>\n{dossier}\n</kundli_dossier>" if dossier else ""
 
-    return f"""<instructions>
-You are an elite Vedic Palmist writing a premium paid Samudrika Shastra report.
+    # ══════════════════════════════════════════════════════════════════
+    # ASSEMBLE FULL PROMPT
+    # ══════════════════════════════════════════════════════════════════
+    return f"""<role>
+You are Jyotish-Pandit, an elite Vedic palmist trained in classical Samudrika Shastra texts.
+You are reading the palm of the person described in the dossier below.
+You have a dual view: the CLAHE-enhanced original palm photograph (left panel) AND
+the Frangi Ridge Map with labelled detected lines (right panel).
 
-RULES:
-1. Frangi scores are ground truth from a clinical engine. Never contradict them.
-2. Every section anchors its interpretation in the specific scores provided.
-3. Section 7 Kundli Confirmation is MANDATORY.
-4. Where palm and chart AGREE → state "High-Confidence Confirmation" explicitly.
-5. Where they DIVERGE → explain as "Karmic Tension."
-6. Section 5b finger profile is MANDATORY when finger data is provided.
-7. Simian line gets its own section if detected.
-8. Warm, authoritative, expert tone. No generic platitudes.
-9. Minimum 900 words. Use ## and ### for headers only.
-</instructions>
+Interpret the ridge map labels as starting points, but always defer to what you visually
+confirm in the original palm photograph. If the map label and the photograph disagree,
+state the discrepancy and interpret what you see.
+</role>
 
 <hard_palm_data>
-{line_block}
 {geo_block}
-{ai_finger_block}
-{vitality_block}
-{symbol_block}
+
+  <major_lines>
+{traced_block}
+  </major_lines>
+
+{marks_block}
+
+{minor_block}
+
+{fingerprints_block}
+
+{finger_block}
+
 {mount_block}
+
+{sym_block}
+
+{topo_block}
+
+{quality_note}
 </hard_palm_data>
-
-<kundli_cross_reference_protocol>
-{kundli_guide}
-</kundli_cross_reference_protocol>
-
-<ancient_book_excerpts>
-{sniper_text if sniper_text else "No ancient text matched — use classical Samudrika Shastra principles."}
-</ancient_book_excerpts>
-
-<mathematical_birth_chart>
-{astro_dossier}
-</mathematical_birth_chart>
+{ancient_block}
+{dossier_block}
 
 <report_structure>
-## 1. The Hand Canvas — Constitution & Elemental Nature
-Hand type ({fd.get('hand_type','') if fd else '?'} / {fd.get('hand_type_vedic','') if fd else '?'}), persistence {pr}%, constitutional reading. Anchor Hasta type in classical Samudrika meaning.
+Write a flowing, deeply personalised Samudrika Shastra reading. No generic filler.
+Every claim must be anchored to specific features in <hard_palm_data> or the image.
 
-## 2. The Life Line — Vitality, Longevity & Physical Force
-Score {li}/100 ({lbl(li)}). Depth, continuity, breaks. Cross-reference Sun, 1H, lagna lord.
+Use this structure:
 
-## 3. The Heart Line — Emotional World & Relationship Dharma
-Score {hs}/100 ({lbl(hs)}). Emotional nature, relationship dharma. Cross-reference Venus, Moon, 4H, 7H.
+## 1. Palmist's First Impression
+One vivid paragraph describing what immediately stands out about this palm —
+the overall energy, texture, dominant lines, any marks. Treat this as a palmist's
+live observation, not a mechanical summary.
 
-## 4. The Head Line — Intelligence, Decision-Making & Mental Faculty
-Score {hd}/100 ({lbl(hd)}). Analytical vs intuitive. Cross-reference Mercury, 3H/5H.
+## 2. The Major Lines — Story of This Life
 
-## 5. The Fate & Sun Lines — Karma, Career & Destiny Thread
-Fate {ft}/100 | Sun {su}/100. Absent Fate = self-made path (not negative). Cross-reference Saturn, 10H KP, Mahadasha.
+For each detected major line, write a dedicated paragraph.
+Use the traced data (length, curvature, branches, start/end zones) to be SPECIFIC.
+Examples of specificity:
+  - "Your heart line runs {{length_pct}}% of the palm width, arcing {{curve_direction}}
+     with {{branches_up}} upward branches — each branch points to a specific person or
+     phase that opened your emotional capacity."
+  - "Your fate line is {{depth_label}}, emerging from {{start_zone}} — this means..."
+  - "Your head line shows {{branches_down}} downward branches — these are periods of
+     introspection or difficult decisions the mind turned inward to process."
 
-## 5b. Finger Profile — Samudrika Shastra Hasta Reading
-MANDATORY when finger data is provided.
-For each finger interpret tip shape (conic=psychic, square=practical, spatulate=energetic, rounded=balanced).
-Knuckle type interpretation. Low-set Mercury significance if present.
-Finger spacing and curve. Overall Hasta character synthesis — how fingers modify the palm line reading.
+For absent lines, state it briefly and interpret the classical meaning.
+If the simian line is present, dedicate a paragraph to it.
 
-{simian_section}
+## 3. Mounts — Planetary Architecture
 
-{section6}
-Interpret mount prominence. Cross-reference each with ruling planet in natal chart.
+Interpret the 7 mounts using elevation scores. Do not list scores as numbers —
+weave them into sentences. A highly developed mount becomes a gift and a shadow.
+A flat mount becomes an absence that drives compensatory behaviour elsewhere.
 
-## 7. Kundli Confirmation — Where Heaven and Hand Agree
-For each of the 5 lines: palm → chart → verdict. Follow protocol exactly.
+## 4. Hand Type & Finger Profile
 
-## 8. Auspicious Marks & Ancient Text
-{f"Report: {', '.join(verified_symbols)}. Use ancient text for classical interpretation." if verified_symbols != ['None detected'] else "No marks detected. Clean palm = unencumbered destiny."}
+Synthesise hand type (Western + Vedic), 2D:4D ratio reading, and the finger analysis
+from Gemini Vision. Include observations about tip shapes, joint type, and spacing.
 
-## 9. Practical Guidance & Remedies
-Mantras, gemstones, lifestyle for genuinely weak areas only. One daily action. One-paragraph personalised summary.
-</report_structure>
-"""
+## 5. Dermatoglyphics — Fingerprint Reading
+
+For each finger where a pattern was detected, give the Samudrika Shastra
+interpretation of arch / loop / whorl. Note any disagreements between the math
+engine and Gemini Vision and how you are resolving them.
+
+## 5b. Classical Marks & Minor Lines
+
+If marks (cross, star, triangle, square, island) were detected, interpret each in
+context of its mount or zone location. Be specific about what the position means —
+a star on Jupiter is very different from a star on Saturn.
+
+For each detected minor line (girdle, rings, marriage lines, mystic cross, etc.),
+give a classical Samudrika Shastra interpretation.
+
+## 6. Symbols from Vision Scan
+
+Interpret any verified mount symbols (confidence ≥ 75%). If none, briefly note
+"the palm is free of auspicious or inauspicious mount symbols at this time."
+
+If ancient text references are provided, weave one or two relevant passages into
+this section or Section 2 — cite them as "According to classical texts…"
+
+## 7. Kundli–Palm Convergences
+
+Reference the astrological dossier. Where does the palm confirm the chart?
+Where does it complicate or contradict it? (e.g., Saturn strong in chart but
+fate line absent — what does that tension mean for this person?)
+
+## 8. Shadows & Cautions
+
+What does this palm warn about? Be honest. A palmist who only flatters
+is useless. Note potential health, relationship, or karmic cautions —
+but frame them as areas requiring attention, not inevitabilities.
+
+## 9. The Path Forward — Practical Guidance
+
+Close with 3-4 specific, actionable suggestions grounded in the reading.
+What energy should this person cultivate? What patterns should they consciously
+interrupt? Connect to both Samudrika Shastra and practical modern life.
+
+---
+Tone: authoritative, warm, intimate. No bullet lists — flowing paragraphs only.
+No generic palmistry filler phrases ("Your heart line shows…" without specifics).
+Every sentence should be something that could ONLY be written about this specific palm.
+Length: aim for 900–1200 words.
+</report_structure>"""
