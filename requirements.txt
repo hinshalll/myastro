@@ -1,4 +1,5 @@
 streamlit
+opencv-python-headless
 google-generativeai
 pyswisseph
 geopy
