@@ -109,6 +109,8 @@ def enhance_for_vlm(rgb):
     return out
 
 
+
+
 def _assess_quality(rgb):
     """Returns (issues_list, metrics_dict). Issues are actionable user-facing."""
     issues = []
@@ -134,31 +136,9 @@ def _assess_quality(rgb):
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ORIENTATION NORMALIZATION
-# ══════════════════════════════════════════════════════════════════════════════
-
-def _normalize_orientation(rgb, lm_dict):
-    """Rotate so wrist is at the bottom and middle finger points up."""
-    wrist = np.array(lm_dict[0], dtype=np.float32)
-    mid_base = np.array(lm_dict[9], dtype=np.float32)
-    vec = mid_base - wrist
-    # We want vec to point up (negative y in image coordinates)
-    angle = np.degrees(np.arctan2(-vec[0], -vec[1]))
-
-    h, w = rgb.shape[:2]
-    M = cv2.getRotationMatrix2D((w / 2, h / 2), -angle, 1.0)
-    rotated = cv2.warpAffine(rgb, M, (w, h), borderValue=(20, 14, 28))
-    return rotated, M
-
-
-def _rotate_landmarks(lm_dict, M):
-    out = {}
-    for k, (x, y) in lm_dict.items():
-        nx = int(M[0, 0] * x + M[0, 1] * y + M[0, 2])
-        ny = int(M[1, 0] * x + M[1, 1] * y + M[1, 2])
-        out[k] = (nx, ny)
-    return out
+# Orientation normalization removed — rotating the image added awkward
+# tilting artifacts and provided no benefit. The VLM reads lines correctly
+# regardless of orientation, and users prefer to see their palm as shot.
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -382,6 +362,132 @@ def _draw_landmarks(rgb, lm_dict):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# HAND ISOLATION — landmark-guided GrabCut for premium display
+# ══════════════════════════════════════════════════════════════════════════════
+
+def isolate_hand_for_display(rgb, lm_dict, target_width=560):
+    """
+    Removes the background from a palm photo using landmark-guided GrabCut,
+    returns a tightly-cropped RGBA image with the hand on a transparent
+    background. Used by the UI for the premium animated palm display.
+
+    Returns None on failure (caller falls back to the un-isolated image).
+
+    How it works:
+      1. Resize to target_width for speed (GrabCut is O(pixels)).
+      2. Build initial mask from MediaPipe landmarks:
+         - Corners marked as DEFINITE BACKGROUND
+         - Expanded hand polygon (1.35x from centroid) marked PROBABLE FG
+         - Inner palm polygon marked DEFINITE FG
+      3. Run GrabCut for 4 iterations.
+      4. Feather the resulting alpha mask with Gaussian blur.
+      5. Tight crop to the hand bounding box + 8% padding.
+    """
+    h, w = rgb.shape[:2]
+    if w == 0 or h == 0 or not lm_dict:
+        return None
+
+    # ── Resize for performance ───────────────────────────────────────────────
+    scale = target_width / w
+    target_h = int(h * scale)
+    small = cv2.resize(rgb, (target_width, target_h), interpolation=cv2.INTER_AREA)
+    small_lm = {k: (int(v[0] * scale), int(v[1] * scale)) for k, v in lm_dict.items()}
+
+    sh, sw = small.shape[:2]
+
+    # ── Build the GrabCut mask ───────────────────────────────────────────────
+    mask = np.full((sh, sw), cv2.GC_PR_BGD, dtype=np.uint8)
+
+    # Definite background — corners (8px borders)
+    bw = max(4, min(sw, sh) // 60)
+    mask[:bw, :]  = cv2.GC_BGD
+    mask[-bw:, :] = cv2.GC_BGD
+    mask[:, :bw]  = cv2.GC_BGD
+    mask[:, -bw:] = cv2.GC_BGD
+
+    # All 21 landmarks → convex hull → expanded 1.35x from centroid
+    pts = np.array([small_lm[i] for i in range(21) if i in small_lm], dtype=np.int32)
+    hull = cv2.convexHull(pts)
+
+    M = cv2.moments(hull)
+    cx = int(M['m10'] / M['m00']) if M['m00'] > 0 else sw // 2
+    cy = int(M['m01'] / M['m00']) if M['m00'] > 0 else sh // 2
+
+    expanded = np.array(
+        [[int(cx + (p[0] - cx) * 1.35),
+          int(cy + (p[1] - cy) * 1.30)] for p in hull[:, 0]],
+        dtype=np.int32,
+    )
+    cv2.fillPoly(mask, [expanded], cv2.GC_PR_FGD)
+
+    # Definite foreground — palm interior (landmarks 0, 5, 9, 13, 17 shrunk 0.7x)
+    palm_pts = np.array(
+        [small_lm[i] for i in [0, 5, 9, 13, 17] if i in small_lm],
+        dtype=np.int32,
+    )
+    if len(palm_pts) >= 3:
+        palm_hull = cv2.convexHull(palm_pts)
+        shrunk = np.array(
+            [[int(cx + (p[0] - cx) * 0.72),
+              int(cy + (p[1] - cy) * 0.72)] for p in palm_hull[:, 0]],
+            dtype=np.int32,
+        )
+        cv2.fillPoly(mask, [shrunk], cv2.GC_FGD)
+
+    # Each fingertip — a small definite-foreground disc
+    for i in (4, 8, 12, 16, 20):
+        if i in small_lm:
+            cv2.circle(mask, small_lm[i], 8, cv2.GC_FGD, -1)
+
+    # ── Run GrabCut ──────────────────────────────────────────────────────────
+    bgd_model = np.zeros((1, 65), dtype=np.float64)
+    fgd_model = np.zeros((1, 65), dtype=np.float64)
+
+    try:
+        cv2.grabCut(
+            small, mask, None, bgd_model, fgd_model, 4, cv2.GC_INIT_WITH_MASK
+        )
+    except Exception:
+        return None
+
+    # ── Build the alpha mask ─────────────────────────────────────────────────
+    fg_mask = np.where(
+        (mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0
+    ).astype(np.uint8)
+
+    # Largest connected component only — drops isolated artifacts
+    num, labels, stats, _ = cv2.connectedComponentsWithStats(fg_mask, connectivity=8)
+    if num > 1:
+        largest = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+        fg_mask = np.where(labels == largest, 255, 0).astype(np.uint8)
+
+    # Feather the edges — Gaussian blur for soft alpha falloff
+    fg_mask = cv2.GaussianBlur(fg_mask, (15, 15), 4)
+
+    # ── Build RGBA and tight-crop to hand ────────────────────────────────────
+    rgba = np.dstack([small, fg_mask])
+
+    # Tight crop using actual mask bounds (alpha > 8 threshold)
+    ys, xs = np.where(fg_mask > 8)
+    if len(xs) == 0:
+        return None
+    x1, x2 = int(xs.min()), int(xs.max())
+    y1, y2 = int(ys.min()), int(ys.max())
+
+    pad_x = int((x2 - x1) * 0.06)
+    pad_y = int((y2 - y1) * 0.06)
+    x1 = max(0, x1 - pad_x)
+    y1 = max(0, y1 - pad_y)
+    x2 = min(sw, x2 + pad_x)
+    y2 = min(sh, y2 + pad_y)
+
+    cropped = rgba[y1:y2, x1:x2]
+    if cropped.size == 0:
+        return None
+    return cropped
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # MAIN ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -419,25 +525,30 @@ def analyze_palm(image_bytes):
         h, w = raw.shape[:2]
         lm_raw = results.multi_hand_landmarks[0]
         lm_dict = {i: (int(p.x * w), int(p.y * h)) for i, p in enumerate(lm_raw.landmark)}
-        # Normalize orientation
-        rotated, M = _normalize_orientation(raw, lm_dict)
-        lm_dict = _rotate_landmarks(lm_dict, M)
-        raw = rotated
+        # No rotation — palm shown as shot
 
     enhanced = enhance_for_vlm(raw)
 
     hand_metrics = _compute_hand_metrics(lm_dict) if landmarks_found else {}
-    vitality     = _vitality_class(enhanced, lm_dict) if landmarks_found else {
+    # Vitality uses RAW (pre-CLAHE) image so colour/tone is not shifted by enhancement
+    vitality = _vitality_class(raw, lm_dict) if landmarks_found else {
         "class": "unknown",
         "note":  "Landmarks not detected",
     }
 
-    mount_crops = {}
-    overlay = enhanced.copy()
+    mount_crops   = {}
+    overlay       = enhanced.copy()
+    hand_isolated = None
     if landmarks_found:
-        palm_h_px = abs(lm_dict[0][1] - lm_dict[9][1])
-        mount_crops = extract_mount_crops(enhanced, lm_dict, palm_h_px)
-        overlay = _draw_landmarks(enhanced, lm_dict)
+        palm_h_px     = abs(lm_dict[0][1] - lm_dict[9][1])
+        mount_crops   = extract_mount_crops(enhanced, lm_dict, palm_h_px)
+        overlay       = _draw_landmarks(enhanced, lm_dict)
+        # Use raw (natural-colour) image for the display isolation — CLAHE can
+        # make skin look unnatural. The VLM still gets the enhanced version.
+        try:
+            hand_isolated = isolate_hand_for_display(raw, lm_dict, target_width=560)
+        except Exception:
+            hand_isolated = None
 
     return {
         "landmarks_found":  landmarks_found,
@@ -448,5 +559,6 @@ def analyze_palm(image_bytes):
         "enhanced_palm":    enhanced,
         "mount_crops":      mount_crops,
         "landmark_overlay": overlay,
+        "hand_isolated":    hand_isolated,  # RGBA, hand on transparent bg, or None
         "lm_dict":          lm_dict,
     }
