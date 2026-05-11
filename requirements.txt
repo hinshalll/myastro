@@ -1,14 +1,14 @@
 streamlit
 numpy<2.0
-opencv-python-headless==4.11.0.86
+mediapipe==0.10.14
 google-generativeai
 pyswisseph
+opencv-python-headless==4.11.0.86
 geopy
 timezonefinder
 streamlit-local-storage
 imageio
 imageio-ffmpeg
-mediapipe==0.10.14
 Pillow
 requests
 scikit-image==0.26.0
@@ -17,6 +17,5 @@ scipy
 qdrant-client
 langchain-qdrant
 langchain
-opencv-python-headless
 langchain-huggingface
 sentence-transformers
