@@ -185,7 +185,6 @@ def show_palmistry():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _render_premium_palm(analysis):
-    # Prefer the isolated hand (RGBA, transparent background) for the premium float effect
     isolated = analysis.get("hand_isolated")
     use_alpha = isolated is not None
 
@@ -193,7 +192,6 @@ def _render_premium_palm(analysis):
         b64 = _arr_to_b64_png(isolated)
         mime = "png"
     else:
-        # Fallback: rectangular image, will be circular-clipped
         overlay = analysis.get("landmark_overlay")
         if overlay is None:
             overlay = analysis.get("enhanced_palm")
@@ -202,20 +200,15 @@ def _render_premium_palm(analysis):
         b64 = _arr_to_b64_jpeg(overlay, quality=85)
         mime = "jpeg"
 
-    # ── Two display modes ────────────────────────────────────────────────────
-    # ALPHA MODE: hand floats freely with drop shadow (no circular clip)
-    # FALLBACK : original circular-clipped rectangular image
-    palm_html_alpha = (
+    palm_html = (
         '<div class="palm-float">'
         f'<img src="data:image/{mime};base64,{b64}" alt="palm" />'
         '</div>'
-    )
-    palm_html_fallback = (
+        if use_alpha else
         '<div class="palm-circle">'
         f'<img src="data:image/{mime};base64,{b64}" alt="palm" />'
         '</div>'
     )
-    palm_html = palm_html_alpha if use_alpha else palm_html_fallback
 
     html = f"""
 <!DOCTYPE html>
@@ -225,29 +218,118 @@ def _render_premium_palm(analysis):
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
-    background: #0e1117;
+    background: radial-gradient(ellipse at center,
+      #1a1530 0%,
+      #14111e 40%,
+      #0a0814 80%,
+      #050309 100%);
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 430px;
+    height: 460px;
     overflow: hidden;
+    position: relative;
   }}
 
-  .cosmos {{
+  /* ── Aurora nebulae — three soft blobs that drift independently ── */
+  .nebula {{
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(50px);
+    opacity: 0.55;
+    pointer-events: none;
+  }}
+  .nebula-1 {{
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, #5a3a8a 0%, transparent 65%);
+    animation: drift1 18s ease-in-out infinite;
+  }}
+  .nebula-2 {{
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, #c89160 0%, transparent 65%);
+    animation: drift2 22s ease-in-out infinite;
+    opacity: 0.35;
+  }}
+  .nebula-3 {{
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, #6080b0 0%, transparent 65%);
+    animation: drift3 26s ease-in-out infinite;
+    opacity: 0.30;
+  }}
+  @keyframes drift1 {{
+    0%,100% {{ transform: translate(-90px, -70px) scale(1); }}
+    50%      {{ transform: translate(-50px, -110px) scale(1.1); }}
+  }}
+  @keyframes drift2 {{
+    0%,100% {{ transform: translate(110px, 80px) scale(1.05); }}
+    50%      {{ transform: translate(70px, 50px) scale(0.95); }}
+  }}
+  @keyframes drift3 {{
+    0%,100% {{ transform: translate(80px, -100px) scale(1); }}
+    50%      {{ transform: translate(120px, -70px) scale(1.08); }}
+  }}
+
+  /* ── Stage centred ── */
+  .stage {{
     position: relative;
-    width: 400px;
-    height: 400px;
+    width: 460px;
+    height: 460px;
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 5;
   }}
 
-  /* ── Floating hand (alpha mode, premium) ── */
+  /* ── Single delicate ring — like an aura halo ── */
+  .halo-ring {{
+    position: absolute;
+    width: 340px;
+    height: 340px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,175,55,0.18);
+    box-shadow:
+      0 0 30px rgba(212,175,55,0.08) inset,
+      0 0 60px rgba(140,90,220,0.06) inset;
+    animation: ring-rotate 80s linear infinite;
+  }}
+  .halo-ring::before {{
+    content: '';
+    position: absolute;
+    top: -2px; left: 50%;
+    width: 5px; height: 5px;
+    margin-left: -2.5px;
+    border-radius: 50%;
+    background: rgba(255,210,140,0.95);
+    box-shadow: 0 0 14px rgba(255,200,130,0.9);
+  }}
+  @keyframes ring-rotate {{
+    from {{ transform: rotate(0deg); }}
+    to   {{ transform: rotate(360deg); }}
+  }}
+
+  /* ── Inner aura — pulses softly behind the hand ── */
+  .aura {{
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(245,200,140,0.22) 0%,
+      rgba(180,130,220,0.10) 45%,
+      transparent 75%);
+    animation: aura-pulse 5s ease-in-out infinite;
+  }}
+  @keyframes aura-pulse {{
+    0%,100% {{ transform: scale(0.95); opacity: 0.7; }}
+    50%      {{ transform: scale(1.08); opacity: 1.0; }}
+  }}
+
+  /* ── Hand ── */
   .palm-float {{
     position: relative;
     z-index: 10;
-    width: 230px;
-    height: 230px;
+    width: 240px;
+    height: 240px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -257,163 +339,128 @@ def _render_premium_palm(analysis):
     max-height: 100%;
     object-fit: contain;
     filter:
-      drop-shadow(0 0 8px rgba(212,175,55,0.35))
-      drop-shadow(0 0 16px rgba(140,90,220,0.25));
+      drop-shadow(0 0 10px rgba(255,210,150,0.35))
+      drop-shadow(0 0 22px rgba(140,90,220,0.28))
+      drop-shadow(0 4px 18px rgba(0,0,0,0.4));
   }}
 
-  /* ── Fallback circular clip (when isolation fails) ── */
+  /* ── Fallback circular clip ── */
   .palm-circle {{
     position: relative;
     z-index: 10;
-    width: 210px;
-    height: 210px;
+    width: 220px; height: 220px;
     border-radius: 50%;
     overflow: hidden;
-    border: 2px solid rgba(212,175,55,0.55);
+    border: 1.5px solid rgba(212,175,55,0.5);
     box-shadow:
       0 0 0 4px rgba(212,175,55,0.08),
-      0 0 30px rgba(212,175,55,0.25),
-      0 0 60px rgba(140,90,200,0.15);
+      0 0 30px rgba(212,175,55,0.25);
   }}
   .palm-circle img {{
-    width: 100%;
-    height: 100%;
+    width: 100%; height: 100%;
     object-fit: cover;
-    object-position: center center;
   }}
 
-  /* ── Pulse glow behind palm ── */
-  .glow {{
-    position: absolute;
-    z-index: 9;
-    width: 250px;
-    height: 250px;
-    border-radius: 50%;
-    background: radial-gradient(circle,
-      rgba(140,80,220,0.22) 0%,
-      rgba(212,175,55,0.08) 50%,
-      transparent 75%);
-    animation: pulse 4s ease-in-out infinite;
-  }}
-  @keyframes pulse {{
-    0%, 100% {{ transform: scale(0.97); opacity: 0.7; }}
-    50%       {{ transform: scale(1.05); opacity: 1.0; }}
-  }}
-
-  /* ── Rotating rings ── */
-  .ring {{
+  /* ── Drifting particles (move in slow arcs, not blink) ── */
+  .particle {{
     position: absolute;
     border-radius: 50%;
-    top: 50%;
-    left: 50%;
+    background: rgba(255,220,170,0.85);
+    box-shadow: 0 0 4px rgba(255,210,160,0.7);
+    pointer-events: none;
   }}
-  .ring-1 {{
-    width: 290px; height: 290px;
-    margin-top: -145px; margin-left: -145px;
-    border: 1.5px dashed rgba(212,175,55,0.45);
-    animation: spin-cw 18s linear infinite;
-  }}
-  .ring-2 {{
-    width: 338px; height: 338px;
-    margin-top: -169px; margin-left: -169px;
-    border: 1px solid rgba(170,130,230,0.22);
-    animation: spin-ccw 32s linear infinite;
-  }}
-  .ring-3 {{
-    width: 390px; height: 390px;
-    margin-top: -195px; margin-left: -195px;
-    border: 1px solid rgba(212,175,55,0.10);
-    animation: spin-cw 60s linear infinite;
-  }}
-  @keyframes spin-cw  {{ from {{ transform: rotate(0deg);   }} to {{ transform: rotate(360deg);  }} }}
-  @keyframes spin-ccw {{ from {{ transform: rotate(0deg);   }} to {{ transform: rotate(-360deg); }} }}
 
-  /* ── Dot markers ── */
-  .rdot {{
+  @keyframes drift-up-1 {{
+    0%   {{ transform: translate(0, 0);          opacity: 0; }}
+    15%  {{ opacity: 0.85; }}
+    85%  {{ opacity: 0.85; }}
+    100% {{ transform: translate(20px, -130px);  opacity: 0; }}
+  }}
+  @keyframes drift-up-2 {{
+    0%   {{ transform: translate(0, 0);          opacity: 0; }}
+    20%  {{ opacity: 0.75; }}
+    80%  {{ opacity: 0.75; }}
+    100% {{ transform: translate(-25px, -150px); opacity: 0; }}
+  }}
+  @keyframes drift-side {{
+    0%   {{ transform: translate(0, 0);          opacity: 0; }}
+    20%  {{ opacity: 0.7; }}
+    80%  {{ opacity: 0.7; }}
+    100% {{ transform: translate(80px, -40px);   opacity: 0; }}
+  }}
+
+  /* ── Wisp dots that sit further out (still, faint) ── */
+  .wisp {{
     position: absolute;
+    width: 2px;
+    height: 2px;
     border-radius: 50%;
-    background: rgba(212,175,55,0.75);
+    background: rgba(255,240,210,0.45);
+    animation: wisp-fade 4s ease-in-out infinite;
   }}
-  .rdot-sm {{ width: 5px; height: 5px; }}
-  .rdot-md {{ width: 7px; height: 7px; }}
-  .rdot-lg {{
-    width: 9px; height: 9px;
-    box-shadow: 0 0 6px rgba(212,175,55,0.9);
-    background: rgba(212,175,55,0.9);
-  }}
-
-  /* ── Twinkling stars ── */
-  .star {{ position: absolute; border-radius: 50%; background: white; }}
-  @keyframes twinkle {{
-    0%, 100% {{ opacity: 0.05; transform: scale(0.8); }}
-    50%       {{ opacity: 0.75; transform: scale(1.2); }}
+  @keyframes wisp-fade {{
+    0%,100% {{ opacity: 0.15; }}
+    50%      {{ opacity: 0.8; }}
   }}
 </style>
 </head>
 <body>
-<div class="cosmos">
-  <div class="glow"></div>
-  <div class="ring ring-3" id="ring3"></div>
-  <div class="ring ring-2" id="ring2"></div>
-  <div class="ring ring-1" id="ring1"></div>
-  {palm_html}
-</div>
+  <div class="nebula nebula-1"></div>
+  <div class="nebula nebula-2"></div>
+  <div class="nebula nebula-3"></div>
+
+  <div class="stage">
+    <div class="halo-ring"></div>
+    <div class="aura"></div>
+    {palm_html}
+  </div>
 
 <script>
 (function() {{
-  // Ring 1: 12 dots on r=145, center at (145,145) of 290x290 div
-  var r1 = document.getElementById('ring1');
-  for (var i = 0; i < 12; i++) {{
-    var a = (i * 30 - 90) * Math.PI / 180;
-    var isCardinal = (i % 3 === 0);
-    var sz = isCardinal ? 7 : 5;
-    var dot = document.createElement('div');
-    dot.className = 'rdot ' + (isCardinal ? 'rdot-md' : 'rdot-sm');
-    dot.style.left = (145 + 145 * Math.cos(a) - sz/2) + 'px';
-    dot.style.top  = (145 + 145 * Math.sin(a) - sz/2) + 'px';
-    r1.appendChild(dot);
-  }}
+  var stage = document.querySelector('.stage');
 
-  // Ring 2: 8 dots on r=169, center at (169,169) of 338x338 div
-  var r2 = document.getElementById('ring2');
-  [0, 45, 90, 135, 180, 225, 270, 315].forEach(function(deg) {{
-    var a2 = (deg - 90) * Math.PI / 180;
-    var isMain = (deg % 90 === 0);
-    var sz2 = isMain ? 9 : 5;
-    var dot2 = document.createElement('div');
-    dot2.className = 'rdot ' + (isMain ? 'rdot-lg' : 'rdot-sm');
-    dot2.style.left = (169 + 169 * Math.cos(a2) - sz2/2) + 'px';
-    dot2.style.top  = (169 + 169 * Math.sin(a2) - sz2/2) + 'px';
-    dot2.style.background = isMain
-      ? 'rgba(200,160,255,0.85)'
-      : 'rgba(180,140,230,0.55)';
-    r2.appendChild(dot2);
+  // Drifting particles — slow rising motes, each starting at a different time
+  var particles = [
+    {{x: 130, y: 380, size: 3,   dur: 8,  delay: 0,   anim: 'drift-up-1'}},
+    {{x: 320, y: 370, size: 2.5, dur: 9,  delay: 2.5, anim: 'drift-up-2'}},
+    {{x: 100, y: 340, size: 2,   dur: 10, delay: 5,   anim: 'drift-up-1'}},
+    {{x: 350, y: 320, size: 3,   dur: 7,  delay: 3,   anim: 'drift-up-2'}},
+    {{x: 200, y: 410, size: 2,   dur: 11, delay: 1,   anim: 'drift-up-1'}},
+    {{x: 60,  y: 230, size: 1.5, dur: 14, delay: 4,   anim: 'drift-side'}},
+    {{x: 400, y: 250, size: 2,   dur: 16, delay: 2,   anim: 'drift-side'}},
+  ];
+  particles.forEach(function(p) {{
+    var el = document.createElement('div');
+    el.className = 'particle';
+    el.style.width  = p.size + 'px';
+    el.style.height = p.size + 'px';
+    el.style.left   = p.x + 'px';
+    el.style.top    = p.y + 'px';
+    el.style.animation = p.anim + ' ' + p.dur + 's ease-in-out ' + p.delay + 's infinite';
+    stage.appendChild(el);
   }});
 
-  // Twinkling stars scattered in the space
-  var cosmos = document.querySelector('.cosmos');
-  [
-    {{x:52, y:88, s:2.5, d:1.2}},  {{x:340, y:75, s:2, d:2.1}},
-    {{x:68, y:300, s:3, d:1.7}},   {{x:330, y:310, s:2, d:0.9}},
-    {{x:145, y:40, s:2, d:2.5}},   {{x:265, y:48, s:1.5, d:1.4}},
-    {{x:38, y:195, s:2, d:3.0}},   {{x:358, y:200, s:2.5, d:1.8}},
-    {{x:175, y:370, s:2, d:2.2}},  {{x:228, y:362, s:1.5, d:0.8}}
-  ].forEach(function(s) {{
-    var star = document.createElement('div');
-    star.className = 'star';
-    star.style.width  = s.s + 'px';
-    star.style.height = s.s + 'px';
-    star.style.left   = s.x + 'px';
-    star.style.top    = s.y + 'px';
-    star.style.animation = 'twinkle ' + (s.d + 1.5) + 's ease-in-out ' + (s.d * 0.4) + 's infinite';
-    cosmos.appendChild(star);
+  // Static faint wisps scattered far from the hand
+  var wisps = [
+    [50, 80, 1.0], [410, 90, 1.5], [40, 380, 1.2], [420, 380, 0.8],
+    [220, 50, 1.8], [220, 430, 1.4], [85, 200, 2.2], [380, 210, 0.5],
+    [150, 30, 2.6], [310, 40, 1.6], [70, 300, 3.0], [395, 300, 0.7],
+  ];
+  wisps.forEach(function(w) {{
+    var el = document.createElement('div');
+    el.className = 'wisp';
+    el.style.left = w[0] + 'px';
+    el.style.top  = w[1] + 'px';
+    el.style.animationDelay = w[2] + 's';
+    stage.appendChild(el);
   }});
 }})();
 </script>
 </body>
 </html>
 """
-    components.html(html, height=440, scrolling=False)
+    components.html(html, height=470, scrolling=False)
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -550,13 +597,67 @@ def _render_reading(result):
 
     fc1, fc2, fc3 = st.columns([1, 1, 1])
     with fc1:
-        st.download_button(
-            "⬇ Save Reading",
-            data=_build_markdown_export(phase_b, phase_a).encode("utf-8"),
-            file_name="palm_reading.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
+        # Build PDF on demand. Wrapped in try/except so a PDF failure
+        # never blocks the user from seeing their reading.
+        try:
+            from ui_streamlit.views.palm_pdf import build_palm_pdf
+
+            # Build cover image bytes from the isolated hand (or fallback)
+            analysis = st.session_state.get("palm_analysis", {}) or {}
+            isolated = analysis.get("hand_isolated")
+            if isolated is not None:
+                cover_b64 = _arr_to_b64_png(isolated)
+            else:
+                overlay = analysis.get("enhanced_palm")
+                cover_b64 = _arr_to_b64_jpeg(overlay, quality=90) if overlay is not None else ""
+            import base64 as _b64
+            cover_bytes = _b64.b64decode(cover_b64) if cover_b64 else None
+
+            # Signals for the PDF observations page
+            hm  = analysis.get("hand_metrics", {}) or {}
+            vit = analysis.get("vitality", {}) or {}
+            dom_raw = hm.get("dominant_finger", "")
+            planet_label = _PLANET_TRAITS.get(
+                dom_raw, (dom_raw.split("(")[0].strip() if dom_raw else "-", "")
+            )[0]
+            vit_label = _VITALITY_LABEL.get(vit.get("class", "unknown"), ("-", ""))[0]
+            signals = {
+                "hand_type": hm.get("hand_type", "-"),
+                "planet":    planet_label,
+                "vitality":  vit_label,
+            }
+
+            # User name from default profile
+            try:
+                dp, _ = get_default_profile()
+                user_name = (dp or {}).get("name", "") if dp else ""
+            except Exception:
+                user_name = ""
+
+            pdf_bytes = build_palm_pdf(
+                phase_b        = phase_b,
+                phase_a        = phase_a,
+                signals        = signals,
+                palm_png_bytes = cover_bytes,
+                user_name      = user_name,
+            )
+            st.download_button(
+                "⬇ Download PDF",
+                data=pdf_bytes,
+                file_name="palm_reading.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as e:
+            # Fallback to markdown if PDF generation fails
+            st.download_button(
+                "⬇ Download (.md)",
+                data=_build_markdown_export(phase_b, phase_a).encode("utf-8"),
+                file_name="palm_reading.md",
+                mime="text/markdown",
+                use_container_width=True,
+                help=f"PDF generation failed: {type(e).__name__}",
+            )
     with fc3:
         _render_start_fresh()
 
@@ -660,6 +761,22 @@ def _render_phase_a(phase_a):
                 row += f" · *{marks}*"
             mount_rows.append(row)
         st.markdown("\n".join(mount_rows))
+
+    # ── Special marks (mystic cross, Ring of Solomon, Ring of Saturn) ─────────
+    special = phase_a.get("special_marks", {}) or {}
+    special_rows = []
+    _SPECIAL_MEANING = {
+        "mystic_cross":    ("Mystic Cross", "between heart and head lines — strong intuition and interest in the occult"),
+        "ring_of_solomon": ("Ring of Solomon", "around Jupiter mount — wisdom, leadership, ability to read others"),
+        "ring_of_saturn":  ("Ring of Saturn", "around Saturn mount — introspective and prone to isolation; rare and significant"),
+    }
+    for key, (label, meaning) in _SPECIAL_MEANING.items():
+        v = special.get(key, "")
+        if v == "visible":
+            special_rows.append(f"- ✅ **{label}** detected — *{meaning}*")
+    if special_rows:
+        st.markdown("**Rare and special marks:**")
+        st.markdown("\n".join(special_rows))
 
     if fingers or thumb:
         _tip_map = {
