@@ -862,28 +862,17 @@ RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN.
 """
 ai_engine/prompts.py
 =====================
-Prompt builder for the palmistry VLM call.
+Two-phase prompt for the palmistry VLM.
 
-Architecture: a single two-phase prompt.
+Phase A — structured JSON observations (what's visible, what's not).
+Phase B — Samudrika Shastra reading anchored only to confirmed observations.
 
-  Phase A — Visual identification. The VLM looks at the actual palm photo
-            and the mount crops, then reports what it observes in structured
-            JSON. The value "not_assessable" is allowed and encouraged for
-            anything unclear. This eliminates hallucination by separating
-            'what is visible' from 'what does it mean'.
-
-  Phase B — Samudrika Shastra interpretation. The VLM writes the reading
-            using only what it confirmed in Phase A, plus the math-derived
-            facts (deterministic), the kundli dossier, structured Vedic
-            knowledge, and Qdrant-retrieved classical passages.
-
-Why this works better than the previous XML feature-dump approach:
-  - The model never receives false claims about lines/marks/etc.
-  - The model itself decides what's visible, so it can't contradict itself.
-  - "not_assessable" is a first-class output, so the model isn't pressured
-    to fabricate detail to fill required fields.
-  - Phase A is auditable — the UI can show the user exactly what the model
-    saw vs didn't see, building trust.
+New in this version:
+  - Faint and absent lines now get interpretation (with honest caveats)
+  - Mounts get their own paragraphs (every mount that's clearly developed
+    or notably flat earns interpretive weight in the reading)
+  - New themed sections: Love & Relationships, Career & Purpose, Spiritual Path
+  - Tighter rules on anchoring claims to Phase A observations
 """
 
 
@@ -896,87 +885,56 @@ def build_palm_reading_prompt(
     knowledge_context: str = "",
     qdrant_context: str = "",
 ) -> str:
-    """
-    Build the full two-phase prompt. Returns a string ready to send alongside
-    the image inputs (full palm + mount crops + reference book image).
-
-    Args:
-        hand_metrics:      from math_engine.palm_vision._compute_hand_metrics
-        vitality:          from math_engine.palm_vision._vitality_class
-        quality_metrics:   from math_engine.palm_vision._assess_quality
-        n_mount_crops:     how many mount crops will be sent (for accurate count)
-        dossier:           kundli astrology dossier text
-        knowledge_context: structured Vedic knowledge (planet, nakshatra, dosha)
-        qdrant_context:    classical text passages retrieved by reliable signals
-    """
-    hm = hand_metrics or {}
+    hm  = hand_metrics or {}
     vit = vitality or {}
-    qm = quality_metrics or {}
+    qm  = quality_metrics or {}
 
-    # ── Math signals (deterministic, treat as ground truth) ───────────────────
     math_signals = (
         f"- Hand type: {hm.get('hand_type', 'unknown')} "
         f"({hm.get('hand_type_vedic', '')}) — {hm.get('hand_type_gloss', '')}\n"
         f"- 2D:4D ratio: {hm.get('ratio_2d4d', '?')} — {hm.get('ratio_reading', '')}\n"
         f"- Dominant finger by length: {hm.get('dominant_finger', '?')}\n"
-        f"- Thumb proportion (length / palm length): {hm.get('thumb_proportion', '?')}\n"
+        f"- Thumb proportion: {hm.get('thumb_proportion', '?')}\n"
         f"- Vitality bucket: {vit.get('class', '?')} — {vit.get('note', '')}\n"
         f"- Image quality: blur={qm.get('blur_score', '?')}, "
         f"exposure={qm.get('mean_v', '?')}, resolution={qm.get('resolution', '?')}\n"
     )
 
-    # ── Optional context blocks ───────────────────────────────────────────────
     knowledge_block = ""
     if knowledge_context and len(knowledge_context.strip()) > 50:
         knowledge_block = (
-            f"\n<vedic_knowledge>\n"
-            f"The following structured knowledge is keyed to this person's chart "
-            f"(planet, nakshatra, dosha). Use it to enrich planetary interpretations.\n\n"
-            f"{knowledge_context}\n"
-            f"</vedic_knowledge>\n"
+            f"\n<vedic_knowledge>\n{knowledge_context}\n</vedic_knowledge>\n"
         )
 
     qdrant_block = ""
     if qdrant_context and len(qdrant_context.strip()) > 50:
         qdrant_block = (
-            f"\n<classical_passages>\n"
-            f"Passages from classical Vedic palmistry texts, retrieved for "
-            f"features matching this hand's profile:\n\n"
-            f"{qdrant_context}\n"
-            f"</classical_passages>\n"
+            f"\n<classical_passages>\n{qdrant_context}\n</classical_passages>\n"
         )
 
     dossier_block = ""
     if dossier and len(dossier.strip()) > 30:
         dossier_block = (
-            f"\n<kundli_dossier>\n"
-            f"This person's birth chart and astrological profile:\n\n"
-            f"{dossier}\n"
-            f"</kundli_dossier>\n"
+            f"\n<kundli_dossier>\n{dossier}\n</kundli_dossier>\n"
         )
 
-    # ── The prompt itself ─────────────────────────────────────────────────────
-    return f"""You are an expert Vedic palmist trained in classical Samudrika Shastra. You are reading a real photograph of a real human's hand. Your job is to be honest about what you can see, and to interpret only what you actually observe.
+    return f"""You are an expert Vedic palmist trained in classical Samudrika Shastra. You are reading a real photograph of a real human's hand for a paying customer. Be honest, be specific, be warm. Interpret only what you actually observe.
 
 ═══ INPUT IMAGES ═══
-1. FULL PALM (labelled top-left) — the user's actual hand, CLAHE-enhanced for line visibility
-2. {n_mount_crops} MOUNT CROPS (each labelled at top) — focused close-ups of the seven planetary mounts: Jupiter, Saturn, Sun, Mercury, Venus, Mars, Luna. These give you many more pixels per mount than the full palm alone.
-3. REFERENCE — classical hand diagram showing planet names and guna zones
+1. FULL PALM (labelled top-left) — the user's hand, CLAHE-enhanced for line visibility
+2. {n_mount_crops} MOUNT CROPS — close-ups of Jupiter, Saturn, Sun, Mercury, Venus, Mars, Luna
+3. REFERENCE — classical hand diagram
 
-═══ MATH-DERIVED FACTS (deterministic, treat as ground truth) ═══
+═══ MATH-DERIVED FACTS (treat as ground truth) ═══
 {math_signals}{dossier_block}{knowledge_block}{qdrant_block}
 
-═══ YOUR TASK — TWO PHASES IN ONE RESPONSE ═══
+═══ PHASE A — VISUAL IDENTIFICATION (JSON first) ═══
 
-═══ PHASE A — VISUAL IDENTIFICATION (output JSON first) ═══
+Look carefully. For each line, state what you observe. Use "not_assessable" generously — if a line is unclear, mark it not_assessable. An honest "I can't see this clearly" is more valuable than a confident wrong answer.
 
-Look carefully at the FULL PALM image. For each major line, state what you actually observe.
+For each MOUNT CROP, judge fullness and look for visible marks (cross, star, triangle, square, island, grille, fish). Use "no notable marks" if you don't see clear marks — don't report skin texture or shadows.
 
-CRITICAL: Use "not_assessable" generously. If a line is unclear, very faint, partially out of frame, or the photo quality blocks confident identification, mark it not_assessable. DO NOT GUESS to fill in values. An honest "I cannot see this clearly" is far more valuable than a confident wrong answer.
-
-Then look at each MOUNT CROP individually. For each mount, describe its visible appearance and note any clearly visible marks (cross, star, triangle, square, island, grille, fish). Mark observations as "no notable marks" if you don't see any clear marks — DO NOT report skin texture or shadows as marks.
-
-Output ONLY this JSON, wrapped in ```json``` fences. Nothing before the fence:
+Output ONLY this JSON wrapped in ```json``` fences:
 
 ```json
 {{
@@ -984,10 +942,11 @@ Output ONLY this JSON, wrapped in ```json``` fences. Nothing before the fence:
   "image_issues": "brief note or empty string",
   "lines": {{
     "heart":  {{ "visibility": "clear|faint|fragmented|not_visible|not_assessable", "path": "brief description or 'not_assessable'", "endpoint": "Jupiter|Saturn|between_them|other|not_assessable" }},
-    "head":   {{ "visibility": "...", "path": "...", "joined_to_life": "yes|no|not_assessable" }},
+    "head":   {{ "visibility": "...", "path": "...", "joined_to_life": "yes|no|not_assessable", "slope": "straight|gentle_downward|steep_downward|not_assessable" }},
     "life":   {{ "visibility": "...", "path": "...", "curve": "tight|moderate|wide|not_assessable" }},
     "fate":   {{ "visibility": "...", "path": "...", "starts_at": "wrist|life_line|head_line|center|absent|not_assessable" }},
     "sun":    {{ "visibility": "...", "path": "..." }},
+    "marriage_lines": {{ "count_visible": "0|1|2|3+|not_assessable", "description": "brief or not_assessable" }},
     "simian": {{ "present": false, "confidence": "low|medium|high" }}
   }},
   "mounts": {{
@@ -998,6 +957,11 @@ Output ONLY this JSON, wrapped in ```json``` fences. Nothing before the fence:
     "Venus":   {{ "fullness": "...", "marks": "..." }},
     "Mars":    {{ "fullness": "...", "marks": "..." }},
     "Luna":    {{ "fullness": "...", "marks": "..." }}
+  }},
+  "special_marks": {{
+    "mystic_cross": "visible|not_visible|not_assessable",
+    "ring_of_solomon": "visible|not_visible|not_assessable",
+    "ring_of_saturn": "visible|not_visible|not_assessable"
   }},
   "fingers": {{
     "tip_shape_dominant": "conic|square|spatulate|rounded|mixed|not_assessable",
@@ -1014,47 +978,61 @@ Output ONLY this JSON, wrapped in ```json``` fences. Nothing before the fence:
 }}
 ```
 
-═══ PHASE B — THE READING (output Markdown after the JSON) ═══
+═══ PHASE B — THE READING (Markdown after the JSON) ═══
 
-After the JSON block, write the actual Samudrika Shastra reading. Hard rules:
+Write the reading using only confirmed Phase A observations + the math facts + the kundli + classical passages.
 
-1. Anchor every claim to one of: (a) a feature you marked visible in Phase A, (b) a math-derived fact above, (c) the kundli dossier, or (d) a passage from <classical_passages>.
+HARD RULES:
+1. Never claim a feature exists if Phase A marked it not_assessable.
+2. Weave the kundli throughout — reference specific planets, nakshatra, ascendant.
+3. Flowing paragraphs. No bullet lists inside sections.
+4. Tone: warm, authoritative, intimate. Like a senior Vedic palmist who knows them personally.
+5. Length: 900–1200 words across all sections.
 
-2. NEVER make claims about anything Phase A marked "not_assessable" or "not_visible". If the head line is not_assessable, do not write about the head line. Skip that section honestly.
-
-3. Weave the kundli dossier throughout — this is the user's real birth chart, not generic. Reference specific planets, nakshatra, ascendant where relevant.
-
-4. Tone: warm, authoritative, intimate — like a senior Vedic palmist who knows them personally.
-
-5. Flowing paragraphs only. NO bullet lists, NO sub-headers inside paragraphs.
-
-6. Length: 700–950 words.
+ABOUT FAINT AND ABSENT LINES:
+A faint or absent line is NOT a non-finding — it's its own interpretation, and classical Samudrika gives it weight:
+  - **Faint heart line**: emotionally reserved, slow to attach, deep when bonded
+  - **Faint head line**: intuition over analysis; mind works in flashes, not steady reasoning
+  - **Faint life line**: doesn't mean short life — it means energy is drawn from inner reserves; recharge through solitude rather than activity
+  - **Faint or absent fate line**: a self-made path; life direction comes from personal choice rather than external circumstance. "Your destiny isn't written; you are writing it."
+  - **Faint or absent sun line**: success and recognition come later, or through quiet rather than public means
+When discussing a faint or absent line, ALWAYS add a gentle caveat like "if you look closely at your palm and don't see a clear [line], this reading applies — otherwise, treat it as supplementary".
+Never call an absent line a "lack" or "problem" — frame it as a different kind of strength.
 
 Use exactly these section headers (markdown H2):
 
 ## First Glance
-One paragraph. What stands out about this hand. Use hand type + dominant finger + vitality + the strongest visible line. Set the tone.
+One paragraph. The strongest features of this hand — hand type, ruling planet, vitality, the most prominent line and mount. Set the tone. End with one sentence on overall kundli-palm convergence.
 
 ## The Major Lines
-2–4 paragraphs. One paragraph per line you confirmed visible (skip not_assessable / not_visible ones entirely). Use the path and endpoint observations. Where a classical passage matches the line's character, weave it in naturally.
+2–5 paragraphs. ONE paragraph per line. Include EVERY line Phase A found — clear, faint, fragmented, AND not_visible (for absent lines, use the FAINT/ABSENT framing above). Skip ONLY lines marked not_assessable. For each visible line, describe path and endpoint and tie it to the user's kundli.
 
 ## Mounts and Planetary Architecture
-1–2 paragraphs. Synthesize the mount observations into a planetary character profile. Use the structured Vedic knowledge if provided (planet traits, nakshatra qualities). Reference visible marks only, never speculate.
+2–3 paragraphs. Don't summarize all mounts in one sweep. Lead with the most developed mount (use its full classical meaning + the user's matching kundli planet placements). Then cover the second-most-developed. Then briefly note any notable flat mounts (a flat mount tells its own story — for example, flat Saturn = lighter karmic burden, flat Mars = chooses harmony over confrontation). If special marks (mystic cross, Ring of Solomon, Ring of Saturn) were detected, give them their own sentences — these are rare and significant.
 
 ## Hand Architecture
-One paragraph. Hand type meaning, 2D:4D significance, finger profile, thumb if assessable.
+One paragraph. Hand type + finger tips + thumb (firmness, set). What this combination says about temperament.
+
+## Love and Relationships
+One paragraph. Anchor to: Venus mount, heart line path and endpoint, marriage line count, ring finger characteristics, plus the 7th house from the kundli. If Phase A couldn't read marriage lines, just rely on Venus + heart line + kundli 7th house. Be specific about emotional style, not generic.
+
+## Career and Purpose
+One paragraph. Anchor to: fate line (or its absence — see faint/absent framing), Sun line, Saturn mount, Mercury mount, Jupiter mount, plus 10th house and Atmakaraka from kundli. Talk about what kind of work, what kind of recognition, what kind of timing.
+
+## Spiritual Path
+One paragraph ONLY IF something concrete supports it (mystic cross, Ring of Solomon, water/earth hand type, strong Luna mount, or kundli indicators like Ketu in lagna, prominent 12th house, Pisces influence). Otherwise SKIP this section entirely — better honest than padded.
 
 ## Where the Palm Meets the Chart
-One paragraph. Specific convergences and tensions between palm observations and the kundli. Mention the kundli_palm_agreement rating naturally if relevant. This section is the differentiator — make it specific, not generic.
+One paragraph. Specific convergences AND tensions between palm and kundli. This is the unique differentiator — make it concrete (e.g. "your prominent Venus mount mirrors your Venus-Mercury conjunction in Aquarius"). Mention the kundli_palm_agreement rating naturally if it adds context.
 
 ## The Path Forward
-One paragraph. 2–3 specific, grounded suggestions tied to what you actually observed. Not horoscope filler — practical Samudrika-aligned guidance.
+One paragraph. 2–3 specific, grounded suggestions anchored to what you observed. Practical Samudrika guidance, not horoscope filler. End with one warm sentence.
 
-═══ HARD CONSTRAINTS ═══
-• If image_quality is "poor", write a brief Phase B that honestly tells the user the photo isn't usable, and request a better one. Do not fabricate a reading.
-• Do not cite raw geometry numbers (palm_aspect, finger_to_palm, etc.) as if they were palm-line claims — they are measurements, not lines.
-• Never claim a line, mark, or mount feature exists if Phase A marked it not_assessable.
-• If a section has no anchorable observations, shorten it honestly rather than padding.
-• No filler. No generic horoscope phrasing. Every sentence should be specific to this person.
+═══ CONSTRAINTS ═══
+• If image_quality is "poor", write a brief Phase B explaining the photo isn't usable. Do not fabricate.
+• Do not cite raw geometry numbers (palm_aspect, finger_to_palm) as palm-line claims.
+• Don't write a section if its anchoring observations are all not_assessable.
+• No filler. No generic horoscope phrasing. Every sentence specific to this person.
+• When interpreting faint/absent lines, ALWAYS include the verification caveat.
 
 Now produce the response. JSON first (Phase A in fences), then Phase B markdown."""
