@@ -1,0 +1,33 @@
+<section class="section" data-title="Rasi Chart">
+  <div class="section-header">
+    <h2>Rasi Chart (D1)</h2>
+    <span class="eyebrow">Janma Kundli · {{ chart_style|replace("_", " ")|title }}</span>
+  </div>
+
+  <div class="chart-block">
+    {{ rasi_svg|safe }}
+    <div class="chart-caption">
+      Lagna in {{ chart.lagna.sign }} {{ chart.lagna.degree_in_sign_dms }} ·
+      Moon in {{ chart.planets["Moon"].sign }} · Sun in {{ chart.planets["Sun"].sign }}
+    </div>
+  </div>
+
+  <h3>Houses Overview</h3>
+  <table class="data">
+    <thead>
+      <tr><th>House</th><th>Sign</th><th>Lord</th><th>Occupants</th><th>SAV bindus</th></tr>
+    </thead>
+    <tbody>
+      {% for h in range(1, 13) %}
+      {% set house = chart.houses[h] %}
+      <tr>
+        <td><strong>H{{ h }}</strong></td>
+        <td>{{ house.sign }}</td>
+        <td>{{ house.sign_lord }}</td>
+        <td>{{ house.occupants|join(", ") or "—" }}</td>
+        <td class="numeric">{{ chart.ashtakavarga.sav_by_house[h-1] if chart.ashtakavarga else "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>

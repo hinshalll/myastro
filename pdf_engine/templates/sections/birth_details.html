@@ -1,0 +1,67 @@
+<section class="section" data-title="Birth Details">
+  <div class="section-header">
+    <h2>Birth Details</h2>
+    <span class="eyebrow">Janma Vivaran</span>
+  </div>
+
+  <div class="two-col">
+    <table class="data">
+      <thead><tr><th colspan="2">Identity</th></tr></thead>
+      <tbody>
+        <tr><td>Name</td><td>{{ chart.birth_data.name }}</td></tr>
+        <tr><td>Devanagari</td><td style="font-family: {{ theme.devanagari_font|safe }};">{{ devanagari_name }}</td></tr>
+        <tr><td>Gender</td><td>{{ "Male" if chart.birth_data.gender=="M" else "Female" }}</td></tr>
+      </tbody>
+    </table>
+
+    <table class="data">
+      <thead><tr><th colspan="2">Time &amp; Place</th></tr></thead>
+      <tbody>
+        <tr><td>Date of Birth</td><td>{{ chart.datetime_local.strftime("%A, %d %B %Y") }}</td></tr>
+        <tr><td>Time of Birth</td><td>{{ chart.datetime_local.strftime("%I:%M:%S %p") }}{% if not chart.birth_data.exact_time %} <span class="muted small">(approximate)</span>{% endif %}</td></tr>
+        <tr><td>Place</td><td>{{ chart.birth_data.place }}</td></tr>
+        <tr><td>Coordinates</td><td>{{ "%.4f"|format(chart.birth_data.lat) }}, {{ "%.4f"|format(chart.birth_data.lon) }}</td></tr>
+        <tr><td>Timezone</td><td>{{ chart.birth_data.tz }}</td></tr>
+        <tr><td>Julian Day (UT)</td><td>{{ "%.4f"|format(chart.julian_day_ut) }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="two-col">
+    <table class="data">
+      <thead><tr><th colspan="2">Lagna Foundation</th></tr></thead>
+      <tbody>
+        <tr><td>Ascendant (Lagna)</td><td>{{ chart.lagna.sign }} {{ chart.lagna.degree_in_sign_dms }}</td></tr>
+        <tr><td>Lagna Lord</td><td>{{ chart.lagna.lord }}</td></tr>
+        <tr><td>Lagna Nakshatra</td><td>{{ chart.lagna.nakshatra }} (Pada {{ chart.lagna.pada }})</td></tr>
+        <tr><td>Nakshatra Lord</td><td>{{ chart.lagna.nakshatra_lord }}</td></tr>
+        <tr><td>Sub-lord (KP)</td><td>{{ chart.lagna.sub_lord }}</td></tr>
+        <tr><td>Arudha Lagna</td><td>{{ chart.lagna.arudha_sign }} (H{{ chart.lagna.arudha_house }})</td></tr>
+        <tr><td>Indu Lagna (Wealth)</td><td>{{ chart.lagna.indu_sign }}</td></tr>
+      </tbody>
+    </table>
+
+    <table class="data">
+      <thead><tr><th colspan="2">Panchanga at Birth</th></tr></thead>
+      <tbody>
+        <tr><td>Tithi</td><td>{{ chart.panchanga.tithi }}</td></tr>
+        <tr><td>Paksha</td><td>{{ chart.panchanga.paksha }}</td></tr>
+        <tr><td>Yoga</td><td>{{ chart.panchanga.yoga }}</td></tr>
+        <tr><td>Karana</td><td>{{ chart.panchanga.karana }}</td></tr>
+        <tr><td>Weekday (Vara)</td><td>{{ chart.panchanga.weekday }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  {% if chart.nakshatra_profile %}
+  <h3 style="margin-top: 16pt;">Avakahada Chakra</h3>
+  <table class="data">
+    <thead><tr><th colspan="2">Classical Birth Summary</th></tr></thead>
+    <tbody>
+      {% for row in chart.nakshatra_profile.avakahada_chakra %}
+        <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>

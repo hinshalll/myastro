@@ -1,0 +1,43 @@
+<section class="section" data-title="Doshas">
+  <div class="section-header">
+    <h2>Doshas — Karmic Tensions &amp; Their Resolutions</h2>
+    <span class="eyebrow">{{ chart.doshas|selectattr("present")|list|length }} active afflictions</span>
+  </div>
+
+  <p class="small">
+    A dosha is a chart pattern that creates a specific area of life-tension.
+    Knowing a dosha is half of dissolving it — the remedies section opposite
+    provides the classical antidotes.
+  </p>
+
+  {% for d in chart.doshas %}
+    {% if d.present %}
+    <div class="yoga-card dosha-card">
+      <h4>{{ d.name }}</h4>
+      <div class="severity">Severity: <strong>{{ d.severity }}</strong></div>
+      <p style="margin: 4pt 0 0;">{{ d.cause }}</p>
+      {% if d.cancellations %}
+        <p style="margin: 4pt 0 0;"><strong>Cancellations:</strong></p>
+        <ul style="margin: 2pt 0 0 14pt;">
+          {% for c in d.cancellations %}<li>{{ c }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  <div class="ornament"></div>
+  <h3>Doshas Audit (full library)</h3>
+  <table class="data">
+    <thead><tr><th>Dosha / Yoga</th><th>Present</th><th>Severity</th></tr></thead>
+    <tbody>
+      {% for d in chart.doshas %}
+      <tr>
+        <td>{{ d.name }}</td>
+        <td>{% if d.present %}<span class="accent">●</span> Yes{% else %}<span class="muted">○</span> No{% endif %}</td>
+        <td>{{ d.severity }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>

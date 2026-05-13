@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+<meta charset="utf-8" />
+<title>Janma Kundli — {{ chart.birth_data.name }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* ─── Page geometry ─── */
+  @page {
+    size: A4;
+    margin: 18mm 14mm 18mm 14mm;
+    @bottom-center {
+      content: counter(page) " · " counter(pages);
+      font-family: {{ theme.body_font|safe }};
+      font-size: 9pt;
+      color: {{ theme.page_numeral_color }};
+    }
+    @top-right {
+      content: string(section-title);
+      font-family: {{ theme.heading_font|safe }};
+      font-size: 8pt;
+      color: {{ theme.muted }};
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+  }
+  @page :first { @top-right { content: ""; } @bottom-center { content: ""; } }
+
+  /* ─── Base typography ─── */
+  html, body {
+    margin: 0; padding: 0;
+    color: {{ theme.ink }};
+    background: {{ theme.paper }};
+    font-family: {{ theme.body_font|safe }};
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  h1, h2, h3, h4 {
+    font-family: {{ theme.heading_font|safe }};
+    color: {{ theme.primary }};
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.6em 0;
+  }
+  h1 { font-size: 28pt; }
+  h2 { font-size: 18pt; }
+  h3 { font-size: 13pt; }
+  h4 { font-size: 11pt; }
+  p  { margin: 0 0 0.5em 0; }
+  a  { color: {{ theme.primary }}; text-decoration: none; }
+  small { color: {{ theme.muted }}; font-size: 9pt; }
+
+  /* ─── Section primitives ─── */
+  .section {
+    page-break-before: always;
+    string-set: section-title attr(data-title);
+  }
+  .section:first-child { page-break-before: avoid; }
+  .section-header {
+    border-bottom: 1.5pt solid {{ theme.primary }};
+    margin-bottom: 14pt;
+    padding-bottom: 6pt;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .section-header h2 { margin: 0; }
+  .section-header .eyebrow {
+    font-family: {{ theme.heading_font|safe }};
+    font-size: 9pt;
+    color: {{ theme.muted }};
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .ornament {
+    height: 18pt;
+    margin: 14pt 0;
+    background: linear-gradient(90deg,
+      transparent 0,
+      {{ theme.muted }} 30%,
+      {{ theme.primary }} 50%,
+      {{ theme.muted }} 70%,
+      transparent 100%);
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 18'><path d='M50 9 l-8 -6 a4 4 0 0 0 0 12 z M50 9 l8 -6 a4 4 0 0 1 0 12 z' fill='black'/></svg>") center/auto 18pt no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 18'><path d='M50 9 l-8 -6 a4 4 0 0 0 0 12 z M50 9 l8 -6 a4 4 0 0 1 0 12 z' fill='black'/></svg>") center/auto 18pt no-repeat;
+  }
+
+  /* ─── Cover page ─── */
+  .cover {
+    page-break-before: avoid;
+    text-align: center;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 24mm 0;
+  }
+  .cover .frame {
+    border: 3pt double {{ theme.primary }};
+    padding: 30mm 18mm;
+    width: 70%;
+    background: {{ theme.paper }};
+  }
+  .cover .deity-line {
+    font-family: {{ theme.devanagari_font|safe }};
+    color: {{ theme.accent }};
+    font-size: 16pt;
+    margin-bottom: 18pt;
+    letter-spacing: 0.08em;
+  }
+  .cover h1.devanagari-name {
+    font-family: {{ theme.devanagari_font|safe }};
+    color: {{ theme.primary }};
+    font-size: 40pt;
+    margin: 0 0 6pt 0;
+  }
+  .cover h1.latin-name {
+    font-family: {{ theme.heading_font|safe }};
+    color: {{ theme.ink }};
+    font-size: 22pt;
+    margin: 0 0 22pt 0;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .cover .subtitle {
+    font-family: {{ theme.heading_font|safe }};
+    color: {{ theme.muted }};
+    font-size: 14pt;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 14pt;
+  }
+  .cover .birth-line {
+    font-style: italic;
+    color: {{ theme.ink }};
+    font-size: 12pt;
+    margin: 14pt 0 4pt 0;
+  }
+  .cover .footnote {
+    color: {{ theme.muted }};
+    font-size: 9pt;
+    margin-top: 28pt;
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── Data layouts ─── */
+  .two-col, .three-col {
+    display: grid;
+    gap: 16pt;
+  }
+  .two-col   { grid-template-columns: 1fr 1fr; }
+  .three-col { grid-template-columns: 1fr 1fr 1fr; }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    margin: 8pt 0 14pt;
+  }
+  table.data th, table.data td {
+    border: 0.5pt solid {{ theme.muted }};
+    padding: 4pt 8pt;
+    text-align: left;
+    vertical-align: middle;
+  }
+  table.data thead th {
+    background: {{ theme.primary }};
+    color: {{ theme.paper }};
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 9pt;
+    font-weight: 600;
+  }
+  table.data tbody tr:nth-child(even) td {
+    background: rgba(0,0,0,0.025);
+  }
+  td.dignity    { color: {{ theme.accent }}; font-weight: 600; }
+  td.retrograde { color: {{ theme.accent }}; }
+  td.numeric    { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ─── Chart grid (16 vargas) ─── */
+  .varga-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 10pt;
+    margin-top: 6pt;
+  }
+  .varga-cell {
+    text-align: center;
+  }
+  .varga-cell .vname {
+    font-family: {{ theme.heading_font|safe }};
+    font-size: 9pt;
+    margin: 4pt 0 0 0;
+    color: {{ theme.primary }};
+  }
+  .varga-cell .vsubtitle {
+    font-size: 8pt;
+    color: {{ theme.muted }};
+    font-style: italic;
+  }
+
+  /* ─── Big chart (D1 / D9 page) ─── */
+  .chart-block {
+    text-align: center;
+    margin: 8pt 0 14pt;
+  }
+  .chart-block svg {
+    width: 60%;
+    max-width: 360pt;
+  }
+  .chart-caption {
+    font-style: italic;
+    font-size: 10pt;
+    color: {{ theme.muted }};
+    margin-top: 4pt;
+  }
+
+  /* ─── Yogas / Doshas lists ─── */
+  .yoga-card, .dosha-card {
+    border-left: 3pt solid {{ theme.primary }};
+    background: rgba(0,0,0,0.02);
+    padding: 8pt 12pt;
+    margin: 6pt 0;
+  }
+  .yoga-card.dosha-card { border-left-color: {{ theme.accent }}; }
+  .yoga-card h4, .dosha-card h4 {
+    margin: 0 0 2pt 0;
+    color: {{ theme.primary }};
+  }
+  .yoga-card .cat, .dosha-card .severity {
+    font-size: 9pt;
+    color: {{ theme.muted }};
+    font-style: italic;
+  }
+
+  /* ─── Remedies block ─── */
+  .remedy-card {
+    border: 0.5pt solid {{ theme.muted }};
+    padding: 10pt 12pt;
+    margin: 6pt 0;
+    background: rgba(0,0,0,0.015);
+  }
+  .remedy-card h4 { color: {{ theme.accent }}; margin: 0 0 4pt 0; }
+  .remedy-card .mantra {
+    font-family: {{ theme.devanagari_font|safe }};
+    color: {{ theme.primary }};
+    font-size: 11pt;
+    margin: 4pt 0;
+  }
+
+  /* Utility */
+  .muted { color: {{ theme.muted }}; }
+  .accent { color: {{ theme.accent }}; }
+  .center { text-align: center; }
+  .small { font-size: 9pt; }
+</style>
+</head>
+<body>
+
+{% for section in sections %}
+  {% include "sections/" ~ section ~ ".html" ignore missing %}
+{% endfor %}
+
+</body>
+</html>

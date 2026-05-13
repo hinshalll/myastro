@@ -1,0 +1,23 @@
+<section class="section" data-title="Yogas">
+  <div class="section-header">
+    <h2>Yogas — Auspicious Planetary Combinations</h2>
+    <span class="eyebrow">{{ chart.yogas|length }} yogas active</span>
+  </div>
+
+  <p class="small">
+    A yoga is a specific combination of planets that activates a defined life
+    pattern. The yogas detected in your chart shape its most powerful currents.
+  </p>
+
+  {% if chart.yogas %}
+    {% for y in chart.yogas %}
+    <div class="yoga-card">
+      <h4>{{ y.name }}</h4>
+      <div class="cat">{{ y.category }}{% if y.planets_involved %} · {{ y.planets_involved|join(", ") }}{% endif %}</div>
+      <p style="margin: 4pt 0 0;">{{ y.description }}</p>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">No classical yogas matched the standard rule library for this chart. Sub-classical yogas may still be present and will be highlighted in a future expansion of the rule library.</p>
+  {% endif %}
+</section>

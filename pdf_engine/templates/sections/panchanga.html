@@ -1,0 +1,53 @@
+<section class="section" data-title="Panchanga">
+  <div class="section-header">
+    <h2>Panchanga at Birth</h2>
+    <span class="eyebrow">Five Limbs of the Day</span>
+  </div>
+
+  <p>
+    Panchanga ("five limbs") encodes the cosmic weather of the moment of birth.
+    Each limb shapes a different stratum of personality and life rhythm.
+  </p>
+
+  <table class="data">
+    <thead><tr><th>Limb</th><th>Value</th><th>Significance</th></tr></thead>
+    <tbody>
+      <tr><td>Tithi (lunar day)</td><td>{{ chart.panchanga.tithi }}</td>
+          <td>Quality of intention and emotional rhythm.</td></tr>
+      <tr><td>Paksha (fortnight)</td><td>{{ chart.panchanga.paksha }}</td>
+          <td>{% if chart.panchanga.paksha == "Shukla" %}Waxing — outward growth phase{% else %}Waning — inward consolidation phase{% endif %}.</td></tr>
+      <tr><td>Yoga</td><td>{{ chart.panchanga.yoga }}</td>
+          <td>Joint Sun-Moon energy; auspicious tone.</td></tr>
+      <tr><td>Karana</td><td>{{ chart.panchanga.karana }}</td>
+          <td>Half-tithi flavour governing initiative.</td></tr>
+      <tr><td>Vara (weekday)</td><td>{{ chart.panchanga.weekday }}</td>
+          <td>Day-ruler signature on temperament.</td></tr>
+    </tbody>
+  </table>
+
+  {% if chart.nakshatra_profile %}
+  <div class="ornament"></div>
+  <h3>Nakshatra Profile — {{ chart.nakshatra_profile.birth_nakshatra }} (Pada {{ chart.nakshatra_profile.pada }})</h3>
+  <p class="small">
+    Deity: <strong>{{ chart.nakshatra_profile.deity }}</strong> &nbsp;·&nbsp;
+    Symbol: <em>{{ chart.nakshatra_profile.symbol }}</em>
+  </p>
+  <div class="three-col">
+    <div>
+      <strong>Gana:</strong> {{ chart.nakshatra_profile.gana }}<br>
+      <strong>Yoni:</strong> {{ chart.nakshatra_profile.yoni[0] }} ({{ chart.nakshatra_profile.yoni[1] }})<br>
+      <strong>Nadi:</strong> {{ chart.nakshatra_profile.nadi }}
+    </div>
+    <div>
+      <strong>Varna:</strong> {{ chart.nakshatra_profile.varna }}<br>
+      <strong>Vashya:</strong> {{ chart.nakshatra_profile.vashya }}<br>
+      <strong>Tatva:</strong> {{ chart.nakshatra_profile.tatva }}
+    </div>
+    <div>
+      <strong>Guna:</strong> {{ chart.nakshatra_profile.guna }}<br>
+      <strong>Psych. Gender:</strong> {{ chart.nakshatra_profile.gender }}<br>
+      <strong>Naam-akshar:</strong> {{ chart.nakshatra_profile.naam_akshar }}
+    </div>
+  </div>
+  {% endif %}
+</section>

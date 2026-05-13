@@ -1,0 +1,62 @@
+<section class="section" data-title="Ashtakavarga">
+  <div class="section-header">
+    <h2>Ashtakavarga — Predictive Bindu System</h2>
+    <span class="eyebrow">Sarvashtakavarga (SAV) and Bhinnashtakavarga (BAV)</span>
+  </div>
+
+  {% if chart.ashtakavarga %}
+  <p class="small">
+    Each "bindu" is a benefic point a house earns from each reference body
+    (the 7 grahas + Lagna). 56 is the theoretical maximum per house.
+    Higher SAV → that house's significations flow easily; lower → effortful.
+  </p>
+
+  <h3>Sarvashtakavarga (SAV) — Total Per House</h3>
+  <table class="data">
+    <thead><tr>{% for h in range(1,13) %}<th>H{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      <tr>{% for h in range(1,13) %}<td class="numeric">{{ chart.ashtakavarga.sav_by_house[h-1] }}</td>{% endfor %}</tr>
+    </tbody>
+  </table>
+
+  <div class="two-col">
+    <div>
+      <strong class="accent">Strongest houses:</strong>
+      <ul>{% for h, b in chart.ashtakavarga.strongest_houses %}<li>H{{ h }} — {{ b }} bindus</li>{% endfor %}</ul>
+    </div>
+    <div>
+      <strong class="muted">Weakest houses:</strong>
+      <ul>{% for h, b in chart.ashtakavarga.weakest_houses %}<li>H{{ h }} — {{ b }} bindus</li>{% endfor %}</ul>
+    </div>
+  </div>
+
+  <div class="ornament"></div>
+  <h3>Bhinnashtakavarga (BAV) — Per Graha</h3>
+  <table class="data">
+    <thead>
+      <tr><th>Graha</th>{% for h in range(1,13) %}<th>H{{ h }}</th>{% endfor %}<th>Total</th></tr>
+    </thead>
+    <tbody>
+      {% for p, bindus in chart.ashtakavarga.bav_by_house.items() %}
+      <tr>
+        <td><strong>{{ p }}</strong></td>
+        {% for v in bindus %}<td class="numeric">{{ v }}</td>{% endfor %}
+        <td class="numeric"><strong>{{ bindus|sum }}</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if chart.ashtakavarga.shodhya_pinda %}
+  <h3>Shodhya Pinda</h3>
+  <table class="data">
+    <thead><tr><th>Graha</th><th>Shodhya Pinda (post-reduction × multiplier)</th></tr></thead>
+    <tbody>
+      {% for p, v in chart.ashtakavarga.shodhya_pinda.items() %}
+      <tr><td>{{ p }}</td><td class="numeric">{{ v }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% endif %}
+</section>

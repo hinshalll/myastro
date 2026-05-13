@@ -1,0 +1,80 @@
+<section class="section" data-title="Vimshottari Dasha">
+  <div class="section-header">
+    <h2>Vimshottari Mahadasha Timeline</h2>
+    <span class="eyebrow">120-Year Predictive Cycle</span>
+  </div>
+
+  {% set vim = chart.dashas["Vimshottari"] if chart.dashas and "Vimshottari" in chart.dashas else None %}
+
+  {% if vim %}
+  <p class="small">
+    Vimshottari assigns nine planetary "Mahadashas" of fixed length, starting
+    from the lord of the birth nakshatra. Each Mahadasha is further divided
+    into nine Antardashas, and so on, producing increasingly precise timing.
+  </p>
+
+  <table class="data">
+    <thead>
+      <tr><th>#</th><th>Mahadasha Lord</th><th>Start</th><th>End</th><th>Duration</th></tr>
+    </thead>
+    <tbody>
+      {% for md in vim.periods %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong>{{ md.lord }}</strong></td>
+        <td>{{ md.start.strftime("%d %b %Y") }}</td>
+        <td>{{ md.end.strftime("%d %b %Y") }}</td>
+        <td class="numeric">{{ ((md.end - md.start).days / 365.25) | round(2) }} yrs</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {# Find current Mahadasha → expand its Antardashas #}
+  {% set now = generated_at %}
+  {% set current_md = None %}
+  {% for md in vim.periods %}
+    {% if md.start <= now and now <= md.end %}{% set current_md = md %}{% endif %}
+  {% endfor %}
+
+  {% if current_md %}
+  <div class="ornament"></div>
+  <h3>Current Mahadasha: {{ current_md.lord }} ({{ current_md.start.strftime("%b %Y") }} — {{ current_md.end.strftime("%b %Y") }})</h3>
+  <p class="small">Antardasha breakdown — sub-periods within the active Mahadasha:</p>
+
+  <table class="data">
+    <thead>
+      <tr><th>Antardasha Lord</th><th>Start</th><th>End</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for ad in current_md.children %}
+      <tr {% if ad.start <= now and now <= ad.end %}style="background: rgba(196, 30, 58, 0.08);"{% endif %}>
+        <td><strong>{{ current_md.lord }} – {{ ad.lord }}</strong></td>
+        <td>{{ ad.start.strftime("%d %b %Y") }}</td>
+        <td>{{ ad.end.strftime("%d %b %Y") }}</td>
+        <td>{% if ad.start <= now and now <= ad.end %}<span class="accent">◀ Active</span>{% elif ad.end < now %}<span class="muted">past</span>{% else %}<span class="muted">future</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% endif %}
+
+  {% if chart.dashas and "Yogini" in chart.dashas %}
+  <div class="ornament"></div>
+  <h3>Yogini Dasha (36-year cycle)</h3>
+  <table class="data">
+    <thead><tr><th>Yogini</th><th>Start</th><th>End</th></tr></thead>
+    <tbody>
+      {% for p in chart.dashas["Yogini"].periods[:12] %}
+      <tr {% if p.start <= generated_at and generated_at <= p.end %}style="background: rgba(196, 30, 58, 0.08);"{% endif %}>
+        <td>{{ p.lord }}</td>
+        <td>{{ p.start.strftime("%d %b %Y") }}</td>
+        <td>{{ p.end.strftime("%d %b %Y") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>

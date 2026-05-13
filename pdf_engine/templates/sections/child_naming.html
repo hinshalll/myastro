@@ -1,0 +1,39 @@
+<section class="section" data-title="Naming Suggestions">
+  <div class="section-header">
+    <h2>Naam-akshar — Name Suggestions by Nakshatra Pada</h2>
+    <span class="eyebrow">Aligned to {{ chart.nakshatra_profile.birth_nakshatra if chart.nakshatra_profile else "—" }}</span>
+  </div>
+
+  {% if chart.child_naming %}
+  {% set nm = chart.child_naming %}
+
+  <p class="small">
+    In the Vedic naming tradition, a newborn receives a name beginning with
+    the syllable associated with their birth nakshatra-pada. The Janma Nakshatra
+    for this chart yields four pada syllables — names from any one are aligned.
+    Useful for choosing a child's name today or rediscovering the chart owner's
+    canonical Naam-akshar.
+  </p>
+
+  <p>
+    <strong>Owner's Janma Nakshatra:</strong> {{ nm.owner_nakshatra }} ·
+    <strong>Pada:</strong> {{ nm.owner_pada }} ·
+    <strong>Canonical Naam-akshar:</strong> <em>{{ nm.owner_syllable }}</em>
+  </p>
+
+  <h3>Name Suggestions by Pada</h3>
+  <table class="data">
+    <thead><tr><th>Pada</th><th>Syllable</th><th>Male Names</th><th>Female Names</th></tr></thead>
+    <tbody>
+      {% for entry in nm.by_pada %}
+      <tr>
+        <td><strong>{{ entry.pada }}</strong></td>
+        <td><em>{{ entry.syllable }}</em></td>
+        <td>{% if entry.M %}{% for name, meaning in entry.M %}{{ name }}<span class="muted small"> ({{ meaning }})</span>{% if not loop.last %} · {% endif %}{% endfor %}{% else %}<span class="muted">— bank expanding —</span>{% endif %}</td>
+        <td>{% if entry.F %}{% for name, meaning in entry.F %}{{ name }}<span class="muted small"> ({{ meaning }})</span>{% if not loop.last %} · {% endif %}{% endfor %}{% else %}<span class="muted">— bank expanding —</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>

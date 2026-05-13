@@ -1,0 +1,77 @@
+<section class="section" data-title="Remedies">
+  <div class="section-header">
+    <h2>Upayas — Classical Remedies</h2>
+    <span class="eyebrow">Mantras · Ratnas · Yantras · Daan · Lal Kitab</span>
+  </div>
+
+  {% if chart.remedies %}
+  <p class="small">
+    Remedies do not "undo" karma — they channel it. Each upaya below is matched
+    to a specific imbalance in your chart, prioritised by severity.
+  </p>
+
+  <div class="ornament"></div>
+  <h3>Daily Practice (Routine)</h3>
+  <ol>
+    {% for line in chart.remedies.daily_practice %}<li>{{ line }}</li>{% endfor %}
+  </ol>
+
+  <h3>Per-Planet Remedies (Priority Order)</h3>
+  {% for p in chart.remedies.priority_planets %}
+    {% set r = chart.remedies.per_planet[p] %}
+    <div class="remedy-card">
+      <h4>{{ p }}</h4>
+      <p class="small muted">Deity: {{ r.deity }} · Vrat: {{ r.vrat }} · Colors: {{ r.colors|join(", ") }}</p>
+      <p class="mantra">{{ r.beej_mantra }}</p>
+      <p class="small">Japa: <strong>{{ "{:,}".format(r.japa_count) }}</strong> repetitions over 40 days.</p>
+      <p class="small">
+        <strong>Ratna:</strong> {{ r.ratna.primary }}
+        (substitute: {{ r.ratna.substitute }})
+        — wear on {{ r.ratna.finger }} finger,
+        {{ r.ratna.day_to_wear }},
+        set in {{ r.ratna.metal }},
+        {{ r.ratna.carat_range }}.
+      </p>
+      <p class="small"><strong>Yantra:</strong> {{ r.yantra }} ·
+         <strong>Rudraksha:</strong> {{ r.rudraksha }}</p>
+      <p class="small"><strong>Daan:</strong> {{ r.daan|join("; ") }} ({{ r.daan_day }})</p>
+      <p class="small"><strong>Lal Kitab:</strong> {{ r.lal_kitab|join(" ") }}</p>
+    </div>
+  {% endfor %}
+
+  {% if chart.remedies.per_dosha %}
+  <div class="ornament"></div>
+  <h3>Dosha-Specific Remedies</h3>
+  {% for dosha, r in chart.remedies.per_dosha.items() %}
+    <div class="remedy-card">
+      <h4>{{ dosha }}</h4>
+      <p><strong>Primary:</strong> {{ r.primary }}</p>
+      <p><strong>Puja:</strong> {{ r.puja }}</p>
+      <p class="mantra">{{ r.mantra }}</p>
+      <p><strong>Fasting:</strong> {{ r.fasting }} &nbsp;·&nbsp; <strong>Donation:</strong> {{ r.donation }}</p>
+      <p class="small"><strong>Lal Kitab:</strong> {{ r.lal_kitab }}</p>
+    </div>
+  {% endfor %}
+  {% endif %}
+
+  <div class="ornament"></div>
+  <h3>Complete Gemstone Reference</h3>
+  <table class="data">
+    <thead>
+      <tr><th>Graha</th><th>Primary</th><th>Substitute</th><th>Finger</th><th>Day</th><th>Metal</th></tr>
+    </thead>
+    <tbody>
+      {% for p, r in chart.remedies.gemstone_chart.items() %}
+      <tr>
+        <td><strong>{{ p }}</strong></td>
+        <td>{{ r.primary }}</td>
+        <td>{{ r.substitute }}</td>
+        <td>{{ r.finger }}</td>
+        <td>{{ r.day_to_wear }}</td>
+        <td>{{ r.metal }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>

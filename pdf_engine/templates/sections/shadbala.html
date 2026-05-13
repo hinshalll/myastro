@@ -1,0 +1,56 @@
+<section class="section" data-title="Shadbala">
+  <div class="section-header">
+    <h2>Shadbala — Six-Fold Planetary Strength</h2>
+    <span class="eyebrow">Quantitative Strength in Rupas</span>
+  </div>
+
+  {% if chart.shadbala %}
+  <p class="small">
+    Shadbala distils each planet's strength across six dimensions (positional,
+    directional, temporal, motional, natural, aspectual). One Rupa = 60 Virupas.
+    A planet meeting its classical minimum is "strong"; below = "weak".
+  </p>
+
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Graha</th>
+        <th>Total (Rupas)</th>
+        <th>Minimum</th>
+        <th>Status</th>
+        <th>Vimshopaka (D-16, max 20)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p, rupas in chart.shadbala.totals.items() %}
+      <tr>
+        <td><strong>{{ p }}</strong></td>
+        <td class="numeric">{{ "%.2f"|format(rupas) }}</td>
+        <td class="numeric">{{ chart.shadbala.minimums.get(p, "—") }}</td>
+        <td>{% if p in chart.shadbala.strong %}<span class="accent">✓ Strong</span>{% elif p in chart.shadbala.weak %}<span class="muted">✗ Weak</span>{% else %}<span class="muted">— Neutral</span>{% endif %}</td>
+        <td class="numeric">{{ "%.2f"|format(chart.shadbala.vimshopaka.get(p, 0)) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p>
+    <strong class="accent">Strongest:</strong> {{ chart.shadbala.strongest[0] }}
+    ({{ "%.2f"|format(chart.shadbala.strongest[1]) }} Rupas) &nbsp;·&nbsp;
+    <strong>Weakest:</strong> {{ chart.shadbala.weakest[0] }}
+    ({{ "%.2f"|format(chart.shadbala.weakest[1]) }} Rupas)
+  </p>
+
+  {% endif %}
+
+  {% if chart.bhava_bala %}
+  <div class="ornament"></div>
+  <h3>Bhava Bala — House Strength</h3>
+  <table class="data">
+    <thead><tr>{% for h in range(1,13) %}<th>H{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      <tr>{% for h in range(1,13) %}<td class="numeric">{{ "%.2f"|format(chart.bhava_bala[h]) }}</td>{% endfor %}</tr>
+    </tbody>
+  </table>
+  {% endif %}
+</section>

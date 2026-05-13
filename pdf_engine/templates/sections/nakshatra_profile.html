@@ -1,0 +1,48 @@
+<section class="section" data-title="Nakshatra Profile">
+  <div class="section-header">
+    <h2>Janma Nakshatra — The Lunar Mansion of Birth</h2>
+    <span class="eyebrow">{{ chart.nakshatra_profile.birth_nakshatra if chart.nakshatra_profile else "—" }}</span>
+  </div>
+
+  {% if chart.nakshatra_profile %}
+  {% set np = chart.nakshatra_profile %}
+
+  <div class="two-col">
+    <table class="data">
+      <thead><tr><th colspan="2">Identity</th></tr></thead>
+      <tbody>
+        <tr><td>Nakshatra</td><td><strong>{{ np.birth_nakshatra }}</strong></td></tr>
+        <tr><td>Pada (1–4)</td><td>{{ np.pada }}</td></tr>
+        <tr><td>Lord</td><td>{{ np.nakshatra_lord }}</td></tr>
+        <tr><td>Presiding Deity</td><td>{{ np.deity }}</td></tr>
+        <tr><td>Symbol</td><td><em>{{ np.symbol }}</em></td></tr>
+      </tbody>
+    </table>
+
+    <table class="data">
+      <thead><tr><th colspan="2">Inner Constitution</th></tr></thead>
+      <tbody>
+        <tr><td>Gana (Temperament)</td><td>{{ np.gana }}</td></tr>
+        <tr><td>Yoni (Animal Polarity)</td><td>{{ np.yoni[0] }} — {{ np.yoni[1] }}</td></tr>
+        <tr><td>Nadi (Pulse)</td><td>{{ np.nadi }}</td></tr>
+        <tr><td>Varna (Aptitude)</td><td>{{ np.varna }}</td></tr>
+        <tr><td>Vashya (Influence)</td><td>{{ np.vashya }}</td></tr>
+        <tr><td>Tatva (Element)</td><td>{{ np.tatva }}</td></tr>
+        <tr><td>Guna (Mode)</td><td>{{ np.guna }}</td></tr>
+        <tr><td>Psychological Gender</td><td>{{ np.gender }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ornament"></div>
+
+  <h3>Avakahada Chakra — Classical Birth Summary</h3>
+  <table class="data">
+    <tbody>
+      {% for row in np.avakahada_chakra %}
+        <tr><td><strong>{{ row[0] }}</strong></td><td>{{ row[1] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>

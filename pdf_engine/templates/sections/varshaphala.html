@@ -1,0 +1,53 @@
+<section class="section" data-title="Varshaphala">
+  <div class="section-header">
+    <h2>Varshaphala — Tajik Annual Chart</h2>
+    <span class="eyebrow">Solar Return · Muntha · Sahams</span>
+  </div>
+
+  {% if varshaphala %}
+  <p class="small">
+    Each year, the moment the Sun returns to its exact natal longitude defines
+    the "Varsha Pravesha" — the gate of the new astrological year. The
+    Muntha (year-pointer) and Sahams (calculated sensitive points) refine
+    year-specific themes.
+  </p>
+
+  <table class="data">
+    <thead><tr><th colspan="2">Year {{ varshaphala.year }} — Solar Return</th></tr></thead>
+    <tbody>
+      <tr><td>Solar Return (local)</td><td>{{ varshaphala.solar_return_local.strftime("%d %b %Y · %H:%M %Z") }}</td></tr>
+      <tr><td>Age this year</td><td>{{ varshaphala.muntha.age }}</td></tr>
+      <tr><td>Muntha sign</td><td>{{ varshaphala.muntha.sign }} (House {{ varshaphala.muntha.house_from_lagna }} from natal Lagna, lord {{ varshaphala.muntha.sign_lord }})</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ornament"></div>
+  <h3>Sahams — Sensitive Points for the Year</h3>
+  <table class="data">
+    <thead><tr><th>Saham</th><th>Topic</th><th>Sign</th><th>House from Lagna</th><th>Lord</th></tr></thead>
+    <tbody>
+      {% set topics = {
+        "Punya":"Virtue · happiness",
+        "Vidya":"Learning",
+        "Karya":"Work · accomplishments",
+        "Yashas":"Fame",
+        "Mitra":"Friends",
+        "Bhratri":"Siblings",
+        "Pitri":"Father",
+        "Matri":"Mother"
+      } %}
+      {% for name, info in varshaphala.sahams.items() %}
+      <tr>
+        <td><strong>{{ name }}</strong></td>
+        <td>{{ topics[name] }}</td>
+        <td>{{ info.sign }}</td>
+        <td class="numeric">H{{ info.house_from_lagna }}</td>
+        <td>{{ info.sign_lord }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Varshaphala data is computed on demand. If you're seeing this, the builder didn't attach it; check the builder's `_varshaphala_cache` step.</p>
+  {% endif %}
+</section>

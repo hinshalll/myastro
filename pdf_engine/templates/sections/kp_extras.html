@@ -1,0 +1,44 @@
+<section class="section" data-title="KP System">
+  <div class="section-header">
+    <h2>Krishnamurti Paddhati (KP)</h2>
+    <span class="eyebrow">Cuspal Sub-Lords &amp; Significators</span>
+  </div>
+
+  {% if chart.kp_extras %}
+  <p class="small">
+    KP uses a 249-fold subdivision of the zodiac (sub-lords) for highly precise
+    event-timing. The cuspal table below shows the sign-lord, star-lord
+    (nakshatra lord), and sub-lord for each of your 12 Placidus cusps.
+  </p>
+
+  <h3>Cuspal Table</h3>
+  <table class="data">
+    <thead>
+      <tr><th>Cusp</th><th>Longitude</th><th>Nakshatra</th><th>Sign-Lord</th><th>Star-Lord</th><th>Sub-Lord</th></tr>
+    </thead>
+    <tbody>
+      {% for c in chart.kp_extras.cusps %}
+      <tr>
+        <td><strong>H{{ c.cusp }}</strong></td>
+        <td class="numeric">{{ "%.4f"|format(c.longitude) }}°</td>
+        <td>{{ c.nakshatra }}</td>
+        <td>{{ c.sign_lord }}</td>
+        <td>{{ c.star_lord }}</td>
+        <td>{{ c.sub_lord }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="ornament"></div>
+  <h3>Planetary Significators (4-Step Rule)</h3>
+  <table class="data">
+    <thead><tr><th>Graha</th><th>Significator Chain</th></tr></thead>
+    <tbody>
+      {% for p, sig in chart.kp_extras.significators.items() %}
+      <tr><td><strong>{{ p }}</strong></td><td>{{ sig }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>

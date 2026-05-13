@@ -1,0 +1,23 @@
+<section class="section" data-title="Divisional Charts">
+  <div class="section-header">
+    <h2>Shodashavarga — 16 Divisional Charts</h2>
+    <span class="eyebrow">Each lens reveals one life domain</span>
+  </div>
+
+  <p class="small muted">
+    The Shodashavarga are sixteen sub-divisions of the natal chart, each
+    illuminating one specific life area. Read alongside D1, they refine the
+    natal promise. D9 (Navamsha) and D60 (Shashtiamsha) are the most decisive.
+  </p>
+
+  <div class="varga-grid">
+    {% for n in [1, 2, 3, 4, 7, 9, 10, 12, 16, 20, 24, 27, 30, 40, 45, 60] %}
+    {% set varga = chart.divisional_charts[n] %}
+    <div class="varga-cell">
+      {{ chart_svgs[n]|safe }}
+      <div class="vname">D{{ n }} {{ varga.name.split(" ", 1)[1] if " " in varga.name else varga.name }}</div>
+      <div class="vsubtitle">{{ varga.purpose }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>

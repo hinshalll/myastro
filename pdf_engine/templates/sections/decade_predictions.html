@@ -1,0 +1,24 @@
+<section class="section" data-title="Decade Predictions">
+  <div class="section-header">
+    <h2>Decade-by-Decade Life Map</h2>
+    <span class="eyebrow">Anchored to Vimshottari Mahadashas</span>
+  </div>
+
+  <p class="small muted">
+    Each decade is read through the Mahadasha lord active during that period,
+    crossed with the natal placement of that lord in your chart. The decades
+    aren't promises — they are the texture of the years.
+  </p>
+
+  {% if narrative and narrative.decade_predictions %}
+    {% for decade, paragraph in narrative.decade_predictions.items() %}
+      <div style="margin: 14pt 0; page-break-inside: avoid;">
+        <h3 style="margin-bottom: 4pt;">Age {{ decade }}</h3>
+        <p style="text-align: justify;">{{ paragraph }}</p>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted"><em>Decade predictions require the AI narrative layer.
+      Toggle "Include AI narrative" when generating the kundli.</em></p>
+  {% endif %}
+</section>

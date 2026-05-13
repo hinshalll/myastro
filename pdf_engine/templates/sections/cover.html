@@ -1,0 +1,25 @@
+<section class="section cover" data-title="">
+  <div class="frame">
+    <div class="deity-line">॥ श्री गणेशाय नमः ॥</div>
+    <div class="subtitle">{{ theme.cover_subtitle }}</div>
+    <h1 class="devanagari-name">{{ devanagari_name }}</h1>
+    <h1 class="latin-name">{{ chart.birth_data.name }}</h1>
+    <div class="ornament"></div>
+    <div class="birth-line">
+      Born {{ chart.datetime_local.strftime("%A, %d %B %Y") }}
+    </div>
+    <div class="birth-line">
+      at {{ chart.datetime_local.strftime("%I:%M %p") }} ·
+      {{ chart.birth_data.place }}
+    </div>
+    <div class="birth-line">
+      {{ chart.lagna.sign }} Lagna · {{ chart.planets["Moon"].sign }} Moon ·
+      {{ chart.planets["Sun"].sign }} Sun
+    </div>
+    <div class="footnote">
+      Computed with Swiss Ephemeris · Ayanamsha: {{ chart.ayanamsha_used|title }}
+      ({{ "%.4f"|format(chart.ayanamsha_value) }}°) ·
+      Generated {{ generated_at.strftime("%d %b %Y") }}
+    </div>
+  </div>
+</section>

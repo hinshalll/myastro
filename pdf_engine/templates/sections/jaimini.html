@@ -1,0 +1,55 @@
+<section class="section" data-title="Jaimini">
+  <div class="section-header">
+    <h2>Jaimini Supplements</h2>
+    <span class="eyebrow">Chara Karakas · Pada Lagnas · Karakamsa · Upapada</span>
+  </div>
+
+  {% if chart.jaimini %}
+  {% set j = chart.jaimini %}
+
+  <h3>Chara Karakas — The Seven Soul Significators</h3>
+  <table class="data">
+    <thead><tr><th>Karaka</th><th>Planet</th><th>Degree</th></tr></thead>
+    <tbody>
+      {% for k in j.chara_karakas %}
+      <tr><td><strong>{{ k.karaka }}</strong></td><td>{{ k.planet }}</td><td class="numeric">{{ "%.2f"|format(k.degree) }}°</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="ornament"></div>
+  <h3>Pada Lagnas (Arudhas) — Image of Each House</h3>
+  <table class="data">
+    <thead><tr><th>House</th><th>Pada Label</th><th>Sign</th><th>House from Lagna</th></tr></thead>
+    <tbody>
+      {% for h, info in j.pada_lagnas.items() %}
+      <tr>
+        <td>H{{ h }}</td>
+        <td><strong>{{ info.label }}</strong></td>
+        <td>{{ info.sign }}</td>
+        <td class="numeric">H{{ info.house_from_lagna }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="two-col" style="margin-top: 12pt;">
+    <table class="data">
+      <thead><tr><th colspan="2">Upapada Lagna (UL)</th></tr></thead>
+      <tbody>
+        <tr><td>Sign</td><td>{{ j.upapada.sign }}</td></tr>
+        <tr><td>House from Lagna</td><td>H{{ j.upapada.house_from_lagna }}</td></tr>
+      </tbody>
+    </table>
+
+    <table class="data">
+      <thead><tr><th colspan="2">Karakamsa</th></tr></thead>
+      <tbody>
+        <tr><td>Atmakaraka</td><td>{{ j.karakamsa.atmakaraka }}</td></tr>
+        <tr><td>D9 sign of AK</td><td>{{ j.karakamsa.d9_sign }}</td></tr>
+        <tr><td>House from Lagna</td><td>H{{ j.karakamsa.house_from_lagna }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>

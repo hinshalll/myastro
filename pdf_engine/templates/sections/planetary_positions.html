@@ -1,0 +1,78 @@
+<section class="section" data-title="Planetary Positions">
+  <div class="section-header">
+    <h2>Planetary Positions</h2>
+    <span class="eyebrow">Grahas at Birth · Sidereal (Lahiri)</span>
+  </div>
+
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Graha</th>
+        <th>Longitude</th>
+        <th>Rashi</th>
+        <th>House</th>
+        <th>Nakshatra · Pada</th>
+        <th>Nak. Lord</th>
+        <th>Sub-lord</th>
+        <th>Avastha</th>
+        <th>Dignity</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n, p in chart.planets.items() %}
+      <tr>
+        <td><strong>{{ p.name }}</strong>{% if p.is_retrograde %} <span class="accent">℞</span>{% endif %}{% if p.is_combust %} <span class="muted">☼</span>{% endif %}</td>
+        <td class="numeric">{{ p.longitude_dms }}</td>
+        <td>{{ p.sign }}</td>
+        <td class="numeric">H{{ p.house }}</td>
+        <td>{{ p.nakshatra }} · {{ p.pada }}</td>
+        <td>{{ p.nakshatra_lord }}</td>
+        <td>{{ p.sub_lord }}</td>
+        <td>{{ p.avastha }}</td>
+        <td class="dignity">{{ p.dignity or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="two-col" style="margin-top: 16pt;">
+    <table class="data">
+      <thead><tr><th colspan="2">Lagna Lord Chain</th></tr></thead>
+      <tbody>
+        <tr><td colspan="2" style="font-style: italic;">{{ chart.lagna.lord_chain }}</td></tr>
+      </tbody>
+    </table>
+
+    <table class="data">
+      <thead><tr><th colspan="2">Jaimini Chara Karakas</th></tr></thead>
+      <tbody>
+        {% for planet, name, deg in chart.chara_karakas.chain %}
+        <tr><td>{{ name }}</td><td>{{ planet }} ({{ "%.2f"|format(deg) }}°)</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if chart.conjunctions %}
+  <h3>Conjunctions</h3>
+  <ul>
+    {% for c in chart.conjunctions %}<li>{{ c }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if chart.mutual_aspects %}
+  <h3>Mutual Aspects</h3>
+  <ul>
+    {% for ma in chart.mutual_aspects %}<li>{{ ma }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if chart.functional %}
+  <h3>Functional Nature for {{ chart.lagna.sign }} Lagna</h3>
+  <div class="three-col">
+    <div><strong class="accent">Yogakarakas:</strong><br>{{ chart.functional.yogakarakas|join(", ") or "—" }}</div>
+    <div><strong>Functional Benefics:</strong><br>{{ chart.functional.benefics|join(", ") or "—" }}</div>
+    <div><strong>Functional Malefics:</strong><br>{{ chart.functional.malefics|join(", ") or "—" }}</div>
+  </div>
+  {% endif %}
+</section>
