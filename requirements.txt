@@ -10,7 +10,7 @@ imageio
 imageio-ffmpeg
 Pillow
 requests
-scikit-image==0.26.0
+scikit-image==0.25.2
 fpdf2==2.7.9
 scipy
 qdrant-client
