@@ -1,6 +1,7 @@
 streamlit
-numpy<2.0
+numpy<2
 mediapipe==0.10.14
+opencv-python-headless==4.10.0.82
 google-generativeai
 pyswisseph
 geopy
@@ -18,4 +19,3 @@ langchain-qdrant
 langchain
 langchain-huggingface
 sentence-transformers
-opencv-python-headless==4.10.0.82
