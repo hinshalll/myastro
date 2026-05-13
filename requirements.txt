@@ -3,7 +3,6 @@ numpy<2.0
 mediapipe==0.10.14
 google-generativeai
 pyswisseph
-opencv-python-headless==4.11.0.86
 geopy
 timezonefinder
 streamlit-local-storage
@@ -19,3 +18,4 @@ langchain-qdrant
 langchain
 langchain-huggingface
 sentence-transformers
+opencv-python-headless==4.11.0.86
