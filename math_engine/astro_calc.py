@@ -221,17 +221,32 @@ def detect_graha_yuddha(jd_ut, planet_data):
 
 
 def get_functional_planets(ls):
-    trikona={1,5,9}; kendra={1,4,7,10}; trika={6,8,12}
+    # Classify each planet by its functional nature for the given Lagna.
+    #
+    # Per BPHS / Phaladeepika (practical Parashara's Light / JH convention):
+    #
+    #   Yogakaraka  — rules at least one PURE trikona in {5, 9} AND at least
+    #                 one kendra in {1, 4, 7, 10}. The 1st house alone counts
+    #                 as a kendra (not a trikona) for this rule, so ruling only
+    #                 {1, 10}-type pairs does NOT make a yogakaraka. This
+    #                 produces the canonical 6 yogakaraka Lagnas (Cancer/Leo
+    #                 → Mars, Taurus/Libra → Saturn, Capricorn/Aquarius → Venus).
+    #   Functional Benefic — rules a trikona (1, 5, 9) but is not a yogakaraka.
+    #   Functional Malefic — rules a dusthana (6, 8, 12) WITHOUT also ruling
+    #                 a trikona (trikona lordship neutralises dusthana lordship).
+    #   Neutral     — anything else.
+    trikona_pure={5,9}; trikona_full={1,5,9}; kendra={1,4,7,10}; trika={6,8,12}
     house_lords={}
     for h in range(1,13): lord=SIGN_LORDS_MAP[(ls+h-1)%12]; house_lords.setdefault(lord,[]).append(h)
     yks=[]; bens=[]; mals=[]; neu=[]
     for planet,houses in house_lords.items():
-        has_tri=any(h in trikona for h in houses)
-        has_ken=any(h in kendra for h in houses)
-        has_trika=any(h in trika for h in houses)
-        if has_tri and has_ken: yks.append(planet)
-        elif has_tri: bens.append(planet)
-        elif has_trika and not has_tri: mals.append(planet)
+        rules_trikona_5_9=any(h in trikona_pure for h in houses)
+        rules_trikona=any(h in trikona_full for h in houses)
+        rules_kendra=any(h in kendra for h in houses)
+        rules_dusthana=any(h in trika for h in houses)
+        if rules_trikona_5_9 and rules_kendra: yks.append(planet)
+        elif rules_trikona: bens.append(planet)
+        elif rules_dusthana: mals.append(planet)
         else: neu.append(planet)
     return bens,mals,yks,neu
 
@@ -798,11 +813,15 @@ def d30_si(lon):
 
 
 def d60_si(lon):
-    s = sign_index_from_lon(lon); part = int((lon % 30) / 0.5)  
-    if s % 2 == 0:  
-        return part % 12
-    else:           
-        return (11 - (part % 12)) % 12
+    # D60 Shashtiamsha — BPHS Ch.7 / Jagannatha Hora convention:
+    # 60 parts of 0°30' each, count forward from the sign itself for all signs.
+    #     D60_sign = (natal_sign + part_number) % 12
+    # Previously this function used a non-BPHS variant (count from Aries for
+    # odd / backward from Pisces for even). Standardised to match the
+    # Parashara's Light / JH default — most rigorous open reference.
+    s = sign_index_from_lon(lon)
+    part = min(int((lon % 30) / 0.5), 59)
+    return (s + part) % 12
 
 
 def get_placidus_house(lon, cusps):

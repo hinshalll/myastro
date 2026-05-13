@@ -57,7 +57,11 @@ YOGA_NAMES = ["Vishkambha","Priti","Ayushman","Saubhagya","Sobhana","Atiganda","
               "Siddhi","Vyatipata","Variyan","Parigha","Siva","Siddha","Sadhya","Subha",
               "Sukla","Brahma","Indra","Vaidhriti"]
 
-YEAR_DAYS=365.2425; MOVABLE_SIGNS={0,3,6,9}; FIXED_SIGNS={1,4,7,10}
+# YEAR_DAYS = length of one Vimshottari "year" in solar days.
+# Standardised on 365.25 (Julian year) to match Astrosage, Parashara's Light,
+# and Jagannatha Hora. Previously 365.2425 (Gregorian average) which produced
+# ~3-day drift over a 120-year cycle vs. industry-standard dasha tables.
+YEAR_DAYS=365.25; MOVABLE_SIGNS={0,3,6,9}; FIXED_SIGNS={1,4,7,10}
 
 DEB_SIGN_LORDS={"Sun":"Venus","Moon":"Mars","Mars":"Moon","Mercury":"Jupiter",
                 "Jupiter":"Saturn","Venus":"Mercury","Saturn":"Mars"}
@@ -109,7 +113,7 @@ CELTIC_CROSS_POSITIONS = [
 
 TAROT_BASE="https://raw.githubusercontent.com/hinshalll/text2kprompt/main/tarot/"
 
-NAV_PAGES = ["Dashboard", "Consultation Room", "The Oracle", "Mystic Tarot", "Horoscopes", "Numerology", "Palm Reading", "Saved Profiles"]
+NAV_PAGES = ["Dashboard", "Consultation Room", "The Oracle", "Mystic Tarot", "Horoscopes", "Numerology", "Palm Reading", "Kundli", "Saved Profiles"]
 
 PLANET_RE = r"(Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu)"
 
