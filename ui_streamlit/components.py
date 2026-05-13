@@ -164,14 +164,14 @@ div[data-testid="stButton"]>button:not([kind="primary"]):hover{background:rgba(2
 
 def render_bottom_nav():
     main_items = [("🌌","Home","Dashboard"),("💬","Chat","Consultation Room"),("🔮","Oracle","The Oracle"),("🃏","Tarot","Mystic Tarot")]
-    more_items = [("🌟","Horoscopes","Horoscopes"),("🔢","Numerology","Numerology"),("✋","Palmistry","Palm Reading"),("📖","Profiles","Saved Profiles")]
+    more_items = [("🌟","Horoscopes","Horoscopes"),("🔢","Numerology","Numerology"),("✋","Palmistry","Palm Reading"),("📜","Kundli","Kundli"),("📖","Profiles","Saved Profiles")]
 
     nav_html = '<div class="bottom-nav"><div class="bottom-nav-inner" style="position:relative;">'
     for icon, label, page in main_items:
         active = "active" if st.session_state.nav_page == page else ""
         nav_html += f'<a class="bnav-btn {active}" target="_self" href="?p={page.replace(" ", "%20")}" title="{label}"><span class="bnav-icon">{icon}</span><span>{label}</span></a>'
 
-    more_active = "active" if st.session_state.nav_page in ["Horoscopes","Numerology","Palm Reading","Saved Profiles"] else ""
+    more_active = "active" if st.session_state.nav_page in ["Horoscopes","Numerology","Palm Reading","Kundli","Saved Profiles"] else ""
     nav_html += f'<input type="checkbox" id="more-toggle"><label for="more-toggle" class="more-label {more_active}" title="More"><span class="bnav-icon">☰</span><span>More</span></label>'
     nav_html += '<label for="more-toggle" class="dropup-overlay"></label>'
     nav_html += '<div class="bnav-dropup">'
@@ -193,7 +193,8 @@ def render_sidebar():
             ("🃏 Mystic Tarot", "Mystic Tarot"),
             ("🌟 Horoscopes", "Horoscopes"),
             ("🔢 Numerology", "Numerology"),
-            ("✋ Palm Reading", "Palm Reading"), 
+            ("✋ Palm Reading", "Palm Reading"),
+            ("📜 Kundli", "Kundli"),
             ("📖 Saved Profiles", "Saved Profiles")
         ]
         

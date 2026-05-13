@@ -209,7 +209,8 @@ def _run_oracle(mission):
                 except Exception as e:
                     result = f"⚠️ Reading generation paused ({str(e)[:100]}). Your chart data was computed. Please try again in ~1 minute."
                 st.session_state[f"oracle_{mission}_history"] = [
-                    {"role":"user","parts":[final]},{"role":"model","parts":[result]}
+                    {"role":"user",  "display":"🔮 Full Life Reading", "parts":[final]},
+                    {"role":"model", "display":result,                 "parts":[result]},
                 ]
 
             elif mission == "Destiny & Marriage Chances":
@@ -231,7 +232,8 @@ def _run_oracle(mission):
                 result = generate_content_with_fallback(final, knowledge_files=marriage_book)
                 if result:
                     st.session_state[f"oracle_{mission}_history"] = [
-                        {"role":"user","parts":[final]},{"role":"model","parts":[result]}
+                        {"role":"user",  "display":"💞 Destiny Marriage Matrix", "parts":[final]},
+                        {"role":"model", "display":result,                       "parts":[result]},
                     ]
 
             elif mission == "Matchmaking / Compatibility":
@@ -261,7 +263,8 @@ def _run_oracle(mission):
                 except Exception as e:
                     result = f"⚠️ Reading paused ({str(e)[:100]}). Please try again in ~1 minute."
                 st.session_state[f"oracle_{mission}_history"] = [
-                    {"role":"user","parts":[final]},{"role":"model","parts":[result]}
+                    {"role":"user",  "display":"✦ Compatibility Match", "parts":[final]},
+                    {"role":"model", "display":result,                   "parts":[result]},
                 ]
 
             elif mission == "Comparison (Multiple Profiles)":
@@ -275,13 +278,63 @@ def _run_oracle(mission):
                 except Exception as e:
                     result = f"⚠️ Reading paused ({str(e)[:100]}). Please try again in ~1 minute."
                 st.session_state[f"oracle_{mission}_history"] = [
-                    {"role":"user","parts":[final]},{"role":"model","parts":[result]}
+                    {"role":"user",  "display":"⚖ Profile Comparison", "parts":[final]},
+                    {"role":"model", "display":result,                   "parts":[result]},
                 ]
 
         if final:
             st.session_state[f"oracle_prompt_{mission}"] = final
 
-    if f"oracle_prompt_{mission}" in st.session_state:
+    # ── Render results ────────────────────────────────────────────────────────
+    # Pre-generated missions (Full Life Reading, Matchmaking, Destiny, Comparison)
+    # have their result already in history — render it directly without re-calling
+    # the AI (which would generate a second reading on every page rerender).
+    # Prashna and Gochara use stream_ai_with_followup for generation.
+
+    pre_generated = {"Deep Personal Analysis", "Matchmaking / Compatibility",
+                     "Destiny & Marriage Chances", "Comparison (Multiple Profiles)"}
+
+    if mission in pre_generated:
+        history = st.session_state.get(f"oracle_{mission}_history", [])
+        for msg in history:
+            if not msg.get("hidden", False):
+                with st.chat_message(msg["role"], avatar="🪐" if msg["role"] == "model" else "👤"):
+                    display = msg.get("display") or (msg.get("parts") or [""])[0]
+                    st.markdown(display)
+
+        # PDF button for pre-generated reading
+        last_model = next(
+            (m.get("display") or (m.get("parts") or [""])[0]
+             for m in reversed(history) if m.get("role") == "model"),
+            None,
+        )
+        if last_model and not last_model.startswith("⚠️") and history:
+            try:
+                from ui_streamlit.views.astro_pdf import build_astro_pdf
+                import datetime as _dt
+                feature_labels = {
+                    "Deep Personal Analysis":        ("Full Life Reading",       "★"),
+                    "Matchmaking / Compatibility":   ("Compatibility Match",     "♥"),
+                    "Destiny & Marriage Chances":    ("Destiny Marriage Matrix", "♦"),
+                    "Comparison (Multiple Profiles)":("Profile Comparison",      "⚖"),
+                }
+                title, emoji = feature_labels.get(mission, ("Oracle Reading", "*"))
+                pdf = build_astro_pdf(
+                    feature_title=title, feature_emoji=emoji,
+                    sections=[{"heading": "", "body": last_model}],
+                    user_name=dp.get("name", "") if dp else "",
+                    metadata={"Date": _dt.datetime.now().strftime("%B %d, %Y")},
+                )
+                st.download_button(
+                    "⬇ Download PDF", data=pdf,
+                    file_name=f"oracle_{mission.lower().replace(' ','_')}.pdf",
+                    mime="application/pdf", key=f"oracle_pdf_{mission}",
+                )
+            except Exception:
+                pass
+
+    elif f"oracle_prompt_{mission}" in st.session_state:
+        # Prashna and Gochara — live generation via stream_ai_with_followup
         oracle_files = None
         if mission == "Prashna Kundli":
             oracle_files = get_knowledge_files_cached(["kp6.md"])
@@ -292,4 +345,5 @@ def _run_oracle(mission):
             f"oracle_{mission}_history",
             "The Master Astrologer is writing...",
             knowledge_files=oracle_files,
+            hide_user_prompt=True,
         )

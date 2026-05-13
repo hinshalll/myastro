@@ -107,3 +107,26 @@ RULES:
 
                 st.session_state[memory_key].append({"role":"user",  "display":q,        "internal":q})
                 st.session_state[memory_key].append({"role":"model", "display":full_txt,  "internal":full_txt})
+
+                # PDF download of this response
+                try:
+                    from ui_streamlit.views.astro_pdf import build_astro_pdf
+                    import datetime
+                    pdf = build_astro_pdf(
+                        feature_title = "Consultation Reading",
+                        feature_emoji = "♋",
+                        sections      = [
+                            {"heading": "Your Question", "body": q},
+                            {"heading": "The Astrologer's Answer", "body": full_txt},
+                        ],
+                        user_name     = dp.get("name", ""),
+                        metadata      = {"Date": datetime.datetime.now().strftime("%B %d, %Y")},
+                    )
+                    st.download_button(
+                        "⬇ Download this response as PDF",
+                        data=pdf,
+                        file_name="consultation.pdf",
+                        mime="application/pdf",
+                    )
+                except Exception:
+                    pass

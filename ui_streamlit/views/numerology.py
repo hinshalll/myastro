@@ -21,6 +21,24 @@ from ui_streamlit.components import render_profile_form, resolve_profile, stream
 from ui_streamlit.cache import get_knowledge_files_cached
 
 
+def _num_pdf(title, user_name, metadata, chat_key):
+    """Build PDF from last AI message in the given chat key."""
+    try:
+        from ui_streamlit.views.astro_pdf import build_astro_pdf
+        msgs = st.session_state.get(chat_key, [])
+        reading = next((m.get("display") or (m.get("parts") or [""])[0]
+                        for m in reversed(msgs) if m.get("role") == "model"), "")
+        if not reading:
+            return None
+        return build_astro_pdf(
+            feature_title=title, feature_emoji="♦",
+            sections=[{"heading": "", "body": reading}],
+            user_name=user_name, metadata=metadata,
+        )
+    except Exception:
+        return None
+
+
 def show_numerology():
     components.html("""<script>setTimeout(function(){var b=window.parent.document.querySelector('button[aria-label="Collapse sidebar"]');if(b&&window.parent.innerWidth<=768)b.click();},80);</script>""", height=0, width=0)
     st.markdown("<h1>🔢 Numerology</h1>", unsafe_allow_html=True)
@@ -75,13 +93,25 @@ def show_numerology():
 
             st.session_state.num_prompt = build_numerology_prompt(name, dob_str, lp, dest, soul, pers, dossier, question, system)
             st.session_state.num_chat   = []
+            st.session_state.num_lp     = lp
 
         if "num_prompt" in st.session_state:
             num_files = (get_knowledge_files_cached(["inum1.md","inum2.md"])
                          if "Vedic" in system
                          else get_knowledge_files_cached(["wnum.md"]))
             stream_ai_with_followup(st.session_state.num_prompt, "num_chat",
-                                    "Analysing your numbers...", knowledge_files=num_files)
+                                    "Analysing your numbers...", knowledge_files=num_files,
+                                    hide_user_prompt=True)
+            pdf = _num_pdf(
+                f"Numerology Report ({system.split('(')[0].strip()})",
+                (dp["name"] if dp else ""),
+                {"Life Path": str(st.session_state.get("num_lp","?")),
+                 "System": system.split("(")[0].strip()},
+                "num_chat",
+            )
+            if pdf:
+                st.download_button("⬇ Download PDF", data=pdf,
+                    file_name="numerology_report.pdf", mime="application/pdf", key="num_pdf_btn")
 
     # ── Personal Cycles & Pinnacles ───────────────────────────────────────────
     with tab2:
@@ -159,12 +189,24 @@ Explain:
 4. The currently active Challenge Number — what specific obstacle is the universe asking you to master?
 5. How the Pinnacle and Challenge work together as a push-pull dynamic
 </mission>"""
-            st.session_state.cyc_prompt = prompt
-            st.session_state.cyc_chat   = []
+            st.session_state.cyc_prompt   = prompt
+            st.session_state.cyc_chat     = []
+            st.session_state.cyc_name_val = cyc_name.strip()
 
         if "cyc_prompt" in st.session_state:
             num_files = (get_knowledge_files_cached(["inum1.md","inum2.md"])
                          if "Vedic" in sys3
                          else get_knowledge_files_cached(["wnum.md"]))
             stream_ai_with_followup(st.session_state.cyc_prompt, "cyc_chat",
-                                    "Interpreting life cycles...", knowledge_files=num_files)
+                                    "Interpreting life cycles...", knowledge_files=num_files,
+                                    hide_user_prompt=True)
+            pdf = _num_pdf(
+                "Numerology Cycles & Pinnacles",
+                (dp["name"] if dp else ""),
+                {"Name": st.session_state.get("cyc_name_val",""),
+                 "System": sys3.split("(")[0].strip()},
+                "cyc_chat",
+            )
+            if pdf:
+                st.download_button("⬇ Download PDF", data=pdf,
+                    file_name="numerology_cycles.pdf", mime="application/pdf", key="cyc_pdf_btn")

@@ -22,6 +22,23 @@ from ui_streamlit.cache import get_knowledge_files_cached
 from datetime import date
 
 
+def _tarot_pdf(title, metadata, chat_key):
+    try:
+        from ui_streamlit.views.astro_pdf import build_astro_pdf
+        msgs = st.session_state.get(chat_key, [])
+        reading = next((m.get("display") or (m.get("parts") or [""])[0]
+                        for m in reversed(msgs) if m.get("role") == "model"), "")
+        if not reading:
+            return None
+        return build_astro_pdf(
+            feature_title=title, feature_emoji="♠",
+            sections=[{"heading": "", "body": reading}],
+            user_name="", metadata=metadata,
+        )
+    except Exception:
+        return None
+
+
 def show_tarot():
     components.html("""<script>setTimeout(function(){var b=window.parent.document.querySelector('button[aria-label="Collapse sidebar"]');if(b&&window.parent.innerWidth<=768)b.click();},80);</script>""", height=0, width=0)
     st.markdown("<h1>🃏 Mystic Tarot</h1>", unsafe_allow_html=True)
@@ -77,7 +94,15 @@ def show_tarot():
             st.markdown(f"**Cards:** {' · '.join(f'{c} ({s})' for c,s in zip(st.session_state.tarot3_cards, st.session_state.tarot3_states))}")
             prompt = build_tarot_prompt(q, st.session_state.tarot3_cards, st.session_state.tarot3_states, st.session_state.tarot3_mode)
             stream_ai_with_followup(prompt, "tarot3_chat", "Interpreting the cards...",
-                                    knowledge_files=get_knowledge_files_cached(["tguide.md"]))
+                                    knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                                    hide_user_prompt=True)
+            pdf = _tarot_pdf("Three-Card Tarot Reading",
+                {"Cards": " · ".join(f"{c} ({s})" for c,s in zip(
+                    st.session_state.tarot3_cards, st.session_state.tarot3_states)),
+                 "Spread": st.session_state.tarot3_mode}, "tarot3_chat")
+            if pdf:
+                st.download_button("⬇ Download PDF", data=pdf,
+                    file_name="tarot_three_card.pdf", mime="application/pdf", key="t3_pdf")
             if st.button("🔄 New Reading", key="reset3"):
                 st.session_state.tarot3_drawn = False; st.session_state.tarot3_cards = []; st.rerun()
 
@@ -101,7 +126,13 @@ def show_tarot():
                 build_yesno_prompt(q, st.session_state.yn_card, st.session_state.yn_state),
                 "yn_chat", "Sensing the answer...",
                 knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                hide_user_prompt=True,
             )
+            pdf = _tarot_pdf("Yes / No Oracle",
+                {"Card": f"{st.session_state.yn_card} ({st.session_state.yn_state})"}, "yn_chat")
+            if pdf:
+                st.download_button("⬇ Download PDF", data=pdf,
+                    file_name="tarot_yesno.pdf", mime="application/pdf", key="yn_pdf")
             if st.button("🔄 Ask Again", key="reset_yn"):
                 st.session_state.yn_drawn = False; st.session_state.yn_card = None; st.rerun()
 
@@ -124,7 +155,13 @@ def show_tarot():
                 st.markdown(f"**{CELTIC_CROSS_POSITIONS[i]}:** {c} ({s})")
             prompt = build_celtic_cross_prompt(q or "General life overview", st.session_state.cc_cards, st.session_state.cc_states)
             stream_ai_with_followup(prompt, "cc_chat", "Weaving the narrative...",
-                                    knowledge_files=get_knowledge_files_cached(["tguide.md"]))
+                                    knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                                    hide_user_prompt=True)
+            pdf = _tarot_pdf("Celtic Cross Tarot Reading",
+                {"Cards": ", ".join(st.session_state.cc_cards[:3]) + "..."}, "cc_chat")
+            if pdf:
+                st.download_button("⬇ Download PDF", data=pdf,
+                    file_name="tarot_celtic_cross.pdf", mime="application/pdf", key="cc_pdf")
             if st.button("🔄 New Celtic Cross", key="reset_cc"):
                 st.session_state.cc_drawn = False; st.session_state.cc_cards = []; st.rerun()
 
@@ -148,6 +185,12 @@ def show_tarot():
                 build_birth_card_prompt(card, str(st.session_state.bc_dob)),
                 "bc_chat", "Unlocking archetype...",
                 knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                hide_user_prompt=True,
             )
+            pdf = _tarot_pdf("Tarot Birth Card Reading",
+                {"Birth Card": card, "Date of Birth": str(st.session_state.bc_dob)}, "bc_chat")
+            if pdf:
+                st.download_button("⬇ Download PDF", data=pdf,
+                    file_name="tarot_birth_card.pdf", mime="application/pdf", key="bc_pdf")
             if st.button("🔄 Check Another Date", key="reset_bc"):
                 st.session_state.bc_revealed = False; st.rerun()

@@ -3,92 +3,37 @@ ui_streamlit/views/palm_pdf.py
 ================================
 Premium PDF builder for palm readings.
 
-Uses fpdf2 (already in requirements.txt). Produces a multi-page PDF with:
-  - Cover page: deep night-sky background, gold title, palm photo, name, date
-  - Page 2: observations grid (lines, mounts, fingers) in two columns
-  - Pages 3+: the full reading text, properly typeset with section headers
-  - Footer on every reading page
-
-Design language:
-  - Deep midnight blue background on cover (#0e1117)
-  - Gold accent (#d4af37) for headers and dividers
-  - Warm cream body text on a soft off-white inside pages for legibility
-  - Generous margins (18mm), proper section breaks
+Structural difference from astro_pdf.py: palm has its own two-column
+observations grid (lines + mounts) and a cover with the isolated hand photo.
+Everything else (palette, base class, section rendering, closing page) is
+imported from astro_pdf.py so both files stay in sync automatically.
 """
 
 import io
 import re
 import datetime
-from fpdf import FPDF
 
-
-# ── Colour palette ─────────────────────────────────────────────────────────────
-GOLD       = (212, 175, 55)
-GOLD_DIM   = (180, 145, 35)
-NIGHT      = (14,  17,  23)
-DEEP       = (23,  19,  44)
-CREAM      = (250, 247, 240)
-INK        = (38,  34,  28)
-INK_SOFT   = (105, 100, 92)
-ROSE_GOLD  = (200, 145, 110)
-
-# ── Layout ─────────────────────────────────────────────────────────────────────
-PAGE_W = 210  # A4 width mm
-PAGE_H = 297
-MARGIN = 18
+# Shared palette, helpers, and base class from astro_pdf
+from ui_streamlit.views.astro_pdf import (
+    AstroPDF, _safe, _draw_sections,
+    GOLD, GOLD_DIM, NIGHT, DEEP, CREAM, INK, INK_SOFT,
+    PAGE_W, PAGE_H, MARGIN,
+)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PDF CLASS
 # ══════════════════════════════════════════════════════════════════════════════
 
-class PalmReadingPDF(FPDF):
+
+# PalmReadingPDF is AstroPDF with 'Palm Reading' as the feature title
+class PalmReadingPDF(AstroPDF):
     def __init__(self):
-        super().__init__(orientation="P", unit="mm", format="A4")
-        self.set_auto_page_break(auto=True, margin=20)
-        self.set_margins(MARGIN, MARGIN, MARGIN)
-        self._is_cover = False
-        self._content_started = False  # Goes True after the cover is fully done
-
-    def header(self):
-        if self._is_cover or not self._content_started:
-            return
-        self.set_draw_color(*GOLD_DIM)
-        self.set_line_width(0.25)
-        self.line(MARGIN, 14, PAGE_W - MARGIN, 14)
-        self.set_font("Helvetica", "I", 8)
-        self.set_text_color(*INK_SOFT)
-        self.set_y(8)
-        self.cell(0, 5, "Palm Reading  ·  Astro Suite  ·  Samudrika Shastra", align="C")
-        self.ln(10)
-
-    def footer(self):
-        if self._is_cover or not self._content_started:
-            return
-        # Page number = current page - 1 (cover is page 1, but uncounted)
-        page_num = self.page_no() - 1
-        if page_num < 1:
-            return
-        self.set_y(-14)
-        self.set_font("Helvetica", "I", 8)
-        self.set_text_color(*INK_SOFT)
-        self.cell(0, 5, f"Page {page_num}", align="C")
+        super().__init__('Palm Reading')
 
 
-def _safe_text(s):
-    """Strip characters fpdf can't render in core fonts (anything outside latin-1)."""
-    if not s:
-        return ""
-    return (s.replace("—", "-").replace("–", "-")
-             .replace("’", "'").replace("‘", "'")
-             .replace("“", '"').replace("”", '"')
-             .replace("…", "...").replace("·", "•")
-             .encode("latin-1", "ignore").decode("latin-1"))
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# COVER PAGE
-# ══════════════════════════════════════════════════════════════════════════════
+# _safe_text is an alias for the shared _safe imported from astro_pdf
+_safe_text = _safe
 
 def _draw_cover(pdf: PalmReadingPDF, palm_png_bytes: bytes, user_name: str, date_str: str):
     pdf._is_cover = True
