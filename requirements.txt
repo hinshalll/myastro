@@ -24,3 +24,7 @@ pydantic
 opencv-python-headless
 mediapipe
 numpy
+
+# ── LangChain integrations (used by qdrant_utils.py for vector search) ─
+langchain-qdrant
+langchain-huggingface
