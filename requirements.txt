@@ -22,7 +22,7 @@ pydantic
 
 # ── Palm / Vision deps (used by palm_vision module) ────────────────
 opencv-python-headless
-mediapipe
+mediapipe==0.10.14
 numpy
 
 # ── LangChain integrations (used by qdrant_utils.py for vector search) ─
