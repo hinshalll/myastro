@@ -22,16 +22,16 @@ import PIL.Image
 
 from math_engine.palm_vision import analyze_palm
 from math_engine.dossier_builder import generate_astrology_dossier
-from ai_engine.palm_vision_ai import read_palm
+from features.palmistry.vlm_reader import read_palm
 from ui_streamlit.state import get_default_profile
 
 try:
-    from ai_engine.palm_knowledge_lookup import get_palm_context
+    from features.palmistry.knowledge_lookup import get_palm_context
 except Exception:
     get_palm_context = None
 
 try:
-    from ai_engine.palmistry_qdrant import query_palmistry
+    from features.palmistry.qdrant_search import query_palmistry
 except Exception:
     query_palmistry = None
 

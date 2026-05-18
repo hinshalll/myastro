@@ -31,7 +31,7 @@ import numpy as np
 from functools import lru_cache
 
 from ai_engine.gemini_client import get_ai_model_by_name
-from ai_engine.prompts import build_palm_reading_prompt
+from features.palmistry.prompts import build_palm_reading_prompt
 
 
 # ── MODEL CONFIG ──────────────────────────────────────────────────────────────

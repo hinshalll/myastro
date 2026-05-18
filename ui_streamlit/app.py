@@ -37,7 +37,7 @@ from features.tarot.view               import show_tarot
 from features.horoscopes.view          import show_horoscopes
 from features.numerology.view          import show_numerology
 from features.vault.view               import show_vault
-from ui_streamlit.views.palmistry      import show_palmistry
+from features.palmistry.view           import show_palmistry
 from features.kundli.view              import show_kundli
 
 # ── page config ───────────────────────────────────────────────────────────────
