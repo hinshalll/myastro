@@ -13,7 +13,7 @@ Kundli page — two modes:
                     predictions, Western appendix. Free in this prototype;
                     paid in the mobile app.
 
-All heavy lifting lives in math_engine.kundli + pdf_engine — this view is
+All heavy lifting lives in shared.astro.kundli + shared.pdf — this view is
 a thin Streamlit shim. When the mobile app ships, the equivalent layer
 there imports the same backend.
 """
@@ -21,11 +21,11 @@ there imports the same backend.
 import streamlit as st
 import base64
 
-from math_engine.kundli import (
+from shared.astro.kundli import (
     BirthData, compute_chart, yoga_audit, sade_sati_timeline,
 )
-from pdf_engine import build_kundli_pdf, THEMES
-from pdf_engine.kundli_pdf import render as render_chart_svg
+from shared.pdf import build_kundli_pdf, THEMES
+from shared.pdf.kundli_pdf import render as render_chart_svg
 from features.kundli.content import (
     generate_kundli_content, is_available as ai_is_available,
 )
@@ -549,7 +549,7 @@ def _render_free_kundli(chart, chart_style: str):
         sb = chart.shadbala or {}
         focus_planet = (rem.get("priority_planets", []) or [None])[0]
         # Lucky day = focus planet's weekday
-        from math_engine.kundli import PLANET_REMEDIES
+        from shared.astro.kundli import PLANET_REMEDIES
         focus_info = PLANET_REMEDIES.get(focus_planet, {}) if focus_planet else {}
 
         lk1, lk2, lk3 = st.columns(3)

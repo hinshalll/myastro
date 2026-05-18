@@ -19,7 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from ai_engine.knowledge import rag_chunks, rag_context, build_topic_query, build_comparison_knowledge
+from shared.ai.knowledge import rag_chunks, rag_context, build_topic_query, build_comparison_knowledge
 
 CASES = [
     # (feature_label, query, books, expected_books_in_results)

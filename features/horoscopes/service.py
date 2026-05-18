@@ -1,6 +1,6 @@
 """features.horoscopes.service — pure-Python forecast generators.
 
-Replaces the old ai_engine/forecasts.py:generate_western_forecast / generate_vedic_forecast
+Replaces the old shared.ai/forecasts.py:generate_western_forecast / generate_vedic_forecast
 functions. They've been moved here so horoscope-related code lives in one place.
 
 No Streamlit. The 24-hour caching wrapper lives in ui_streamlit/cache.py for now;
@@ -13,13 +13,13 @@ from zoneinfo import ZoneInfo
 
 import swisseph as swe
 
-from math_engine.constants import PLANETS
-from math_engine.astro_calc import (
+from shared.astro.constants import PLANETS
+from shared.astro.astro_calc import (
     local_to_julian_day, get_planet_longitude_and_speed,
     sign_index_from_lon, sign_name, get_rahu_longitude,
 )
-from ai_engine.gemini_client import generate_content_with_fallback
-from ai_engine.knowledge import rag_context
+from shared.ai.gemini_client import generate_content_with_fallback
+from shared.ai.knowledge import rag_context
 
 from features.horoscopes.prompts import build_western_prompt, build_vedic_prompt
 

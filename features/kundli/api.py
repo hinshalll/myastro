@@ -21,7 +21,7 @@ except ImportError:
 
 
 def _profile_to_birthdata(p: dict):
-    from math_engine.kundli import BirthData
+    from shared.astro.kundli import BirthData
     return BirthData(
         name=p["name"],
         date=date.fromisoformat(p["date"]) if isinstance(p["date"], str) else p["date"],

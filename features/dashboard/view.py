@@ -9,16 +9,16 @@ import swisseph as swe
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 
-from math_engine.constants import PLANETS, DASHA_ORDER
+from shared.astro.constants import PLANETS, DASHA_ORDER
 from features.tarot.constants import FULL_TAROT_DECK, TAROT_BASE
-from math_engine.astro_calc import (
+from shared.astro.astro_calc import (
     local_to_julian_day, get_planet_longitude_and_speed,
     sign_index_from_lon, calculate_tara_bala,
 )
-from math_engine.dossier_builder import (
+from shared.astro.dossier_builder import (
     generate_astrology_dossier, get_gochara_overlay, build_vimshottari_timeline,
 )
-from ai_engine.gemini_client import generate_content_with_fallback
+from shared.ai.gemini_client import generate_content_with_fallback
 from features.dashboard.prompts import build_decide_prompt
 
 from ui_streamlit.state import get_default_profile

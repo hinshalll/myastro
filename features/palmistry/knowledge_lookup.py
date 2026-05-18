@@ -1,5 +1,5 @@
 """
-ai_engine/palm_knowledge_lookup.py
+shared.ai/palm_knowledge_lookup.py
 ===================================
 Runtime lookup module. Reads palm_knowledge.json (built by knowledge_builder.py)
 and returns structured context relevant to this specific palm reading.

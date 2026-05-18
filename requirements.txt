@@ -12,10 +12,10 @@ indic-transliteration
 Pillow
 torchvision
 
-# ── FastAPI backend (api/) ─────────────────────────────────────────
-# These are added so the same repo can run two services:
-#   • Streamlit prototype (current)        — `streamlit run ui_streamlit/app.py`
-#   • FastAPI backend for mobile/web app    — `uvicorn api.main:app`
+# ── FastAPI backend (fastapi_main.py) ──────────────────────────────
+# Same repo runs both:
+#   • Streamlit prototype  — `streamlit run ui_streamlit/app.py`
+#   • FastAPI for mobile/web  — `uvicorn fastapi_main:app`
 fastapi
 uvicorn[standard]
 python-multipart

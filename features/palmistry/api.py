@@ -18,7 +18,7 @@ if router is not None:
         from features.palmistry.service import (
             analyze_palm, read_palm, get_palm_context, query_palmistry,
         )
-        from math_engine.dossier_builder import generate_astrology_dossier
+        from shared.astro.dossier_builder import generate_astrology_dossier
 
         try:
             img_bytes = base64.b64decode(req.image_base64)

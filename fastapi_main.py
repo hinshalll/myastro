@@ -1,0 +1,158 @@
+"""
+fastapi_main.py
+===============
+
+The single backend entrypoint for the mobile app + new website.
+
+What this file does
+-------------------
+1. Reads GEMINI_API_KEY + Qdrant creds from environment variables (or from
+   .streamlit/secrets.toml if present — for dev parity with Streamlit Cloud).
+2. Initialises the shared Gemini client + Swiss Ephemeris path.
+3. Mounts every feature's `api.py` router under a clean URL prefix.
+
+Run locally
+-----------
+    pip install fastapi uvicorn[standard]
+    uvicorn fastapi_main:app --reload
+
+Deploy on Render
+----------------
+    Start command: uvicorn fastapi_main:app --host 0.0.0.0 --port $PORT
+    Set env vars in the Render dashboard: GEMINI_API_KEY, QDRANT_URL,
+    QDRANT_API_KEY.
+
+URL map
+-------
+    /                            health check
+    /tarot/three-card            POST  features/tarot/api.py
+    /tarot/yes-no                POST
+    /tarot/celtic-cross          POST
+    /tarot/birth-card            POST
+    /horoscopes/western          POST  features/horoscopes/api.py
+    /horoscopes/vedic            POST
+    /numerology/full-report      POST  features/numerology/api.py
+    /numerology/cycles           POST
+    /consultation/ask            POST  features/consultation/api.py
+    /dashboard/data              POST  features/dashboard/api.py
+    /dashboard/decide            POST
+    /kundli/compute              POST  features/kundli/api.py
+    /kundli/free-reading         POST
+    /kundli/premium-pdf          POST
+    /palmistry/read              POST  features/palmistry/api.py
+    /vault/{user_id}             GET/POST/PUT/DELETE  features/vault/api.py
+    /docs                        Interactive Swagger UI (built into FastAPI)
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Env / secrets — env var first, .streamlit/secrets.toml fallback for dev
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _load_secret(key: str) -> str | None:
+    """Read `key` from env first, then .streamlit/secrets.toml if present."""
+    v = os.environ.get(key)
+    if v:
+        return v
+    secrets_path = Path(__file__).parent / ".streamlit" / "secrets.toml"
+    if secrets_path.exists():
+        try:
+            import tomllib
+            with open(secrets_path, "rb") as f:
+                data = tomllib.load(f)
+            return data.get(key)
+        except Exception:
+            return None
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Init shared services (Gemini, Swiss Ephemeris)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _init_backend() -> None:
+    # Gemini
+    gemini_key = _load_secret("GEMINI_API_KEY")
+    if gemini_key:
+        from shared.ai.gemini_client import init_gemini
+        init_gemini(gemini_key)
+
+    # Swiss Ephemeris path
+    try:
+        import swisseph as swe
+        ephe_path = Path(__file__).parent / "ephe"
+        if ephe_path.exists():
+            swe.set_ephe_path(str(ephe_path))
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+    except Exception:
+        pass
+
+
+_init_backend()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App
+# ─────────────────────────────────────────────────────────────────────────────
+
+app = FastAPI(
+    title="Myastro API",
+    description=(
+        "Vedic-astrology + AI divination backend. Powers the mobile app + "
+        "website. The Streamlit app at ui_streamlit/app.py talks to the same "
+        "Python services directly (no HTTP); this API is for the mobile + "
+        "web clients."
+    ),
+    version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],          # tighten when you know your web app's domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+def health() -> dict:
+    """Health check. UptimeRobot pings this every 5 minutes."""
+    return {"ok": True, "service": "myastro-api", "version": "1.0.0"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mount every feature's router
+# ─────────────────────────────────────────────────────────────────────────────
+
+_FEATURES = [
+    ("tarot",        "features.tarot.api"),
+    ("horoscopes",   "features.horoscopes.api"),
+    ("numerology",   "features.numerology.api"),
+    ("consultation", "features.consultation.api"),
+    ("dashboard",    "features.dashboard.api"),
+    ("kundli",       "features.kundli.api"),
+    ("palmistry",    "features.palmistry.api"),
+    ("vault",        "features.vault.api"),
+    # oracle is the legacy dropdown package; the 6 sub-features don't have
+    # their own FastAPI routers yet — add them here as they get written.
+]
+
+for prefix, module_path in _FEATURES:
+    try:
+        module = __import__(module_path, fromlist=["router"])
+        router = getattr(module, "router", None)
+        if router is not None:
+            app.include_router(router, prefix=f"/{prefix}", tags=[prefix])
+    except Exception as e:
+        # Log but don't crash — let the rest of the app come up
+        print(f"[fastapi_main] WARNING: failed to mount /{prefix}: "
+              f"{type(e).__name__}: {e}")

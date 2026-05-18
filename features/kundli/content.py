@@ -1,5 +1,5 @@
 """
-ai_engine/kundli_content.py
+shared.ai/kundli_content.py
 ===========================
 
 AI-personalised prose for kundli (free + premium tiers).
@@ -272,24 +272,36 @@ def _maybe_wait():
 
 # ─── Public API ───────────────────────────────────────────────────────────
 
-def is_available() -> bool:
+def _read_gemini_key() -> str | None:
+    """Read GEMINI_API_KEY from env first (FastAPI / mobile), then
+    .streamlit/secrets.toml (Streamlit Cloud / local dev)."""
+    import os
+    v = os.environ.get("GEMINI_API_KEY")
+    if v:
+        return v
     try:
         import tomllib
         from pathlib import Path
-        sp = Path(__file__).parent.parent / ".streamlit" / "secrets.toml"
-        if not sp.exists(): return False
-        with open(sp, "rb") as f: data = tomllib.load(f)
-        return bool(data.get("GEMINI_API_KEY"))
+        # repo root is 2 levels up from features/kundli/content.py
+        sp = Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml"
+        if not sp.exists():
+            return None
+        with open(sp, "rb") as f:
+            data = tomllib.load(f)
+        return data.get("GEMINI_API_KEY")
     except Exception:
-        return False
+        return None
+
+
+def is_available() -> bool:
+    return bool(_read_gemini_key())
 
 
 def _configure_api():
-    import tomllib
-    from pathlib import Path
-    sp = Path(__file__).parent.parent / ".streamlit" / "secrets.toml"
-    with open(sp, "rb") as f: data = tomllib.load(f)
-    genai.configure(api_key=data["GEMINI_API_KEY"])
+    key = _read_gemini_key()
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY not found (env var or .streamlit/secrets.toml)")
+    genai.configure(api_key=key)
 
 
 def generate_kundli_content(

@@ -10,8 +10,8 @@ import json
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
-from math_engine.constants import PLANETS
-from math_engine.astro_calc import (
+from shared.astro.constants import PLANETS
+from shared.astro.astro_calc import (
     local_to_julian_day,
     get_planet_longitude_and_speed,
 )
@@ -46,5 +46,6 @@ def safe_json(raw: str, fallback: dict) -> dict:
     except Exception:
         return fallback
 
-def get_filename(name: str) -> str:
-    return name.lower().replace(" ", "") + ".jpg"
+# get_filename moved to features/tarot/constants.py as card_image_filename.
+# Re-exported here for backward compatibility (dashboard/view.py imports from here).
+from features.tarot.constants import card_image_filename as get_filename

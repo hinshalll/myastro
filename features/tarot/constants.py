@@ -1,6 +1,6 @@
 """features.tarot.constants — tarot-only constants.
 
-Moved here from math_engine/constants.py so the feature is self-contained.
+Moved here from shared.astro/constants.py so the feature is self-contained.
 """
 
 # 22 Major Arcana, deterministic order — used by deterministic birth-card calc.

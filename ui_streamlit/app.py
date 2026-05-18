@@ -3,7 +3,7 @@ ui_streamlit/app.py  (entry point — run with: streamlit run ui_streamlit/app.p
 
 Responsibilities:
   1. Page config + Swiss Ephemeris setup
-  2. Init Gemini (ONE call, centralised in ai_engine)
+  2. Init Gemini (ONE call, centralised in shared.ai)
   3. Load profiles from LocalStorage into session state
   4. Route nav_page to the right show_*() function
   5. Flush LocalStorage when needs_sync is True
@@ -21,8 +21,8 @@ import swisseph as swe
 from streamlit_local_storage import LocalStorage
 
 # ── engine imports ────────────────────────────────────────────────────────────
-from math_engine.constants import NAV_PAGES, COMPARISON_CRITERIA
-from ai_engine.gemini_client import init_gemini
+from shared.astro.constants import NAV_PAGES, COMPARISON_CRITERIA
+from shared.ai.gemini_client import init_gemini
 
 # ── ui imports ────────────────────────────────────────────────────────────────
 from ui_streamlit.state import (

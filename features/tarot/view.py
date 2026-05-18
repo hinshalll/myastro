@@ -28,7 +28,7 @@ from ui_streamlit.cache import rag_context_cached
 
 def _tarot_pdf(title, metadata, chat_key):
     try:
-        from ui_streamlit.views.astro_pdf import build_astro_pdf
+        from shared.pdf.astro_pdf import build_astro_pdf
         msgs = st.session_state.get(chat_key, [])
         reading = next((m.get("display") or (m.get("parts") or [""])[0]
                         for m in reversed(msgs) if m.get("role") == "model"), "")

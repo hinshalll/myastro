@@ -3,8 +3,8 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from math_engine.constants import PERSONAL_YEAR_MEANINGS
-from math_engine.astro_calc import (
+from shared.astro.constants import PERSONAL_YEAR_MEANINGS
+from shared.astro.astro_calc import (
     get_personal_year, get_personal_month, get_personal_day, get_pinnacle_cycles,
 )
 

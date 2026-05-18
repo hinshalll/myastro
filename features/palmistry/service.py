@@ -1,11 +1,11 @@
 """features.palmistry.service — re-exports + entry-point wrapper.
 
-The vision pipeline lives in math_engine/palm_vision.py for now (moves to
+The vision pipeline lives in shared.astro/palm_vision.py for now (moves to
 shared/astro/ in Phase 3). The AI bits (vlm_reader, knowledge_lookup,
 qdrant_search) live here in the feature folder.
 """
 
-from math_engine.palm_vision import analyze_palm
+from shared.astro.palm_vision import analyze_palm
 from features.palmistry.vlm_reader import read_palm
 
 try:

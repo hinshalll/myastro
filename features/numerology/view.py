@@ -5,8 +5,8 @@ from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
-from math_engine.constants import PERSONAL_YEAR_MEANINGS
-from math_engine.dossier_builder import generate_astrology_dossier
+from shared.astro.constants import PERSONAL_YEAR_MEANINGS
+from shared.astro.dossier_builder import generate_astrology_dossier
 
 from features.numerology.service import (
     calculate_numerology_core, get_personal_year, get_personal_month,
@@ -36,7 +36,7 @@ _CHALLENGE_MEANINGS = {
 
 def _num_pdf(title, user_name, metadata, chat_key):
     try:
-        from ui_streamlit.views.astro_pdf import build_astro_pdf
+        from shared.pdf.astro_pdf import build_astro_pdf
         msgs = st.session_state.get(chat_key, [])
         reading = next((m.get("display") or (m.get("parts") or [""])[0]
                         for m in reversed(msgs) if m.get("role") == "model"), "")

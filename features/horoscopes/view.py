@@ -6,7 +6,7 @@ from datetime import date
 import streamlit as st
 import streamlit.components.v1 as components
 
-from math_engine.astro_calc import get_western_sign, sign_index_from_lon, sign_name, nakshatra_info
+from shared.astro.astro_calc import get_western_sign, sign_index_from_lon, sign_name, nakshatra_info
 from ui_streamlit.state import get_default_profile
 from ui_streamlit.helpers import get_local_today, get_moon_lon_from_profile
 from ui_streamlit.components import render_profile_form, resolve_profile
@@ -19,7 +19,7 @@ from ui_streamlit.cache import (
 def _horoscope_pdf(title, user_name, metadata, reading_text):
     """Build and return a PDF for a horoscope reading."""
     try:
-        from ui_streamlit.views.astro_pdf import build_astro_pdf
+        from shared.pdf.astro_pdf import build_astro_pdf
         import re
         sections = []
         current_heading = ""

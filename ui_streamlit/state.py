@@ -10,7 +10,7 @@ Future: when you add FastAPI, these helpers simply don't exist there —
 """
 
 import streamlit as st
-from math_engine.constants import COMPARISON_CRITERIA
+from shared.astro.constants import COMPARISON_CRITERIA
 
 
 # ── Profile DB helpers ────────────────────────────────────────────────────────
@@ -65,8 +65,9 @@ def format_date_ui(s: str) -> str:
     return datetime.fromisoformat(s).strftime("%d %b %Y")
 
 
-def get_filename(name: str) -> str:
-    return name.lower().replace(" ", "") + ".jpg"
+# get_filename moved to features/tarot/constants.py as card_image_filename
+# Re-exported here for backward compatibility (components.py imports from here).
+from features.tarot.constants import card_image_filename as get_filename
 
 
 # ── Criteria helpers ──────────────────────────────────────────────────────────

@@ -32,12 +32,12 @@ if router is not None:
     @router.post("/decide", response_model=DecideResponse)
     def decide(req: DecideRequest) -> DecideResponse:
         import swisseph as swe
-        from math_engine.constants import PLANETS
-        from math_engine.astro_calc import (
+        from shared.astro.constants import PLANETS
+        from shared.astro.astro_calc import (
             local_to_julian_day, get_planet_longitude_and_speed, calculate_tara_bala,
         )
-        from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
-        from ai_engine.gemini_client import generate_content_with_fallback
+        from shared.astro.dossier_builder import generate_astrology_dossier, get_gochara_overlay
+        from shared.ai.gemini_client import generate_content_with_fallback
 
         prof = req.profile
         p_date = date.fromisoformat(prof["date"])

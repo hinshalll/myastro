@@ -2,7 +2,7 @@
 ui_streamlit/cache.py
 
 Every @st.cache_data wrapper lives here and nowhere else.
-Core functions (in ai_engine/ and math_engine/) have zero Streamlit imports —
+Core functions (in shared.ai/ and shared.astro/) have zero Streamlit imports —
 these thin wrappers are the ONLY place Streamlit's cache decorator touches them.
 
 Why a separate file?
@@ -14,9 +14,9 @@ Why a separate file?
 from datetime import timedelta
 import streamlit as st
 
-from math_engine.astro_calc import geocode_place, timezone_for_latlon
-from math_engine.dossier_builder import get_live_cosmic_weather
-from ai_engine.knowledge import rag_context
+from shared.astro.astro_calc import geocode_place, timezone_for_latlon
+from shared.astro.dossier_builder import get_live_cosmic_weather
+from shared.ai.knowledge import rag_context
 from features.horoscopes.service import generate_western_forecast, generate_vedic_forecast
 from features.dashboard.service import fetch_data as fetch_dashboard_data
 from features.dashboard.service import fetch_daily_tarot

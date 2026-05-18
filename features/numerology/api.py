@@ -17,12 +17,12 @@ except ImportError:
 
 
 def _generate(prompt: str) -> str:
-    from ai_engine.gemini_client import generate_content_with_fallback
+    from shared.ai.gemini_client import generate_content_with_fallback
     return generate_content_with_fallback(prompt, knowledge_files=None)
 
 
 def _rag(query: str, books: tuple, k: int) -> str:
-    from ai_engine.knowledge import rag_context
+    from shared.ai.knowledge import rag_context
     try:
         return rag_context(query, list(books), k=k)
     except Exception:
@@ -37,7 +37,7 @@ if router is not None:
 
         dossier = None
         if req.profile:
-            from math_engine.dossier_builder import generate_astrology_dossier
+            from shared.astro.dossier_builder import generate_astrology_dossier
             dossier = generate_astrology_dossier(req.profile, req.include_d60)
 
         books = ("inum1.md",) if "Vedic" in req.system else ("wnum.md",)

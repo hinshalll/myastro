@@ -15,9 +15,9 @@ if router is not None:
 
     @router.post("/ask", response_model=ConsultationResponse)
     def ask(req: ConsultationRequest) -> ConsultationResponse:
-        from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
-        from ai_engine.gemini_client import FREE_MODELS, get_ai_model_by_name
-        from ai_engine.knowledge import rag_context
+        from shared.astro.dossier_builder import generate_astrology_dossier, get_gochara_overlay
+        from shared.ai.gemini_client import FREE_MODELS, get_ai_model_by_name
+        from shared.ai.knowledge import rag_context
 
         dossier = generate_astrology_dossier(req.profile)
         transits = get_gochara_overlay(req.profile)

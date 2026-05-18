@@ -1,5 +1,5 @@
 """
-ai_engine/palm_vision_ai.py
+shared.ai/palm_vision_ai.py
 ============================
 Single-call VLM palm reader.
 
@@ -30,7 +30,7 @@ import PIL.Image
 import numpy as np
 from functools import lru_cache
 
-from ai_engine.gemini_client import get_ai_model_by_name
+from shared.ai.gemini_client import get_ai_model_by_name
 from features.palmistry.prompts import build_palm_reading_prompt
 
 

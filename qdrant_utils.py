@@ -5,8 +5,8 @@ Qdrant client + vector-store factories.
 
 Two layers:
   * `get_qdrant_client_pure()` / `get_vector_store_pure()` — STREAMLIT-FREE.
-    These are the canonical entry points used by ai_engine/, math_engine/,
-    pdf_engine/ and the future FastAPI mobile API. Process-wide singletons.
+    These are the canonical entry points used by shared.ai/, shared.astro/,
+    shared.pdf/ and the future FastAPI mobile API. Process-wide singletons.
   * `get_qdrant_client()` / `get_vector_store()` — Streamlit `@st.cache_resource`
     thin wrappers. Only defined if Streamlit is importable. The UI views use
     these to share the client across Streamlit reruns.
@@ -59,7 +59,7 @@ def get_vector_store_pure():
 
 # ── Streamlit-cached wrappers (optional) ──────────────────────────────────────
 # Only defined when Streamlit is available, so importing this module from
-# ai_engine / a FastAPI host without Streamlit installed still works.
+# shared.ai / a FastAPI host without Streamlit installed still works.
 try:
     import streamlit as st
 

@@ -20,21 +20,21 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ── math + ai engine re-exports (so each oracle sub-file imports from here) ───
-from math_engine.constants import PLANETS, SIGN_LORDS_MAP
-from math_engine.astro_calc import (
+from shared.astro.constants import PLANETS, SIGN_LORDS_MAP
+from shared.astro.astro_calc import (
     local_to_julian_day, get_planet_longitude_and_speed,
     sign_index_from_lon, get_lagna_and_cusps,
 )
-from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
-from math_engine.scoring import calculate_destiny_confirmation, calculate_compatibility_index
+from shared.astro.dossier_builder import generate_astrology_dossier, get_gochara_overlay
+from shared.astro.scoring import calculate_destiny_confirmation, calculate_compatibility_index
 
-from ai_engine.gemini_client import FREE_MODELS, agent_worker, generate_content_with_fallback
-from ai_engine.prompts import (
+from shared.ai.gemini_client import FREE_MODELS, agent_worker, generate_content_with_fallback
+from shared.ai.prompts import (
     build_agent_parashari_prompt, build_agent_timing_prompt, build_agent_kp_prompt,
     build_master_synthesizer_prompt, build_transit_prompt, build_prashna_prompt,
     build_matchmaking_prompt, build_destiny_confirmation_prompt, build_comparison_prompt,
 )
-from ai_engine.knowledge import build_topic_query, build_comparison_knowledge
+from shared.ai.knowledge import build_topic_query, build_comparison_knowledge
 
 from ui_streamlit.state import get_default_profile, toggle_all_criteria
 from ui_streamlit.helpers import get_moon_lon_from_profile
@@ -46,8 +46,8 @@ from ui_streamlit.cache import (
 # Matchmaking-specific imports — wrapped in try because they can be absent
 # during partial refactors; the matchmaking sub-view handles that gracefully.
 try:
-    from math_engine.astro_calc import check_manglik_dosha, get_manglik_cancellation_verdict
-    from math_engine.dossier_builder import calculate_matchmaking_synastry
+    from shared.astro.astro_calc import check_manglik_dosha, get_manglik_cancellation_verdict
+    from shared.astro.dossier_builder import calculate_matchmaking_synastry
 except ImportError:   # pragma: no cover
     check_manglik_dosha = None
     get_manglik_cancellation_verdict = None
@@ -111,7 +111,7 @@ def render_pdf_download(mission_key, feature_title, feature_emoji, history, dp):
     if not last_model or last_model.startswith("⚠️") or not history:
         return
     try:
-        from ui_streamlit.views.astro_pdf import build_astro_pdf
+        from shared.pdf.astro_pdf import build_astro_pdf
         import datetime as _dt
         pdf = build_astro_pdf(
             feature_title=feature_title, feature_emoji=feature_emoji,

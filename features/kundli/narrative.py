@@ -1,5 +1,5 @@
 """
-ai_engine/kundli_narrative.py
+shared.ai/kundli_narrative.py
 =============================
 
 AI narrative layer for the premium kundli PDF.
@@ -34,7 +34,7 @@ import json
 import re
 from typing import Optional
 
-from ai_engine.gemini_client import get_ai_model_by_name, FREE_MODELS
+from shared.ai.gemini_client import get_ai_model_by_name, FREE_MODELS
 
 
 # ─────────────────────────────────────────────────────────────────────────────

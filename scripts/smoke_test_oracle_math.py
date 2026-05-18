@@ -26,7 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from math_engine.scoring import (
+from shared.astro.scoring import (
     calculate_ashta_koota,
     calculate_marital_analysis,
     calculate_compatibility_index,
@@ -34,13 +34,13 @@ from math_engine.scoring import (
     calculate_relationship_score,
     _extract_h7_significators,
 )
-from math_engine.astro_calc import (
+from shared.astro.astro_calc import (
     check_manglik_dosha,
     get_manglik_cancellation_verdict,
     recalc_math_from_profile,
     recalc_math,
 )
-from math_engine.constants import SIGN_LORDS_MAP
+from shared.astro.constants import SIGN_LORDS_MAP
 
 PASS, FAIL = 0, 0
 
@@ -377,7 +377,7 @@ check("VERY HIGH MANGLIK → relationship penalty = 12",
 # ─────────────────────────────────────────────────────────────────────────────
 section("Classical refinement helpers")
 
-from math_engine.scoring import (
+from shared.astro.scoring import (
     _karakamsa_data, _seventh_lord_placement, _maraka_risk, _special_yoga_flags,
     _custom_keyword_matches, _custom_modifier_flags, _lagna_scaled,
 )
@@ -511,7 +511,7 @@ check("_lagna_scaled: zero bonus stays zero",
 
 section("Trust Layer — score_band qualitative labels")
 
-from math_engine.scoring import (
+from shared.astro.scoring import (
     score_band, _cohort_stats, _detect_ties, _detect_generational_placements,
     _chart_headline, _criterion_drivers,
 )
@@ -704,8 +704,8 @@ section("Wealth doctrine fixes — Akhand Samrajya / Mahabhagya / Sankha / Kahal
 # Six diverse real profiles — verify the newly-added classical wealth yogas
 # actually fire across a real cohort (catches the "silently never detected"
 # class of bug that motivated this fix pass).
-from math_engine.dossier_builder import generate_astrology_dossier
-from math_engine.astro_calc import parse_chart_facts
+from shared.astro.dossier_builder import generate_astrology_dossier
+from shared.astro.astro_calc import parse_chart_facts
 
 _wealth_test_profiles = [
     {'name': 'A', 'date': '1990-04-12', 'time': '08:15', 'tz': 'Asia/Kolkata', 'lat': 19.07, 'lon': 72.88, 'place': 'Mumbai'},
@@ -745,7 +745,7 @@ section("Wealth doctrine fixes — Yoga strength gradation (constituent-strength
 
 # yoga_strength_multiplier should now give different multipliers for the same
 # yoga in different charts based on constituent planet strengths.
-from math_engine.astro_calc import yoga_strength_multiplier
+from shared.astro.astro_calc import yoga_strength_multiplier
 
 # Build two fake facts dicts — one with strong wealth lords, one weak.
 _strong_facts = {
@@ -757,7 +757,7 @@ _weak_facts["house_lords"] = {h: {"planet": "Saturn"} for h in (2, 5, 9, 11)}
 
 # A real Shadbala call would need full planet_data; we can verify the function
 # returns 1.0 for unknown yogas and doesn't error on known ones with stub data.
-import math_engine.astro_calc as ac
+import shared.astro.astro_calc as ac
 _orig = ac.get_p_str
 ac.get_p_str = lambda p, *a, **kw: 90 if p == "Jupiter" else (30 if p == "Saturn" else 60)
 try:
@@ -818,7 +818,7 @@ section("Wealth doctrine fixes — Bhagyadhipati + sambandhas + structural rewei
 
 # Run the actual wealth scorer on real profiles and verify the new components
 # produce a real spread of scores (not stuck at 50.0 fallback).
-from math_engine.scoring import calculate_wealth_score, _CRITERION_DRIVER_SPEC
+from shared.astro.scoring import calculate_wealth_score, _CRITERION_DRIVER_SPEC
 
 _w_scores = {p['name']: calculate_wealth_score(generate_astrology_dossier(p), profile=p)
              for p in _wealth_test_profiles}

@@ -1,5 +1,5 @@
 """
-ai_engine/palmistry_qdrant.py
+shared.ai/palmistry_qdrant.py
 ==============================
 Queries Qdrant for relevant palmistry text chunks based on detected palm features.
 These chunks come from palmistry.md (ingested via the palmistry ingestor).

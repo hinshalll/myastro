@@ -4,18 +4,18 @@ ui_streamlit/views/consultation.py — "Ask the Astrologer" open chat.
 This view is the consultation room. The accuracy of every reply here depends
 on three layers cooperating:
 
-  1. math_engine.dossier_builder.generate_astrology_dossier — produces the
+  1. shared.astro.dossier_builder.generate_astrology_dossier — produces the
      full chart dossier including the EVENT TIMING ATLAS (lifetime dasha
      sequence + per-event activation windows + karaka maturation ages).
      The Atlas is the answer-source for "at what age will I X" questions.
 
-  2. ai_engine.prompts.build_consultation_prompt — composes the consultation
+  2. shared.ai.prompts.build_consultation_prompt — composes the consultation
      system prompt with an intent-specific framework overlay. The base prompt
      enforces "answer first, warmth second", forbids fatalistic claims, and
      mandates that timing questions ALWAYS get an age window from the Atlas.
      The overlay tells the AI HOW to read this specific class of question.
 
-  3. ai_engine.gemini_client.get_ai_model_by_name — picks temperature 0.5
+  3. shared.ai.gemini_client.get_ai_model_by_name — picks temperature 0.5
      when the system rules contain the word "conversational" (which the new
      consultation prompt does). That's what makes the chat actually
      conversational instead of robotic-evasive.
@@ -25,8 +25,8 @@ import time as time_module
 import streamlit as st
 import streamlit.components.v1 as components
 
-from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
-from ai_engine.gemini_client import FREE_MODELS, get_ai_model_by_name
+from shared.astro.dossier_builder import generate_astrology_dossier, get_gochara_overlay
+from shared.ai.gemini_client import FREE_MODELS, get_ai_model_by_name
 
 from features.consultation.prompts import classify_intent, build_prompt
 from features.consultation.service import INTENT_RAG_BOOKS
@@ -158,7 +158,7 @@ def show_consultation_room():
 
                 # 7. PDF download of this response.
                 try:
-                    from ui_streamlit.views.astro_pdf import build_astro_pdf
+                    from shared.pdf.astro_pdf import build_astro_pdf
                     import datetime
                     pdf = build_astro_pdf(
                         feature_title = "Consultation Reading",

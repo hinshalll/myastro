@@ -20,8 +20,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 import PIL.Image
 
-from math_engine.palm_vision import analyze_palm
-from math_engine.dossier_builder import generate_astrology_dossier
+from shared.astro.palm_vision import analyze_palm
+from shared.astro.dossier_builder import generate_astrology_dossier
 from features.palmistry.vlm_reader import read_palm
 from ui_streamlit.state import get_default_profile
 
@@ -600,7 +600,7 @@ def _render_reading(result):
         # Build PDF on demand. Wrapped in try/except so a PDF failure
         # never blocks the user from seeing their reading.
         try:
-            from ui_streamlit.views.palm_pdf import build_palm_pdf
+            from shared.pdf.palm_pdf import build_palm_pdf
 
             # Build cover image bytes from the isolated hand (or fallback)
             analysis = st.session_state.get("palm_analysis", {}) or {}

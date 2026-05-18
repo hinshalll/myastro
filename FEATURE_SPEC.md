@@ -1,6 +1,6 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-05-19 — Phase 2 complete. 9/9 features now live in `features/<feature>/`.
+**Last updated:** 2026-05-19 — Phase 3 complete. Final structure live.
 
 ---
 
@@ -18,32 +18,35 @@ features/                       ← ALL user-visible features. One folder each.
   tarot/                        (Three-Card, Yes/No, Celtic Cross, Birth Card)
   vault/                        (Saved profiles CRUD + import/export)
 
-math_engine/                    ← Shared backend (renames to shared/astro/ in Phase 3)
-  astro_calc.py                 Swiss Ephemeris + dasha + panchanga
-  constants.py                  Signs, planets, dignities, etc.
-  dossier_builder.py            generate_astrology_dossier + get_gochara_overlay
-  kundli.py                     KundliChart dataclass + compute_chart
-  kundli_text.py                Text labels (planet glyphs, etc.)
-  palm_vision.py                MediaPipe + OpenCV pipeline
-  scoring.py                    Ashta Koota, Manglik, Destiny Matrix, Compare scoring
+shared/                         ← Backend plumbing shared by every feature.
+  astro/                        Swiss Ephemeris + dasha + scoring + chart compute
+    astro_calc.py               Ephemeris + dasha + panchanga
+    constants.py                Signs, planets, dignities
+    dossier_builder.py          generate_astrology_dossier + get_gochara_overlay
+    kundli.py                   KundliChart dataclass + compute_chart
+    kundli_text.py              Text labels (planet glyphs, etc.)
+    palm_vision.py              MediaPipe + OpenCV pipeline
+    scoring.py                  Ashta Koota, Manglik, Destiny Matrix, Compare scoring
+  ai/                           Gemini client + RAG + cross-cutting prompts
+    gemini_client.py            FREE_MODELS + retry/fallback wrappers
+    knowledge.py                rag_context (Qdrant retrieval)
+    prompts.py                  Oracle prompts + GUARDRAILS (only cross-cutting bits)
+  pdf/                          WeasyPrint + 7 themes + PDF helpers
+    kundli_pdf.py               Premium kundli PDF builder
+    theme_art.py                Decorative SVG art
+    generate_theme_assets.py    Theme asset pre-renderer
+    astro_pdf.py                Generic markdown→PDF (used by every feature with downloads)
+    palm_pdf.py                 Palm-reading-specific PDF builder
 
-ai_engine/                      ← Shared backend (renames to shared/ai/ in Phase 3)
-  gemini_client.py              FREE_MODELS + retry/fallback wrappers
-  knowledge.py                  rag_context (Qdrant retrieval)
-  prompts.py                    Oracle prompts + GUARDRAILS (cross-cutting only)
-
-pdf_engine/                     ← Shared PDF builder (renames to shared/pdf/ in Phase 3)
-  kundli_pdf.py                 Premium kundli themes + WeasyPrint orchestrator
-  theme_art.py                  Decorative SVG art
-  generate_theme_assets.py      Theme asset pre-renderer
+fastapi_main.py                 ← FastAPI backend entry. Mounts every
+                                  features/<feat>/api.py router under /<feat>/*
 
 ui_streamlit/                   ← Streamlit shell only — NOT feature-specific
-  app.py                        Entry point + router
+  app.py                        Streamlit entry + router
   cache.py                      @st.cache_data wrappers
   components.py                 Reusable Streamlit widgets
   helpers.py                    UI helpers
   state.py                      Session + localStorage CRUD
-  views/                        Only contains: astro_pdf.py + palm_pdf.py (shared PDF helpers)
 ```
 
 ## The contract — what every `features/<feat>/` folder looks like
@@ -138,35 +141,32 @@ features/<feature>/
 
 ---
 
-## Bug audit — status after Phase 0 cleanup
+## Bug audit — status
 
 | # | Issue | Status |
 |---|---|---|
 | 1 | Dead `views/oracle.py` (349 lines) | ✅ Deleted |
 | 2 | Dead `pdf_engine/builder.py` (381 lines) + `pdf_engine/charts/` | ✅ Deleted |
 | 3 | Dead `build_deep_analysis_prompt` | ✅ Deleted |
-| 4 | `palmistry_qdrant.py` had unused `import streamlit` (purity violation) | ✅ Fixed (and the file moved to features/palmistry/qdrant_search.py) |
-| 5 | Unused `FREE_MODELS` import in `forecasts.py` | ✅ Fixed (file itself was later deleted entirely) |
-| 6 | `pdf_engine/charts/` half-done split | ✅ Deleted (Bug 2 cleanup) |
+| 4 | `palmistry_qdrant.py` had unused `import streamlit` (purity violation) | ✅ Fixed |
+| 5 | Unused `FREE_MODELS` import in `forecasts.py` | ✅ Fixed (file later deleted entirely) |
+| 6 | `pdf_engine/charts/` half-done split | ✅ Deleted |
 | 7 | `api/` folder = abandoned lossy FastAPI port | ✅ Deleted |
-| 8 | `kundli_content.py` reads `.streamlit/secrets.toml` directly | ⚠️ Still — needs env-var fallback. To-do in Phase 3. |
-| 9 | `get_filename` duplicated in `helpers.py` and `state.py` | ⚠️ Still — to-do |
-| 10 | `kundli_pdf.py` at 983 lines mashes chart-renderers + builder | ⚠️ Still — to-do in Phase 3 split |
-| 11 | `google.generativeai` is deprecated, needs migration to `google.genai` | ⚠️ Still — separate task |
+| 8 | `kundli_content.py` reads `.streamlit/secrets.toml` directly | ✅ Fixed — env-var fallback |
+| 9 | `get_filename` duplicated in `helpers.py` and `state.py` | ✅ Fixed — single source: `features.tarot.constants.card_image_filename` |
+| 10 | Stale folders: `tarot/` (local images, unused), `palm_images/` (unused), `kundli/` (throwaway smoke test) | ✅ Deleted |
+| 11 | Stale doc files: `APP_OVERVIEW.md`, `ARCHITECTURE.md` (replaced by FEATURE_SPEC.md + per-feature READMEs) | ✅ Deleted |
+| 12 | `kundli_pdf.py` at 983 lines mashes chart-renderers + builder | ⚠️ Open — large split, deferred |
+| 13 | `google.generativeai` is deprecated, needs migration to `google.genai` | ⚠️ Open — separate task |
 
 ---
 
-## What's left to do (Phase 3)
+## Future work (optional, when needed)
 
-1. Rename `math_engine/` → `shared/astro/`
-2. Rename `ai_engine/` → `shared/ai/`
-3. Rename `pdf_engine/` → `shared/pdf/`
-4. Move `ui_streamlit/views/astro_pdf.py` + `palm_pdf.py` → `shared/pdf/` (they're used by every feature)
-5. Delete the now-empty `ui_streamlit/views/` folder
-6. Fix the 4 remaining ⚠️ bugs above
-7. Build `fastapi_main.py` that mounts every `features/<feat>/api.py` router (mobile app + website backend, single binary)
-
-The renames in Phase 3 are mechanical — a vibe coder can run them with any AI helper since each feature is self-contained.
+- Split `shared/pdf/kundli_pdf.py` (983 lines) — separate chart-renderers from PDF builder.
+- Migrate Gemini SDK to `google.genai` (the new package; current `google.generativeai` is deprecated but still works).
+- Add FastAPI routers for the 6 oracle sub-features (currently the oracle is web-only via the legacy dropdown).
+- Build the Flutter mobile app + Next.js website that consume `fastapi_main.py`.
 
 ## Why this layout is better for a vibe coder
 

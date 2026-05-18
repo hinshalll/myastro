@@ -1,6 +1,6 @@
 """features.horoscopes.prompts — Western + Vedic forecast prompts."""
 
-from ai_engine.prompts import GUARDRAILS
+from shared.ai.prompts import GUARDRAILS
 
 
 _TIMEFRAME_RULES = {

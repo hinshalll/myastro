@@ -7,13 +7,13 @@ driver evidence.
 
 The math heavy-lifting (band labels, cohort percentile, discrimination
 index, tie groups, generational deduplication, driver supports/drains)
-lives in math_engine.scoring.calculate_and_rank_profiles — this view
+lives in shared.astro.scoring.calculate_and_rank_profiles — this view
 just collects profiles + criteria and renders the AI narrative on top.
 """
 
 import streamlit as st
 
-from math_engine.constants import COMPARISON_CRITERIA
+from shared.astro.constants import COMPARISON_CRITERIA
 
 from features.oracle._shared import (
     collapse_sidebar_on_mobile,

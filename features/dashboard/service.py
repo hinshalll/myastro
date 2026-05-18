@@ -10,9 +10,9 @@ today_str is part of the cache key (cached 24h in ui_streamlit/cache.py).
 
 import json
 
-from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
-from ai_engine.gemini_client import generate_content_with_fallback
-from ai_engine.knowledge import rag_context
+from shared.astro.dossier_builder import generate_astrology_dossier, get_gochara_overlay
+from shared.ai.gemini_client import generate_content_with_fallback
+from shared.ai.knowledge import rag_context
 from features.dashboard.prompts import build_data_prompt
 from features.tarot.prompts import build_daily_card_prompt
 

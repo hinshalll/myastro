@@ -23,11 +23,11 @@ if router is not None:
 
     @router.post("/vedic", response_model=VedicResponse)
     def vedic(req: VedicRequest) -> VedicResponse:
-        from math_engine.astro_calc import (
+        from shared.astro.astro_calc import (
             local_to_julian_day, get_planet_longitude_and_speed,
             sign_index_from_lon, sign_name, nakshatra_info,
         )
-        from math_engine.constants import PLANETS
+        from shared.astro.constants import PLANETS
         from datetime import datetime, date
 
         p_date = date.fromisoformat(req.profile["date"])

@@ -7,8 +7,8 @@ from datetime import datetime, date, time
 import streamlit.components.v1 as components
 
 from features.tarot.constants import TAROT_BASE
-from math_engine.astro_calc import geocode_place, timezone_for_latlon
-from ai_engine.gemini_client import FREE_MODELS, get_ai_model_by_name
+from shared.astro.astro_calc import geocode_place, timezone_for_latlon
+from shared.ai.gemini_client import FREE_MODELS, get_ai_model_by_name
 
 # ── state helpers — no more monkey patching ──────────────────────────────────
 from ui_streamlit.state import (
@@ -403,7 +403,7 @@ def resolve_profile(item):
 def stream_ai_with_followup(prompt, memory_key, spinner_text="Interpreting...", knowledge_files=None, preferred_model=None, image_b64=None, show_share_buttons=True, hide_user_prompt=False):
     """Universal AI Streamer: Now supports entirely hiding the user's chat bubble."""
     import streamlit as st
-    from ai_engine.gemini_client import generate_content_with_fallback
+    from shared.ai.gemini_client import generate_content_with_fallback
     
     if memory_key not in st.session_state:
         st.session_state[memory_key] = []
