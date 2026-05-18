@@ -5,12 +5,13 @@ Queries Qdrant for relevant palmistry text chunks based on detected palm feature
 These chunks come from palmistry.md (ingested via the palmistry ingestor).
 
 IMPORTANT:
-- This is OPTIONAL. If the HuggingFace embedding model can't load (RAM limit on
-  free hosting), the palmistry reading still works from palm_knowledge.json alone.
+- This is OPTIONAL. If the HuggingFace model can't load (RAM limit on Streamlit Cloud),
+  the palmistry reading still works from palm_knowledge.json alone.
 - Load is attempted once; failure is cached so it doesn't retry every reading.
 - Requires palmistry.md to have been ingested first via the ingestion app.
 """
 
+import streamlit as st
 from qdrant_client.http import models as qdrant_models
 
 

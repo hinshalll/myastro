@@ -1,28 +1,30 @@
-# ── FastAPI backend (api/) — the mobile-app + web-app entry point ──
+streamlit
+pyswisseph
+geopy
+timezonefinder
+streamlit-local-storage
+google-generativeai
+qdrant-client
+sentence-transformers
+weasyprint
+jinja2
+indic-transliteration
+Pillow
+
+# ── FastAPI backend (api/) ─────────────────────────────────────────
+# These are added so the same repo can run two services:
+#   • Streamlit prototype (current)        — `streamlit run ui_streamlit/app.py`
+#   • FastAPI backend for mobile/web app    — `uvicorn api.main:app`
 fastapi
 uvicorn[standard]
 python-multipart
 pydantic
 
-# ── Math engine deps ───────────────────────────────────────────────
-pyswisseph
-geopy
-timezonefinder
-indic-transliteration
-
-# ── AI engine deps ─────────────────────────────────────────────────
-google-generativeai
-qdrant-client
-sentence-transformers
-langchain-qdrant
-langchain-huggingface
-
-# ── PDF engine deps ────────────────────────────────────────────────
-weasyprint
-jinja2
-Pillow
-
-# ── Palm-vision deps ───────────────────────────────────────────────
+# ── Palm / Vision deps (used by palm_vision module) ────────────────
 opencv-python-headless
 mediapipe
 numpy
+
+# ── LangChain integrations (used by qdrant_utils.py for vector search) ─
+langchain-qdrant
+langchain-huggingface
