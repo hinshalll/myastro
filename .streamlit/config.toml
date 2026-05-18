@@ -1,0 +1,10 @@
+[server]
+# Disable the file watcher's deep introspection of site-packages.
+# This eliminates the 200-line "[transformers] Accessing __path__"
+# log spam that happens when Streamlit walks transformers' internal
+# modules on every reload. On Streamlit Cloud the app reloads on user
+# refresh anyway, so we don't need auto-reload on code changes.
+fileWatcherType = "none"
+
+# Hide noisy deprecation/runtime warnings from the UI (errors still show).
+showErrorDetails = "stacktrace"

@@ -1,5 +1,5 @@
+# Streamlit — ignore secrets only, but track config.toml
 .streamlit/secrets.toml
-.streamlit/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
