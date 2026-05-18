@@ -14,10 +14,8 @@ from functools import lru_cache
 from pathlib import Path
 
 # ── PATH TO KNOWLEDGE FILE ─────────────────────────────────────────────────────
-# Looks for aiguide/palm_knowledge.json relative to repo root.
-# Works on both local machine and Streamlit Cloud.
-_HERE = Path(__file__).resolve().parent.parent   # repo root
-KNOWLEDGE_PATH = _HERE / "aiguide" / "palm_knowledge.json"
+# Sits next to this file in features/palmistry/data/ — no repo-root hop needed.
+KNOWLEDGE_PATH = Path(__file__).resolve().parent / "data" / "palm_knowledge.json"
 
 
 # ── LOADER (cached) ────────────────────────────────────────────────────────────

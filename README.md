@@ -28,8 +28,7 @@ ui_streamlit/    ← Streamlit shell only.
 fastapi_main.py  ← FastAPI entry point. Mounts every features/<feat>/api.py
                    router. Run: uvicorn fastapi_main:app
 
-aiguide/         ← Classical-text markdown books for RAG (bphs1.md, etc.)
-ephe/            ← Swiss Ephemeris data files
+ephe/            ← Swiss Ephemeris data files (used by shared/astro/)
 scripts/         ← Smoke tests
 qdrant_utils.py  ← Vector-store glue
 ```

@@ -25,6 +25,7 @@ Vedic palm reading. User uploads a photo, the system:
 |---|---|
 | `vlm_reader.py`      | Single Gemini VLM call (was `ai_engine/palm_vision_ai.py`) |
 | `knowledge_lookup.py`| Static JSON lookup (was `ai_engine/palm_knowledge_lookup.py`) |
+| `data/palm_knowledge.json` | Static lookup table: planet → traits, nakshatra → meanings, dosha → traits. Loaded once and cached. ~84 KB. |
 | `qdrant_search.py`   | Qdrant semantic search (was `ai_engine/palmistry_qdrant.py`) |
 | `prompts.py`         | The big Phase A + Phase B VLM prompt (was in `ai_engine/prompts.py`) |
 | `service.py`         | Re-exports vision_pipeline (math_engine.palm_vision) + the AI bits |
