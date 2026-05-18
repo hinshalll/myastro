@@ -27,29 +27,12 @@ import streamlit.components.v1 as components
 
 from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
 from ai_engine.gemini_client import FREE_MODELS, get_ai_model_by_name
-from ai_engine.prompts import (
-    build_consultation_prompt, classify_consultation_intent,
-)
+
+from features.consultation.prompts import classify_intent, build_prompt
+from features.consultation.service import INTENT_RAG_BOOKS
 
 from ui_streamlit.state import get_default_profile
 from ui_streamlit.cache import rag_context_cached
-
-
-# Per-intent book selection for RAG retrieval. Timing questions pull from
-# Brihat Parashara (dasha rules), KP books (cusp/sub-lord timing precision),
-# and the general Hindu astrology textbooks. Other intents pull narrower sets.
-_INTENT_RAG_BOOKS = {
-    "TIMING":        ("bphs1.md", "bphs2.md", "kp3.md", "kp4.md", "htrh2.md"),
-    "MARRIAGE":      ("kp4.md", "bphs2.md", "htrh1.md", "htrh2.md"),
-    "CAREER_WEALTH": ("bphs1.md", "bphs2.md", "kp3.md", "htrh1.md"),
-    "HEALTH":        ("bphs2.md", "htrh2.md", "kp6.md"),
-    "CHILDREN":      ("bphs1.md", "htrh1.md", "kp4.md"),
-    "SPIRITUAL":     ("bphs2.md", "htrh2.md"),
-    "EDUCATION":     ("bphs1.md", "htrh1.md"),
-    "FOREIGN":       ("bphs2.md", "htrh2.md", "kp3.md"),
-    "GOCHARA":       ("htrh1.md", "htrh2.md", "bphs2.md"),
-    "GENERAL":       ("htrh1.md", "htrh2.md"),
-}
 
 
 def show_consultation_room():
@@ -98,12 +81,12 @@ def show_consultation_room():
                 transits = get_gochara_overlay(dp)
 
                 # 2. Classify intent and compose the system prompt with overlay.
-                intent          = classify_consultation_intent(q)
-                system_prompt   = build_consultation_prompt(intent)
+                intent          = classify_intent(q)
+                system_prompt   = build_prompt(intent)
 
                 # 3. RAG retrieval — book set picked by intent. Falls back to
                 #    the broad htrh set if Qdrant has trouble.
-                rag_books = _INTENT_RAG_BOOKS.get(intent, _INTENT_RAG_BOOKS["GENERAL"])
+                rag_books = INTENT_RAG_BOOKS.get(intent, INTENT_RAG_BOOKS["GENERAL"])
                 try:
                     consult_ctx = rag_context_cached(q, rag_books, k=8)
                 except Exception:

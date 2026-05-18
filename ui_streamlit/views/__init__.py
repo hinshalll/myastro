@@ -3,7 +3,8 @@
 # Import each page's show_* function for convenient use in app.py.
 
 from ui_streamlit.views.dashboard    import show_dashboard
-from ui_streamlit.views.consultation import show_consultation_room
+# consultation has moved to features.consultation
+from features.consultation.view     import show_consultation_room
 from ui_streamlit.views.oracle       import show_oracle
 # tarot has moved to features.tarot — see features/tarot/view.py
 from features.tarot.view             import show_tarot
