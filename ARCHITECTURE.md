@@ -8,11 +8,11 @@
 
 ## 1. What this app is
 
-**AIS (Astro Suite)** is a Vedic-astrology + AI divination app.
+**Myastro** — a Vedic-astrology + AI divination app.
 
 - **Backend stack**: Python (math via Swiss Ephemeris, AI via Google Gemini,
   vector search via Qdrant Cloud, PDF via WeasyPrint).
-- **Frontend (current)**: Streamlit prototype at `ui_streamlit/`.
+- **Backend host**: FastAPI on Render (free tier) → eventually a VPS.
 - **Frontend (planned)**: Next.js web app + Flutter mobile app — both
   calling the same FastAPI backend.
 - **Owner is a non-coder** who edits via AI assistants. Keep things SIMPLE.
@@ -24,8 +24,8 @@
 ## 2. Top-level directory layout
 
 ```
-AIS/
-├── api/                         ← NEW: FastAPI backend (mobile-app-shaped)
+myastro/
+├── api/                         ← FastAPI backend (the live entry point)
 │   ├── main.py                  ← FastAPI app + CORS + router mount
 │   ├── deps.py                  ← startup init (Swiss Eph + Gemini)
 │   ├── schemas.py               ← Pydantic request/response models
@@ -45,7 +45,7 @@ AIS/
 │           ├── compare.py       ← /api/v1/oracle/compare
 │           └── prashna.py       ← /api/v1/oracle/prashna
 │
-├── math_engine/                 ← PURE compute layer (no Streamlit deps)
+├── math_engine/                 ← PURE compute layer (no UI deps)
 │   ├── constants.py             ← PLANETS, SIGNS, DASHA_YEARS, etc.
 │   ├── astro_calc.py            ← Swiss Ephemeris wrappers, yogas, KP, etc.
 │   ├── dossier_builder.py       ← Builds the "chart dossier" sent to AI
@@ -54,7 +54,7 @@ AIS/
 │   ├── kundli_text.py           ← Static interpretation library
 │   └── palm_vision.py           ← Palm-photo quality + MediaPipe landmarks
 │
-├── ai_engine/                   ← PURE AI layer (no Streamlit deps)
+├── ai_engine/                   ← PURE AI layer (no UI deps)
 │   ├── gemini_client.py         ← Gemini init + model fallback chain
 │   ├── knowledge.py             ← RAG retrieval (Qdrant)
 │   ├── prompts.py               ← All system prompts (1 file, big-but-flat)
@@ -72,32 +72,6 @@ AIS/
 │   ├── static/themes/<theme>/   ← AI-generated deity images per theme
 │   └── templates/               ← Jinja2 templates (base.html + sections/)
 │
-├── ui_streamlit/                ← Streamlit UI (prototype — being replaced by Next.js)
-│   ├── app.py                   ← Entry point (`streamlit run`)
-│   ├── state.py                 ← Session state setup + profile helpers
-│   ├── components.py            ← Reusable UI components
-│   ├── cache.py                 ← @st.cache_data wrappers
-│   ├── helpers.py               ← Small generic helpers
-│   └── views/                   ← One file per top-level screen
-│       ├── dashboard.py
-│       ├── kundli.py
-│       ├── consultation.py
-│       ├── palmistry.py
-│       ├── tarot.py
-│       ├── numerology.py
-│       ├── horoscopes.py
-│       ├── vault.py             ← Saved profiles management
-│       ├── astro_pdf.py / palm_pdf.py  ← PDF helpers
-│       └── oracle/              ← Oracle is a PACKAGE — one file per feature
-│           ├── __init__.py       ← `show_oracle()` dropdown router
-│           ├── _shared.py        ← Shared imports + helpers
-│           ├── deep_analysis.py  ← Full Life Reading
-│           ├── matchmaking.py    ← Compatibility Match
-│           ├── marriage.py       ← Destiny Marriage Matrix
-│           ├── gochara.py        ← Live Transit
-│           ├── compare.py        ← Compare Profiles
-│           └── prashna.py        ← Horary
-│
 ├── scripts/                     ← Standalone scripts (smoke tests, diagnostics)
 │   ├── smoke_test_oracle_math.py
 │   ├── smoke_test_rag.py
@@ -105,51 +79,41 @@ AIS/
 │
 ├── kundli/_smoke_test_kundli.py ← End-to-end kundli compute smoke test
 ├── ephe/                        ← Swiss Ephemeris .se1 data files (do not edit)
+├── aiguide/                     ← AI knowledge files (RAG sources)
+├── palm_images/                 ← Reference palm-line images
+├── tarot/                       ← Tarot card image assets
 ├── qdrant_utils.py              ← Qdrant client + vector store factory
-├── requirements.txt             ← Python deps (used by both Streamlit + FastAPI)
+├── requirements.txt             ← Python deps (FastAPI + engines)
 ├── packages.txt                 ← Linux system deps for WeasyPrint
-├── APP_OVERVIEW.md              ← (legacy) Detailed feature/structure reference
-├── DEPLOY.md                    ← Step-by-step Render deploy guide for the owner
+├── DEPLOY.md                    ← Step-by-step Render deploy guide
 └── ARCHITECTURE.md              ← THIS FILE
 ```
 
 ---
 
-## 3. The two app entry points
-
-### Streamlit (current, used for daily testing)
-
-```bash
-streamlit run ui_streamlit/app.py
-```
-
-Reads `GEMINI_API_KEY` from `.streamlit/secrets.toml`.
-Initialises Swiss Ephemeris and Gemini, then routes via `app.py`'s `_ROUTES`
-dict to one `show_*()` function per nav page.
-
-### FastAPI (new — what mobile + web app will call)
+## 3. The single app entry point
 
 ```bash
 uvicorn api.main:app --reload --port 8000
 ```
 
-Reads `GEMINI_API_KEY` from env. Initialises everything in `api/deps.py`.
-Auto-generates `/docs` Swagger UI for testing every endpoint.
+Reads `GEMINI_API_KEY` / `QDRANT_URL` / `QDRANT_API_KEY` from env vars.
+Initialises Swiss Ephemeris in `api/deps.py` on startup. Auto-generates
+`/docs` Swagger UI for testing every endpoint.
 
-**Both entry points share the same `math_engine`, `ai_engine`, `pdf_engine`
-underneath.** All real logic lives in those — the UI / API layers are thin
-wrappers.
+**Live URL (production):** `https://myastro-xq90.onrender.com`
+**Docs URL:** `https://myastro-xq90.onrender.com/docs`
 
 ---
 
 ## 4. Backend Purity Rule (CRITICAL — do not violate)
 
-`math_engine/`, `ai_engine/`, `pdf_engine/` have **ZERO** imports of
-`streamlit`, `st.session_state`, etc. They are pure backend modules.
+`math_engine/`, `ai_engine/`, `pdf_engine/` have **ZERO** imports of any UI
+framework (no Streamlit, no Flask, no anything). They are pure backend
+modules.
 
-This is enforced by convention and by the fact that the FastAPI backend
-imports them. If you add a `import streamlit` to any of these layers,
-the FastAPI deploy will crash.
+This is enforced by convention. If you add a UI-framework import to any
+of these layers, the FastAPI deploy will likely break.
 
 **If you need UI state in an engine function, refactor the function to
 take that state as a parameter instead.**
@@ -160,10 +124,10 @@ take that state as a parameter instead.**
 
 ### Step 1 — Decide where the LOGIC lives
 
-Math (calculations on the chart) → `math_engine/astro_calc.py` or similar.
-AI (prompts + Gemini calls) → `ai_engine/prompts.py` for the prompt,
-caller in the appropriate router/view.
-PDF rendering → `pdf_engine/`.
+- Math (calculations on the chart) → `math_engine/astro_calc.py` or similar.
+- AI (prompts + Gemini calls) → `ai_engine/prompts.py` for the prompt,
+  caller in the appropriate router.
+- PDF rendering → `pdf_engine/`.
 
 ### Step 2 — Add the FastAPI endpoint
 
@@ -172,39 +136,30 @@ PDF rendering → `pdf_engine/`.
 2. Define a Pydantic request/response model in `api/schemas.py`.
 3. Wire the route in `api/main.py` via `app.include_router(...)`.
 
-### Step 3 — (Optional) Add the Streamlit view
-
-If the feature is in the current prototype:
-1. Create a new file in `ui_streamlit/views/`.
-2. Add to the `_ROUTES` dict in `ui_streamlit/app.py`.
-
-For the mobile-first future, you can skip the Streamlit view entirely
-and test directly via FastAPI's `/docs`.
-
-### Step 4 — Test
+### Step 3 — Test
 - Local: `uvicorn api.main:app --reload` → open `/docs` → hit the endpoint.
 - Smoke test: extend `scripts/smoke_test_oracle_math.py` if it's
   comparison/oracle related.
 
+### Step 4 — Push to GitHub
+`git add . && git commit -m "..." && git push` → Render auto-rebuilds.
+
 ---
 
-## 6. The Oracle Split (post-refactor structure)
+## 6. The Oracle Routers
 
-The Oracle was previously one 422-line file. Now it's a package: each of
-the 6 oracle features lives in its own ≤100-line file:
+Each of the 6 oracle features lives in its own ≤100-line router file:
 
-| Feature | Streamlit view | FastAPI router |
-|---|---|---|
-| Full Life Reading | `ui_streamlit/views/oracle/deep_analysis.py` | `api/routers/oracle/deep_analysis.py` |
-| Compatibility Match | `ui_streamlit/views/oracle/matchmaking.py` | `api/routers/oracle/matchmaking.py` |
-| Destiny Marriage Matrix | `ui_streamlit/views/oracle/marriage.py` | `api/routers/oracle/marriage.py` |
-| Live Transit (Gochara) | `ui_streamlit/views/oracle/gochara.py` | `api/routers/oracle/gochara.py` |
-| Compare Profiles | `ui_streamlit/views/oracle/compare.py` | `api/routers/oracle/compare.py` |
-| Prashna (Horary) | `ui_streamlit/views/oracle/prashna.py` | `api/routers/oracle/prashna.py` |
+| Feature | Router |
+|---|---|
+| Full Life Reading | `api/routers/oracle/deep_analysis.py` |
+| Compatibility Match | `api/routers/oracle/matchmaking.py` |
+| Destiny Marriage Matrix | `api/routers/oracle/marriage.py` |
+| Live Transit (Gochara) | `api/routers/oracle/gochara.py` |
+| Compare Profiles | `api/routers/oracle/compare.py` |
+| Prashna (Horary) | `api/routers/oracle/prashna.py` |
 
-When the mobile app is built, each feature becomes its own screen + tab.
-When the website is built, each becomes its own URL path. The current
-Streamlit dropdown is just a transition convenience.
+The mobile app + web app will each render these as separate screens / pages.
 
 ---
 
@@ -251,13 +206,12 @@ Don't add expensive AI calls without checking cost impact.
 **`math_engine/astro_calc.py`** — the lowest layer. Wraps Swiss Ephemeris
 to compute lagna, planet positions, KP cusps, nakshatra info, panchanga,
 divisional charts (D2 through D60), Shadbala, SAV, yogas, doshas, neecha
-bhanga, manglik with cancellation, Argala, etc. Pure functions, no AI,
-no state.
+bhanga, manglik with cancellation, Argala, etc. Pure functions.
 
 **`math_engine/kundli.py`** — single-file (~2500 lines) higher-level
 chart computation. `BirthData` and `KundliChart` are the public types.
 `compute_chart(BirthData)` returns a `KundliChart` with everything
-filled in. Used by the kundli PDF generator + free kundli view.
+filled in. Used by the kundli PDF generator + free kundli endpoint.
 
 **`math_engine/dossier_builder.py`** — builds the chart dossier (the
 text block fed to AI prompts). Also contains `calculate_matchmaking_synastry`
@@ -317,27 +271,33 @@ When adding new AI features, mirror these patterns:
 
 ---
 
-## 10. Where settings/configuration live
+## 10. Environment variables (configuration)
 
-- Gemini API key: `.streamlit/secrets.toml` (Streamlit) OR `GEMINI_API_KEY`
-  env var (FastAPI / Render).
-- Qdrant URL + key: hardcoded in `qdrant_utils.py` (TODO: move to env).
-- Theme assets: `pdf_engine/static/themes/<theme>/cover.png`.
-- Profile data (in current Streamlit): browser localStorage via
-  `streamlit_local_storage`. When mobile ships, switches to Supabase.
+These MUST be set in the hosting provider dashboard (Render → Environment
+section) for the backend to function fully:
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | Yes — AI features fail without it | Google Gemini API |
+| `QDRANT_URL` | No (has fallback) | Qdrant vector DB endpoint |
+| `QDRANT_API_KEY` | No (has fallback) | Qdrant API key |
+| `QDRANT_COLLECTION` | No (default: `vedic_knowledge`) | Collection name |
+| `PYTHON_VERSION` | Yes (set to `3.11`) | Pins Python version |
+| `WEB_CONCURRENCY` | Yes (set to `1` on free tier) | Worker process count |
+
+For local development, set these as system env vars or in a `.env` file
+(not committed to git).
 
 ---
 
 ## 11. What's NOT here (planned but not implemented)
 
-- Database — currently `st.session_state` + browser localStorage. Will
-  move to Supabase (Postgres + Auth + file storage).
-- Mobile app — Flutter, planned for next month. Will call the FastAPI
-  backend.
-- Web app frontend — Next.js, planned. Will call the same FastAPI backend.
-- User authentication — TBD with Supabase Auth.
-- Caching layer — currently `@st.cache_data` for Streamlit; FastAPI side
-  is uncached, will add Redis when needed.
+- **Database** — currently nothing persistent. Will move to Supabase
+  (Postgres + Auth + file storage) when user accounts are added.
+- **Mobile app** — Flutter, planned. Will call the FastAPI backend.
+- **Web app frontend** — Next.js, planned. Will call the same FastAPI backend.
+- **User authentication** — TBD with Supabase Auth.
+- **Caching layer** — currently uncached; will add Redis when needed.
 
 ---
 
@@ -370,19 +330,27 @@ python -c "from api.main import app; print('OK', len(app.routes))"
 5. **Trust the user — they are non-coder but smart.** Explain in plain
    English, not jargon. Surface clear options when uncertain.
 6. **Backend purity rule** (see §4) — `math_engine`/`ai_engine`/`pdf_engine`
-   must NEVER import `streamlit`.
-7. **Both Streamlit and FastAPI share the same engines.** Don't duplicate
-   logic between `ui_streamlit/views/X.py` and `api/routers/X.py` — both
-   should call the same engine function.
-8. **When adding a feature**: prefer adding a FastAPI router (mobile-app
-   shape) over a Streamlit view. Mobile is the future; Streamlit is for
-   convenience testing.
+   must NEVER import a UI framework.
+7. **When adding a feature**: add a FastAPI router. Mobile + web app
+   clients will plug into it.
+8. **Env vars for secrets.** Never hardcode an API key in committed code.
 
 ---
 
-## 14. Last reviewed
+## 14. Deploy workflow
 
-This document was generated as part of the Oracle-split + FastAPI scaffold
-refactor (May 2026). The structure described here matches the codebase
-state immediately after that refactor. If you find drift, update this
-document as you fix it.
+1. Edit Python code locally (or via AI assistant)
+2. Push to GitHub (`git push` or via GitHub Desktop)
+3. Render auto-detects → rebuilds → goes live (~10-15 min)
+4. Test via `/docs` Swagger UI
+
+See **DEPLOY.md** for the one-time Render setup steps.
+
+---
+
+## 15. Last reviewed
+
+This document reflects the codebase state after the Streamlit removal
+refactor (May 2026). The repository was migrated from a hybrid
+Streamlit+FastAPI codebase to a FastAPI-only backend. The Streamlit
+prototype lives in git history if needed for reference.

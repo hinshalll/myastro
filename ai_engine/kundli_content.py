@@ -273,23 +273,25 @@ def _maybe_wait():
 # ─── Public API ───────────────────────────────────────────────────────────
 
 def is_available() -> bool:
-    try:
-        import tomllib
-        from pathlib import Path
-        sp = Path(__file__).parent.parent / ".streamlit" / "secrets.toml"
-        if not sp.exists(): return False
-        with open(sp, "rb") as f: data = tomllib.load(f)
-        return bool(data.get("GEMINI_API_KEY"))
-    except Exception:
-        return False
+    """True if a Gemini API key is configured.
+
+    Reads `GEMINI_API_KEY` from environment variables (set on Render
+    dashboard / .env locally / hosting provider secret manager).
+    """
+    import os
+    return bool(os.environ.get("GEMINI_API_KEY"))
 
 
 def _configure_api():
-    import tomllib
-    from pathlib import Path
-    sp = Path(__file__).parent.parent / ".streamlit" / "secrets.toml"
-    with open(sp, "rb") as f: data = tomllib.load(f)
-    genai.configure(api_key=data["GEMINI_API_KEY"])
+    """Configure Gemini SDK with the key from env."""
+    import os
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY env var is not set. "
+            "Add it in your hosting provider dashboard or local .env file."
+        )
+    genai.configure(api_key=api_key)
 
 
 def generate_kundli_content(

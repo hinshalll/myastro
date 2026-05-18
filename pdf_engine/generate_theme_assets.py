@@ -14,7 +14,8 @@ Usage
     python -m pdf_engine.generate_theme_assets --theme ganesha
     python -m pdf_engine.generate_theme_assets --force  # regenerate all
 
-Reads GEMINI_API_KEY from .streamlit/secrets.toml.
+Reads GEMINI_API_KEY from the environment (set via `export` locally or via
+your hosting provider's dashboard).
 
 Models tried in order (free → cheapest paid):
     1. gemini-2.5-flash-image          (free tier)
@@ -29,15 +30,14 @@ from __future__ import annotations
 
 import argparse
 import base64
+import os
 import sys
 import time
-import tomllib
 from pathlib import Path
 
 
 PKG_ROOT  = Path(__file__).parent
 ASSETS_DIR = PKG_ROOT / "static" / "themes"
-SECRETS    = PKG_ROOT.parent / ".streamlit" / "secrets.toml"
 
 
 # ─── Carefully-crafted prompts per theme ──────────────────────────────────
@@ -171,11 +171,8 @@ PROMPTS: dict[str, dict[str, str]] = {
 
 
 def _load_api_key() -> str | None:
-    if not SECRETS.exists():
-        return None
-    with open(SECRETS, "rb") as f:
-        s = tomllib.load(f)
-    return s.get("GEMINI_API_KEY")
+    """Read Gemini API key from the environment."""
+    return os.environ.get("GEMINI_API_KEY")
 
 
 def _save_image_bytes(data: bytes, theme_slug: str, kind: str) -> Path:
@@ -276,7 +273,11 @@ def main():
 
     api_key = _load_api_key()
     if not api_key:
-        print(f"ERROR: no GEMINI_API_KEY found in {SECRETS}", file=sys.stderr)
+        print("ERROR: GEMINI_API_KEY env var is not set. "
+              "Set it before running this script "
+              "(e.g. `set GEMINI_API_KEY=your_key` on Windows, "
+              "`export GEMINI_API_KEY=your_key` on Linux/Mac).",
+              file=sys.stderr)
         sys.exit(2)
 
     try:
