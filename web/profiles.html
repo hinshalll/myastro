@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Profiles</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+
+  <div id="nav"></div>
+
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">👤 Profiles</h1>
+    <p class="text-slate-400 mb-6">Saved birth profiles. The default profile is auto-loaded on feature pages.</p>
+
+    <!-- ── Add / Edit form ── -->
+    <section class="mb-8 p-5 rounded-xl bg-slate-900 border border-slate-800">
+      <h2 class="text-lg font-semibold mb-3" id="form_title">Add a profile</h2>
+      <form id="profile_form" class="space-y-3">
+        <input type="hidden" id="edit_id">
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Name</label>
+          <input id="name" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                 placeholder="e.g. Hinshal">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Date of birth</label>
+            <input type="date" id="date" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Time (24h)</label>
+            <input type="time" id="time" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">
+            Place (city, country) —
+            <button type="button" id="geocode_btn" class="underline text-purple-300 hover:text-purple-200">Look up coordinates</button>
+          </label>
+          <input id="place" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                 placeholder="e.g. Shimla, India">
+          <p id="geo_status" class="mt-1 text-xs text-slate-500"></p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Latitude</label>
+            <input id="lat" required type="number" step="0.0001" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Longitude</label>
+            <input id="lon" required type="number" step="0.0001" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Timezone</label>
+            <input id="tz" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" value="Asia/Kolkata">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Gender</label>
+            <select id="gender" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+              <option value="O">Other</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <label class="flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" id="exact_time" checked class="w-4 h-4 accent-purple-500">
+              Birth time is exact
+            </label>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm">
+            <span id="submit_label">Save profile</span>
+          </button>
+          <button type="button" id="cancel_btn" class="hidden px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── List of saved profiles ── -->
+    <section>
+      <h2 class="text-lg font-semibold mb-3">Saved profiles</h2>
+      <div id="profile_list" class="space-y-2"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { renderNav } from "./shared/components.js";
+    import { loadProfiles, addProfile, updateProfile, deleteProfile, setDefault } from "./shared/state.js";
+    import { geocode } from "./shared/api.js";
+
+    renderNav("profiles");
+
+    const form          = document.getElementById("profile_form");
+    const editId        = document.getElementById("edit_id");
+    const submitLabel   = document.getElementById("submit_label");
+    const cancelBtn     = document.getElementById("cancel_btn");
+    const formTitle     = document.getElementById("form_title");
+    const geocodeBtn    = document.getElementById("geocode_btn");
+    const geoStatus     = document.getElementById("geo_status");
+
+    // Geocode helper
+    geocodeBtn.addEventListener("click", async () => {
+      const place = document.getElementById("place").value.trim();
+      if (!place) { geoStatus.textContent = "Enter a place name first."; return; }
+      geoStatus.textContent = "Looking up…";
+      try {
+        const r = await geocode(place);
+        if (!r) { geoStatus.textContent = "Not found. Try a more specific name."; return; }
+        document.getElementById("lat").value = r.lat.toFixed(4);
+        document.getElementById("lon").value = r.lon.toFixed(4);
+        document.getElementById("tz").value  = r.tz;
+        document.getElementById("place").value = r.name;
+        geoStatus.textContent = `📍 ${r.name} (${r.tz})`;
+      } catch (err) {
+        geoStatus.textContent = "Lookup failed. Enter coordinates manually.";
+      }
+    });
+
+    // Submit add / update
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const data = {
+        name:  document.getElementById("name").value.trim(),
+        date:  document.getElementById("date").value,
+        time:  document.getElementById("time").value,
+        place: document.getElementById("place").value.trim(),
+        lat:   parseFloat(document.getElementById("lat").value),
+        lon:   parseFloat(document.getElementById("lon").value),
+        tz:    document.getElementById("tz").value.trim(),
+        gender: document.getElementById("gender").value,
+        exact_time: document.getElementById("exact_time").checked,
+      };
+      if (editId.value) {
+        updateProfile(editId.value, data);
+      } else {
+        addProfile(data);
+      }
+      resetForm();
+      renderList();
+    });
+
+    cancelBtn.addEventListener("click", resetForm);
+
+    function resetForm() {
+      form.reset();
+      document.getElementById("tz").value = "Asia/Kolkata";
+      document.getElementById("exact_time").checked = true;
+      editId.value = "";
+      submitLabel.textContent = "Save profile";
+      formTitle.textContent = "Add a profile";
+      cancelBtn.classList.add("hidden");
+      geoStatus.textContent = "";
+    }
+
+    function loadIntoForm(p) {
+      document.getElementById("name").value  = p.name;
+      document.getElementById("date").value  = p.date;
+      document.getElementById("time").value  = p.time;
+      document.getElementById("place").value = p.place;
+      document.getElementById("lat").value   = p.lat;
+      document.getElementById("lon").value   = p.lon;
+      document.getElementById("tz").value    = p.tz;
+      document.getElementById("gender").value = p.gender || "M";
+      document.getElementById("exact_time").checked = p.exact_time !== false;
+      editId.value = p.id;
+      submitLabel.textContent = "Update profile";
+      formTitle.textContent = `Editing: ${p.name}`;
+      cancelBtn.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderList() {
+      const list = loadProfiles();
+      const slot = document.getElementById("profile_list");
+      if (list.length === 0) {
+        slot.innerHTML = `<p class="text-slate-500 text-sm">No profiles yet.</p>`;
+        return;
+      }
+      slot.innerHTML = list.map(p => `
+        <div class="p-3 rounded-lg border border-slate-800 bg-slate-900 flex items-start gap-3">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold">${p.name}</span>
+              ${p.is_default ? `<span class="text-xs px-2 py-0.5 rounded-full bg-purple-900 text-purple-200">Default</span>` : ""}
+            </div>
+            <div class="text-xs text-slate-400 mt-1">
+              ${p.date} ${p.time} • ${p.place} (${p.lat.toFixed(2)}, ${p.lon.toFixed(2)}) • ${p.tz}
+            </div>
+          </div>
+          <div class="flex gap-1">
+            ${!p.is_default ? `<button data-act="default" data-id="${p.id}" class="text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700">⭐</button>` : ""}
+            <button data-act="edit" data-id="${p.id}" class="text-xs px-2 py-1 rounded bg-slate-800 hover:bg-slate-700">Edit</button>
+            <button data-act="delete" data-id="${p.id}" class="text-xs px-2 py-1 rounded bg-rose-900 hover:bg-rose-800">✕</button>
+          </div>
+        </div>
+      `).join("");
+
+      slot.querySelectorAll("button[data-act]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.id;
+          const act = btn.dataset.act;
+          if (act === "edit") {
+            const p = loadProfiles().find(x => x.id === id);
+            if (p) loadIntoForm(p);
+          } else if (act === "delete") {
+            if (confirm("Delete this profile?")) {
+              deleteProfile(id);
+              renderList();
+            }
+          } else if (act === "default") {
+            setDefault(id);
+            renderList();
+          }
+        });
+      });
+    }
+
+    renderList();
+  </script>
+
+</body>
+</html>

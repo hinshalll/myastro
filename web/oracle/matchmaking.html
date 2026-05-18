@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Compatibility Match</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+  <div id="nav"></div>
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">✦ Compatibility Match</h1>
+    <p class="text-slate-400 mb-6">Ashta Koota + Manglik (with classical cancellations) + Compatibility Index.</p>
+
+    <section class="p-5 rounded-xl bg-slate-900 border border-slate-800 mb-6 space-y-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Boy's profile</label>
+        <div id="boy_picker"></div>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Girl's profile</label>
+        <div id="girl_picker"></div>
+      </div>
+      <button id="gen_btn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm">
+        Check compatibility ✨
+      </button>
+      <p class="text-xs text-slate-500">If genders aren't assigned, profile order is used.</p>
+    </section>
+
+    <div id="loading" class="hidden mb-4"></div>
+    <div id="result" class="hidden"></div>
+  </main>
+
+  <script type="module">
+    import { renderNav, renderProfilePicker, renderResult, setLoading, renderError } from "../shared/components.js";
+    import { oracleMatchmaking } from "../shared/api.js";
+    import { toBackendProfile } from "../shared/state.js";
+
+    renderNav("oracle");
+
+    let boy = null, girl = null;
+    renderProfilePicker("boy_picker",  { onChange: p => boy  = p });
+    renderProfilePicker("girl_picker", { onChange: p => girl = p });
+
+    document.getElementById("gen_btn").addEventListener("click", async () => {
+      if (!boy || !girl) { alert("Pick both profiles first"); return; }
+      if (boy.id === girl.id) { alert("Pick two different profiles"); return; }
+      setLoading("loading", true, "Computing Ashta Koota + KP + Compatibility Index…");
+      try {
+        const data = await oracleMatchmaking({
+          boy:  toBackendProfile(boy),
+          girl: toBackendProfile(girl),
+        });
+        setLoading("loading", false);
+        const header = `
+**Koota:** ${data.metadata?.koota_score}/36 ·
+**Compatibility Index:** ${data.metadata?.compatibility_index}/100 ·
+**Manglik:** ${data.metadata?.manglik_verdict?.split("—")[0] || "—"}
+
+---
+        `;
+        renderResult("result", header + data.markdown, data.metadata);
+      } catch (err) {
+        setLoading("loading", false);
+        renderError("result", err);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Full Life Reading</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+  <div id="nav"></div>
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">🪐 Full Life Reading</h1>
+    <p class="text-slate-400 mb-6">Three parallel AI agents (Parashari + Timing + KP) synthesized into one reading. Takes ~30-60s.</p>
+
+    <section class="p-5 rounded-xl bg-slate-900 border border-slate-800 mb-6 space-y-3">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Profile</label>
+        <div id="profile_picker"></div>
+      </div>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" id="include_d60" class="w-4 h-4 accent-purple-500">
+        Include D60 chart (deeper karmic layer)
+      </label>
+      <button id="gen_btn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm">
+        Generate full reading ✨
+      </button>
+    </section>
+
+    <div id="loading" class="hidden mb-4"></div>
+    <div id="result" class="hidden"></div>
+  </main>
+
+  <script type="module">
+    import { renderNav, renderProfilePicker, renderResult, setLoading, renderError } from "../shared/components.js";
+    import { oracleDeepAnalysis } from "../shared/api.js";
+    import { toBackendProfile } from "../shared/state.js";
+
+    renderNav("oracle");
+
+    let selected = null;
+    renderProfilePicker("profile_picker", { onChange: p => { selected = p; } });
+
+    document.getElementById("gen_btn").addEventListener("click", async () => {
+      if (!selected) { alert("Pick a profile first"); return; }
+      setLoading("loading", true, "Firing 3 AI agents in parallel… (~30-60s)");
+      try {
+        const data = await oracleDeepAnalysis({
+          profile: toBackendProfile(selected),
+          include_d60: document.getElementById("include_d60").checked,
+        });
+        setLoading("loading", false);
+        renderResult("result", data.markdown, data.metadata);
+      } catch (err) {
+        setLoading("loading", false);
+        renderError("result", err);
+      }
+    });
+  </script>
+</body>
+</html>

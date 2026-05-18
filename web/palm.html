@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Palm Reading</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+
+  <div id="nav"></div>
+
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">🖐 Palm Reading</h1>
+    <p class="text-slate-400 mb-6">Upload a photo of your dominant palm. AI cross-references it with your kundli.</p>
+
+    <section class="p-5 rounded-xl bg-slate-900 border border-slate-800 mb-6 space-y-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Profile</label>
+        <div id="profile_picker"></div>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Palm photo</label>
+        <input type="file" id="photo" accept="image/jpeg,image/png" required
+               class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm
+                      file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-purple-700 file:text-white
+                      file:cursor-pointer hover:file:bg-purple-600">
+        <p class="text-xs text-slate-500 mt-1">
+          Tips: flat hand, fingers slightly apart, full palm visible, even daylight.
+          On mobile, "Take Photo" works directly.
+        </p>
+      </div>
+
+      <button id="analyze_btn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm">
+        Analyze palm
+      </button>
+    </section>
+
+    <div id="loading" class="hidden mb-4"></div>
+    <div id="result" class="hidden"></div>
+  </main>
+
+  <script type="module">
+    import { renderNav, renderProfilePicker, renderResult, setLoading, renderError } from "./shared/components.js";
+    import { palmAnalyze } from "./shared/api.js";
+    import { toBackendProfile } from "./shared/state.js";
+
+    renderNav("palm");
+
+    let selectedProfile = null;
+    renderProfilePicker("profile_picker", { onChange: (p) => { selectedProfile = p; } });
+
+    document.getElementById("analyze_btn").addEventListener("click", async () => {
+      if (!selectedProfile) { alert("Pick a profile first"); return; }
+      const file = document.getElementById("photo").files[0];
+      if (!file) { alert("Please upload a palm photo first"); return; }
+      setLoading("loading", true, "Analyzing palm (takes ~30s)…");
+      try {
+        const data = await palmAnalyze(toBackendProfile(selectedProfile), file);
+        setLoading("loading", false);
+        const md = `
+### Quality check
+- Blur score: **${data.quality_metrics?.blur_score}**
+- Resolution: **${data.quality_metrics?.resolution}**
+- Usable: ${data.quality_metrics?.is_usable ? "✅ yes" : "⚠ marginal — reading may be less detailed"}
+
+### Hand profile
+- Type: **${data.hand_metrics?.hand_type || "—"}**
+- 2D:4D ratio: ${data.hand_metrics?.digit_ratio?.toFixed(3) || "—"}
+- Vitality: ${data.vitality?.class || "—"}
+
+---
+
+${data.phase_b_markdown}
+        `.trim();
+        renderResult("result", md, { phase_a: data.phase_a });
+      } catch (err) {
+        setLoading("loading", false);
+        renderError("result", err);
+      }
+    });
+  </script>
+
+</body>
+</html>

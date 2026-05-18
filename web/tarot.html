@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Tarot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+  <div id="nav"></div>
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">🎴 Tarot</h1>
+    <p class="text-slate-400 mb-6">Random draw + AI interpretation.</p>
+
+    <section class="p-5 rounded-xl bg-slate-900 border border-slate-800 mb-6 space-y-3">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Spread</label>
+        <select id="spread" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+          <option value="one_card">One Card</option>
+          <option value="three_card" selected>Three Card (Past · Present · Future)</option>
+          <option value="celtic_cross">Celtic Cross (10 cards)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Your question (optional)</label>
+        <textarea id="question" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                  placeholder="e.g. What should I focus on this month?"></textarea>
+      </div>
+      <button id="draw_btn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm">
+        Draw cards ✨
+      </button>
+    </section>
+
+    <div id="loading" class="hidden mb-4"></div>
+    <div id="result" class="hidden"></div>
+  </main>
+
+  <script type="module">
+    import { renderNav, renderResult, setLoading, renderError } from "./shared/components.js";
+    import { tarotDraw } from "./shared/api.js";
+
+    renderNav("tarot");
+
+    document.getElementById("draw_btn").addEventListener("click", async () => {
+      setLoading("loading", true, "Shuffling…");
+      try {
+        const data = await tarotDraw({
+          spread:   document.getElementById("spread").value,
+          question: document.getElementById("question").value.trim(),
+        });
+        setLoading("loading", false);
+        const cards = (data.metadata?.cards || []).map((c, i) =>
+          `- **${i + 1}. ${c}** (${data.metadata.states?.[i] || "upright"})`
+        ).join("\n");
+        renderResult("result", `### Cards drawn\n${cards}\n\n---\n\n${data.markdown}`, data.metadata);
+      } catch (err) {
+        setLoading("loading", false);
+        renderError("result", err);
+      }
+    });
+  </script>
+</body>
+</html>

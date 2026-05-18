@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+
+  <div id="nav"></div>
+
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <header class="mb-10">
+      <h1 class="text-4xl font-bold text-purple-300 mb-2">✦ Myastro</h1>
+      <p class="text-slate-400">Vedic astrology + AI divination. Pick a feature below.</p>
+      <p id="profile_status" class="mt-3 text-sm"></p>
+    </header>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="kundli.html" class="feature-card">
+        <div class="text-2xl">🪐</div>
+        <h2>Kundli</h2>
+        <p>Birth chart — free in-app summary or premium themed PDF.</p>
+      </a>
+
+      <a href="palm.html" class="feature-card">
+        <div class="text-2xl">🖐</div>
+        <h2>Palm Reading</h2>
+        <p>Upload a palm photo. AI + Samudrika Shastra reading.</p>
+      </a>
+
+      <a href="oracle/index.html" class="feature-card">
+        <div class="text-2xl">🔮</div>
+        <h2>The Oracle</h2>
+        <p>6 deep features: life reading, compatibility, marriage, transits, compare, horary.</p>
+      </a>
+
+      <a href="tarot.html" class="feature-card">
+        <div class="text-2xl">🎴</div>
+        <h2>Tarot</h2>
+        <p>Random draw + AI interpretation. One-card, three-card, or Celtic Cross.</p>
+      </a>
+
+      <a href="numerology.html" class="feature-card">
+        <div class="text-2xl">🔢</div>
+        <h2>Numerology</h2>
+        <p>Chaldean / Pythagorean / Vedic profile from your name + DOB.</p>
+      </a>
+
+      <a href="horoscope.html" class="feature-card">
+        <div class="text-2xl">📅</div>
+        <h2>Horoscope</h2>
+        <p>Daily / weekly / monthly / yearly Vedic forecast.</p>
+      </a>
+
+      <a href="consultation.html" class="feature-card">
+        <div class="text-2xl">💬</div>
+        <h2>Chat with Astrologer</h2>
+        <p>Ask anything. AI consults your chart with Vimshottari timing.</p>
+      </a>
+
+      <a href="profiles.html" class="feature-card border-amber-700">
+        <div class="text-2xl">👤</div>
+        <h2>Manage Profiles</h2>
+        <p>Add / edit / delete birth profiles. Set your default.</p>
+      </a>
+
+    </div>
+
+    <footer class="mt-12 text-xs text-slate-600 text-center">
+      Backend: <code class="text-slate-400" id="backend_url">…</code> ·
+      <a href="https://myastro-xq90.onrender.com/docs" class="underline text-slate-500" target="_blank">API docs</a>
+    </footer>
+  </main>
+
+  <style>
+    .feature-card {
+      @apply block p-5 rounded-xl border border-slate-800 bg-slate-900
+             hover:border-purple-600 hover:bg-slate-900/80 transition-colors;
+    }
+    .feature-card h2 { @apply text-lg font-semibold text-purple-200 mt-2; }
+    .feature-card p  { @apply text-sm text-slate-400 mt-1; }
+  </style>
+
+  <script type="module">
+    import { renderNav } from "./shared/components.js";
+    import { getDefaultProfile, loadProfiles } from "./shared/state.js";
+    import { API_BASE } from "./shared/config.js";
+
+    renderNav("dashboard");
+    document.getElementById("backend_url").textContent = API_BASE;
+
+    const dp = getDefaultProfile();
+    const all = loadProfiles();
+    const status = document.getElementById("profile_status");
+    if (all.length === 0) {
+      status.innerHTML = `
+        <span class="text-amber-400">⚠ No profile yet.</span>
+        <a href="profiles.html" class="underline text-amber-300">Add one to get started →</a>
+      `;
+    } else {
+      status.innerHTML = `
+        <span class="text-slate-500">Default profile:</span>
+        <span class="text-slate-300">${dp.name}</span>
+        <span class="text-slate-500">(${dp.date} ${dp.time}, ${dp.place})</span>
+      `;
+    }
+  </script>
+
+</body>
+</html>

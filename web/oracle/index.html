@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Oracle</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+  <div id="nav"></div>
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">🔮 The Oracle</h1>
+    <p class="text-slate-400 mb-6">Six deep analysis tools. Each grounded in classical doctrine + AI narrative.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="deep_analysis.html" class="feature-card">
+        <div class="text-2xl">🪐</div>
+        <h2>Full Life Reading</h2>
+        <p>Deep personal analysis — character, career, wealth, marriage, timing. 3 parallel AI agents.</p>
+      </a>
+
+      <a href="matchmaking.html" class="feature-card">
+        <div class="text-2xl">✦</div>
+        <h2>Compatibility Match</h2>
+        <p>Ashta Koota (36 Gunas) + Manglik with cancellations + Compatibility Index.</p>
+      </a>
+
+      <a href="marriage.html" class="feature-card">
+        <div class="text-2xl">💞</div>
+        <h2>Destiny Marriage Matrix</h2>
+        <p>Cross-chart Jaimini + D9 + dasha-overlap. Single % marriage promise.</p>
+      </a>
+
+      <a href="gochara.html" class="feature-card">
+        <div class="text-2xl">🌍</div>
+        <h2>Live Transits (Gochara)</h2>
+        <p>How today's planets activate your natal chart, right now.</p>
+      </a>
+
+      <a href="compare.html" class="feature-card">
+        <div class="text-2xl">⚖</div>
+        <h2>Compare Profiles</h2>
+        <p>Rank 2–10 people across Wealth, Career, Love, etc. With trust calibration.</p>
+      </a>
+
+      <a href="prashna.html" class="feature-card">
+        <div class="text-2xl">🎯</div>
+        <h2>Prashna (Horary)</h2>
+        <p>Ask a yes/no question. Chart cast at the moment of asking. KP verdict.</p>
+      </a>
+
+    </div>
+  </main>
+
+  <style>
+    .feature-card {
+      @apply block p-5 rounded-xl border border-slate-800 bg-slate-900
+             hover:border-purple-600 hover:bg-slate-900/80 transition-colors;
+    }
+    .feature-card h2 { @apply text-lg font-semibold text-purple-200 mt-2; }
+    .feature-card p  { @apply text-sm text-slate-400 mt-1; }
+  </style>
+
+  <script type="module">
+    import { renderNav } from "../shared/components.js";
+    renderNav("oracle");
+  </script>
+</body>
+</html>

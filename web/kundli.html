@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Kundli</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+
+  <div id="nav"></div>
+
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">🪐 Kundli</h1>
+    <p class="text-slate-400 mb-6">Generate a free chart summary or download a premium themed PDF.</p>
+
+    <section class="p-5 rounded-xl bg-slate-900 border border-slate-800 mb-6">
+      <label class="block text-xs text-slate-400 mb-1">Profile</label>
+      <div id="profile_picker"></div>
+    </section>
+
+    <!-- ── Free kundli ── -->
+    <section class="mb-6 p-5 rounded-xl bg-slate-900 border border-slate-800">
+      <h2 class="text-lg font-semibold mb-3">Free — In-app summary</h2>
+      <p class="text-sm text-slate-400 mb-3">JSON chart summary with planets, houses, panchanga, yogas, current dasha.</p>
+      <button id="free_btn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm">
+        Generate free kundli
+      </button>
+    </section>
+
+    <!-- ── Premium PDF ── -->
+    <section class="mb-6 p-5 rounded-xl bg-slate-900 border border-slate-800">
+      <h2 class="text-lg font-semibold mb-3">Premium — Themed PDF</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Theme</label>
+          <select id="theme" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+            <option value="classic_vedic">Classic Vedic</option>
+            <option value="ganesha">Ganesha</option>
+            <option value="krishna">Krishna</option>
+            <option value="shiva">Shiva</option>
+            <option value="lakshmi">Lakshmi</option>
+            <option value="saraswati">Saraswati</option>
+            <option value="durga">Durga</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Chart style</label>
+          <select id="chart_style" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+            <option value="north_indian">North Indian</option>
+            <option value="south_indian">South Indian</option>
+            <option value="east_indian">East Indian</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Language</label>
+          <select id="language" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+          </select>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 text-sm mb-3">
+        <input type="checkbox" id="include_western" class="w-4 h-4 accent-purple-500">
+        Include Western (tropical) appendix
+      </label>
+      <button id="premium_btn" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm">
+        Generate premium PDF
+      </button>
+      <p class="mt-2 text-xs text-slate-500">Takes ~30-60 seconds (heavy AI calls). PDF will auto-download.</p>
+    </section>
+
+    <div id="loading" class="hidden mb-4"></div>
+    <div id="result" class="hidden"></div>
+  </main>
+
+  <script type="module">
+    import { renderNav, renderProfilePicker, renderResult, setLoading, renderError } from "./shared/components.js";
+    import { kundliFree, kundliPremium } from "./shared/api.js";
+    import { toBackendProfile } from "./shared/state.js";
+
+    renderNav("kundli");
+
+    let selectedProfile = null;
+    const picker = renderProfilePicker("profile_picker", {
+      onChange: (p) => { selectedProfile = p; },
+    });
+
+    document.getElementById("free_btn").addEventListener("click", async () => {
+      if (!selectedProfile) { alert("Pick a profile first"); return; }
+      setLoading("loading", true, "Computing chart…");
+      try {
+        const data = await kundliFree(toBackendProfile(selectedProfile));
+        setLoading("loading", false);
+        const md = formatKundliSummary(data.chart_summary);
+        renderResult("result", md, { feature: data.feature });
+      } catch (err) {
+        setLoading("loading", false);
+        renderError("result", err);
+      }
+    });
+
+    document.getElementById("premium_btn").addEventListener("click", async () => {
+      if (!selectedProfile) { alert("Pick a profile first"); return; }
+      setLoading("loading", true, "Generating premium PDF (this takes ~60s)…");
+      try {
+        const blob = await kundliPremium({
+          profile: toBackendProfile(selectedProfile),
+          theme:         document.getElementById("theme").value,
+          chart_style:   document.getElementById("chart_style").value,
+          language:      document.getElementById("language").value,
+          include_western: document.getElementById("include_western").checked,
+        });
+        setLoading("loading", false);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `kundli_${selectedProfile.name.replace(/\s+/g, "_")}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        renderResult("result", `**✅ PDF downloaded.** Check your downloads folder.`);
+      } catch (err) {
+        setLoading("loading", false);
+        renderError("result", err);
+      }
+    });
+
+    function formatKundliSummary(cs) {
+      const l = cs.lagna || {};
+      const planetRows = Object.values(cs.planets || {}).map(p => {
+        const flags = [];
+        if (p.is_retrograde) flags.push("R");
+        if (p.is_combust) flags.push("C");
+        if (p.dignity) flags.push(p.dignity.slice(0, 3));
+        return `| **${p.name}** | ${p.sign} ${p.longitude_dms} | H${p.house} | ${p.nakshatra} p${p.pada} | ${flags.join(", ") || "—"} |`;
+      }).join("\n");
+      const yogas = (cs.yogas || []).map(y =>
+        `- **${y.name}** — ${y.description}`
+      ).join("\n");
+      return `
+### Lagna
+**${l.sign}** ${l.degree_in_sign_dms} — lord **${l.lord}**, ${l.nakshatra} pada ${l.pada}
+
+### Planets
+
+| Planet | Sign | House | Nakshatra | Flags |
+|---|---|---|---|---|
+${planetRows}
+
+### Yogas (${(cs.yogas || []).length})
+${yogas || "_None detected._"}
+
+### Panchanga
+Tithi: ${cs.panchanga?.tithi} · Paksha: ${cs.panchanga?.paksha} · Yoga: ${cs.panchanga?.yoga} · Karana: ${cs.panchanga?.karana} · Weekday: ${cs.panchanga?.weekday}
+
+_Ayanamsha: ${cs.ayanamsha_used} = ${cs.ayanamsha_value?.toFixed(4)}°_
+      `.trim();
+    }
+  </script>
+
+</body>
+</html>

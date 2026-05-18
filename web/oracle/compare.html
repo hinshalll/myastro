@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Myastro — Compare Profiles</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+  <div id="nav"></div>
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-purple-300 mb-2">⚖ Compare Profiles</h1>
+    <p class="text-slate-400 mb-6">Rank 2–10 people across selected criteria. With trust calibration (bands, percentiles, discrimination index).</p>
+
+    <section class="p-5 rounded-xl bg-slate-900 border border-slate-800 mb-6">
+      <h2 class="font-semibold mb-2">Select profiles to compare</h2>
+      <div id="profile_checkboxes" class="space-y-2 mb-4"></div>
+      <p id="count_msg" class="text-xs text-slate-500"></p>
+    </section>
+
+    <section class="p-5 rounded-xl bg-slate-900 border border-slate-800 mb-6">
+      <h2 class="font-semibold mb-2">What to compare</h2>
+      <div id="criteria_checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-1 mb-3"></div>
+      <div class="flex gap-2">
+        <input id="custom_input" class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs"
+               placeholder="Custom criterion (e.g. 'Most likely to be famous')">
+        <button id="add_custom" class="text-xs px-3 py-1 rounded bg-slate-800 hover:bg-slate-700">Add</button>
+      </div>
+      <div id="custom_list" class="mt-2 space-y-1"></div>
+    </section>
+
+    <button id="gen_btn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm mb-4">
+      Compare ✨
+    </button>
+
+    <div id="loading" class="hidden mb-4"></div>
+    <div id="result" class="hidden"></div>
+  </main>
+
+  <script type="module">
+    import { renderNav, renderResult, setLoading, renderError, escapeHtml } from "../shared/components.js";
+    import { oracleCompare } from "../shared/api.js";
+    import { loadProfiles, toBackendProfile } from "../shared/state.js";
+
+    renderNav("oracle");
+
+    const STANDARD_CRITERIA = [
+      "Wealth Potential",
+      "Relationship Quality",
+      "Career Success",
+      "Life Struggles",
+      "Health & Longevity",
+      "Happiness & Contentment",
+      "Luck & Fortune",
+      "Spiritual Depth",
+      "Hidden Pitfalls",
+    ];
+
+    let customCriteria = [];
+
+    function renderProfiles() {
+      const list = loadProfiles();
+      const slot = document.getElementById("profile_checkboxes");
+      if (list.length < 2) {
+        slot.innerHTML = `<p class="text-amber-400 text-sm">Need at least 2 profiles to compare. <a href="../profiles.html" class="underline">Add profiles →</a></p>`;
+        return;
+      }
+      slot.innerHTML = list.map(p => `
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" value="${p.id}" class="profile-check w-4 h-4 accent-purple-500">
+          <span>${escapeHtml(p.name)} <span class="text-slate-500">— ${escapeHtml(p.date)} ${escapeHtml(p.time)}, ${escapeHtml(p.place)}</span></span>
+        </label>
+      `).join("");
+      updateCount();
+      slot.querySelectorAll("input").forEach(el => el.addEventListener("change", updateCount));
+    }
+
+    function renderCriteria() {
+      const slot = document.getElementById("criteria_checkboxes");
+      slot.innerHTML = STANDARD_CRITERIA.map((c, i) => `
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" value="${escapeHtml(c)}" class="crit-check w-4 h-4 accent-purple-500" ${i < 3 ? "checked" : ""}>
+          <span>${escapeHtml(c)}</span>
+        </label>
+      `).join("");
+    }
+
+    function renderCustomList() {
+      document.getElementById("custom_list").innerHTML = customCriteria.map((c, i) => `
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" data-custom="${i}" checked class="w-4 h-4 accent-purple-500">
+          <span>${escapeHtml(c)}</span>
+          <button data-remove="${i}" class="text-xs text-rose-400 hover:text-rose-300">✕</button>
+        </label>
+      `).join("");
+      document.getElementById("custom_list").querySelectorAll("[data-remove]").forEach(b => {
+        b.addEventListener("click", () => {
+          customCriteria.splice(+b.dataset.remove, 1);
+          renderCustomList();
+        });
+      });
+    }
+
+    function updateCount() {
+      const n = document.querySelectorAll(".profile-check:checked").length;
+      const msg = document.getElementById("count_msg");
+      if (n < 2)       msg.textContent = `Select at least 2 (${n} selected).`;
+      else if (n > 10) msg.textContent = `Max 10 (${n} selected).`;
+      else             msg.textContent = `${n} selected.`;
+    }
+
+    document.getElementById("add_custom").addEventListener("click", () => {
+      const v = document.getElementById("custom_input").value.trim();
+      if (v) {
+        customCriteria.push(v);
+        document.getElementById("custom_input").value = "";
+        renderCustomList();
+      }
+    });
+
+    document.getElementById("gen_btn").addEventListener("click", async () => {
+      const selectedIds = Array.from(document.querySelectorAll(".profile-check:checked")).map(el => el.value);
+      if (selectedIds.length < 2 || selectedIds.length > 10) {
+        alert("Select 2-10 profiles"); return;
+      }
+      const profiles = loadProfiles().filter(p => selectedIds.includes(p.id)).map(toBackendProfile);
+      const std = Array.from(document.querySelectorAll(".crit-check:checked")).map(el => el.value);
+      const custom = customCriteria;
+      const criteria = [...std, ...custom];
+      if (criteria.length === 0) { alert("Pick at least one criterion"); return; }
+      setLoading("loading", true, `Comparing ${profiles.length} profiles across ${criteria.length} criteria…`);
+      try {
+        const data = await oracleCompare({ profiles, criteria });
+        setLoading("loading", false);
+        renderResult("result", data.markdown, data.metadata);
+      } catch (err) {
+        setLoading("loading", false);
+        renderError("result", err);
+      }
+    });
+
+    renderProfiles();
+    renderCriteria();
+  </script>
+</body>
+</html>
