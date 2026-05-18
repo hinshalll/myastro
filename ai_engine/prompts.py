@@ -611,43 +611,8 @@ FULL NATAL DOSSIER:
 # Numerology prompts moved to features/numerology/prompts.py
 
 
-def build_dashboard_data_prompt(dossier, transits, user_name):
-    return f"""<instructions>
-You are an elite Vedic astrologer. Analyze the natal chart against today's transits.
-Provide exactly one short, personalized paragraph (2 sentences max) for {user_name} focusing on the most important planetary movement today. Keep it punchy and practical. DO NOT start with a greeting like 'Hello'.
-Then, provide exactly four short, punchy phrases (max 5 words each) and one summary sentence for the general energy.
-RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN. NO EXTRA TEXT.
-{{
-  "GREETING": "The 2-sentence transit insight paragraph.",
-  "ENERGY": "High/Low/Erratic/Focused",
-  "FOCUS": "What to do today",
-  "CAUTION": "What to avoid today",
-  "WINDOW": "Best time of day",
-  "SUMMARY": "One short sentence summarizing the vibe."
-}}
-</instructions>
-
-<data>
-{transits}
-
-{dossier}
-</data>"""
-
-
-def build_astro_decide_prompt(dossier, transits, question, py_verdict, py_advice):
-    # 1. PYTHON HAS ALREADY EXECUTED TARA BALA
-    return f"""<instructions>
-You are an Astro-Decide engine. The mathematical engine has already made the decision based on Tara Bala transit alignments.
-Your job is to format this decision into JSON and provide ONE sentence linking the user's specific question to the provided advice.
-RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN.
-{{
-  "VERDICT": "{py_verdict}",
-  "WHY": "One sentence explaining why based on the transits below.",
-  "ALTERNATIVE": "{py_advice}"
-}}
-</instructions>
-<decision_query>{question}</decision_query>
-<data>{transits}</data>"""
+# Dashboard prompts (build_dashboard_data_prompt + build_astro_decide_prompt)
+# moved to features/dashboard/prompts.py
 
 
 # ─────────────────────────────────────────────────────────────────────────────

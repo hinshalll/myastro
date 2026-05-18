@@ -18,7 +18,8 @@ from math_engine.astro_calc import geocode_place, timezone_for_latlon
 from math_engine.dossier_builder import get_live_cosmic_weather
 from ai_engine.knowledge import rag_context
 from features.horoscopes.service import generate_western_forecast, generate_vedic_forecast
-from ai_engine.forecasts import fetch_dashboard_data, fetch_daily_tarot
+from features.dashboard.service import fetch_data as fetch_dashboard_data
+from features.dashboard.service import fetch_daily_tarot
 
 
 @st.cache_data(show_spinner=False)

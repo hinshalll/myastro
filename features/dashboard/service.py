@@ -1,32 +1,23 @@
-"""
-ai_engine/forecasts.py
-======================
+"""features.dashboard.service — AI orchestration for the dashboard tiles.
 
-Remaining dashboard-tile AI helpers — kept here only until the dashboard
-feature is migrated to features/dashboard/.
+Two functions:
+  fetch_data(prof_json, today_str)      → {GREETING, ENERGY, FOCUS, CAUTION, WINDOW, SUMMARY}
+  fetch_daily_tarot(prof_json, today_str, daily_card, daily_state)
+                                        → {MEANING, ACTION, MANTRA}
 
-Functions previously in this file:
-  - generate_western_forecast → features/horoscopes/service.py
-  - generate_vedic_forecast   → features/horoscopes/service.py
-  - fetch_dashboard_data      (still here, will move to features/dashboard/)
-  - fetch_daily_tarot         (still here, will move to features/dashboard/)
+today_str is part of the cache key (cached 24h in ui_streamlit/cache.py).
 """
 
 import json
-from datetime import datetime, date
-from zoneinfo import ZoneInfo
 
 from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
 from ai_engine.gemini_client import generate_content_with_fallback
 from ai_engine.knowledge import rag_context
-from ai_engine.prompts import build_dashboard_data_prompt
+from features.dashboard.prompts import build_data_prompt
 from features.tarot.prompts import build_daily_card_prompt
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
-def safe_json(raw: str, fallback: dict) -> dict:
-    """Parse a JSON string from the model, returning fallback on any error."""
+def _safe_json(raw: str, fallback: dict) -> dict:
     try:
         clean = raw.strip().replace("```json", "").replace("```", "").strip()
         return json.loads(clean)
@@ -34,23 +25,17 @@ def safe_json(raw: str, fallback: dict) -> dict:
         return fallback
 
 
-def _get_local_today(tz_name: str) -> date:
-    return datetime.now(ZoneInfo(tz_name)).date()
-
-
-# ── Dashboard data ───────────────────────────────────────────────────────────
-
-def fetch_dashboard_data(prof_json: str, today_str: str) -> dict:
+def fetch_data(prof_json: str, today_str: str) -> dict:
     """Returns a dict: GREETING, ENERGY, FOCUS, CAUTION, WINDOW, SUMMARY."""
     prof = json.loads(prof_json)
     dos = generate_astrology_dossier(prof, False, compact=True)
     transits = get_gochara_overlay(prof)
-    prompt = build_dashboard_data_prompt(dos, transits, prof["name"].split()[0])
+    prompt = build_data_prompt(dos, transits, prof["name"].split()[0])
     res = generate_content_with_fallback(
         prompt, knowledge_files=None,
         preferred_model="gemini-3.1-flash-lite-preview",
     )
-    return safe_json(res, {
+    return _safe_json(res, {
         "GREETING": f"Welcome back, {prof['name'].split()[0]}. The cosmic connection is catching its breath, but your tools are ready below.",
         "ENERGY":   "Mixed",
         "FOCUS":    "Routine",
@@ -59,8 +44,6 @@ def fetch_dashboard_data(prof_json: str, today_str: str) -> dict:
         "SUMMARY":  "Balanced day. Stick to your routines.",
     })
 
-
-# ── Daily tarot (dashboard tile) ─────────────────────────────────────────────
 
 def fetch_daily_tarot(prof_json: str, today_str: str, daily_card: str, daily_state: str) -> dict:
     """Returns a dict: MEANING, ACTION, MANTRA."""
@@ -84,7 +67,7 @@ RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN:
             + json_prompt
         )
     res = generate_content_with_fallback(json_prompt, knowledge_files=None)
-    return safe_json(res, {
+    return _safe_json(res, {
         "MEANING": "Trust the process unfolding today.",
         "ACTION":  "Observe before making any sudden moves.",
         "MANTRA":  "I am exactly where I need to be.",

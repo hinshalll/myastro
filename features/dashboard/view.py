@@ -19,7 +19,7 @@ from math_engine.dossier_builder import (
     generate_astrology_dossier, get_gochara_overlay, build_vimshottari_timeline,
 )
 from ai_engine.gemini_client import generate_content_with_fallback
-from ai_engine.prompts import build_astro_decide_prompt
+from features.dashboard.prompts import build_decide_prompt
 
 from ui_streamlit.state import get_default_profile
 from ui_streamlit.helpers import get_local_today, safe_json, get_filename
@@ -186,7 +186,7 @@ def show_dashboard():
                         transit_moon, _ = get_planet_longitude_and_speed(jd_now, PLANETS["Moon"])
                         tara = calculate_tara_bala(natal_moon, transit_moon)
                         py_verdict = "YES" if tara["status"] == "Go" else ("WAIT" if tara["status"] == "Stop" else "PROCEED CAUTIOUSLY")
-                        prompt = build_astro_decide_prompt(dos, transits, q, py_verdict, tara["advice"])
+                        prompt = build_decide_prompt(dos, transits, q, py_verdict, tara["advice"])
                         res = generate_content_with_fallback(prompt)
                         st.session_state.astro_decide_result = safe_json(res, {"VERDICT": py_verdict, "WHY": "Cosmic signals processed.", "ALTERNATIVE": tara["advice"]})
                     except Exception:
