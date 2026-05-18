@@ -1,12 +1,14 @@
 <section class="section" data-title="Panchanga">
   <div class="section-header">
+    <div class="deity-mark"></div>
     <h2>Panchanga at Birth</h2>
     <span class="eyebrow">Five Limbs of the Day</span>
   </div>
 
   <p>
-    Panchanga ("five limbs") encodes the cosmic weather of the moment of birth.
-    Each limb shapes a different stratum of personality and life rhythm.
+    The Panchanga ("five limbs") records the planetary conditions at the
+    moment of your birth. Each limb shapes one aspect of personality and
+    daily rhythm.
   </p>
 
   <table class="data">
@@ -17,11 +19,11 @@
       <tr><td>Paksha (fortnight)</td><td>{{ chart.panchanga.paksha }}</td>
           <td>{% if chart.panchanga.paksha == "Shukla" %}Waxing — outward growth phase{% else %}Waning — inward consolidation phase{% endif %}.</td></tr>
       <tr><td>Yoga</td><td>{{ chart.panchanga.yoga }}</td>
-          <td>Joint Sun-Moon energy; auspicious tone.</td></tr>
+          <td>Combined Sun-Moon position; sets the day's auspiciousness.</td></tr>
       <tr><td>Karana</td><td>{{ chart.panchanga.karana }}</td>
-          <td>Half-tithi flavour governing initiative.</td></tr>
+          <td>Half-Tithi unit; influences how new actions begin.</td></tr>
       <tr><td>Vara (weekday)</td><td>{{ chart.panchanga.weekday }}</td>
-          <td>Day-ruler signature on temperament.</td></tr>
+          <td>Day-ruler's stamp on natural temperament.</td></tr>
     </tbody>
   </table>
 

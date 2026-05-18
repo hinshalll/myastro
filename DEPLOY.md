@@ -1,0 +1,316 @@
+# Deploy Guide — Step by Step
+
+This guide is written for someone who has **never deployed an API before**.
+Every step has exact text to paste. You'll go from "code on my laptop" to "live
+API on the internet" in about 30 minutes.
+
+You'll set up two things:
+
+1. **The backend (FastAPI)** — runs on Render (free tier)
+2. **(Later) The web frontend** — Next.js on Vercel/Cloudflare Pages
+
+By the end of step 7 below, your backend will be live at a URL like
+`https://your-app.onrender.com/docs` — and you can poke every endpoint from
+your phone or any browser. That IS the "mobile-app shape" we've been
+building toward.
+
+---
+
+## What you need
+
+- A GitHub account (free)
+- A Render account (free — sign up with GitHub at https://render.com)
+- Your `GEMINI_API_KEY` (already in `.streamlit/secrets.toml`)
+- Your Qdrant Cloud URL + API key (already in `qdrant_utils.py`)
+
+That's it. No credit card needed for the free tier.
+
+---
+
+## Step 1 — Push your code to GitHub
+
+If your code isn't already in a GitHub repo, do this once:
+
+```bash
+cd C:\Users\hinsh\Desktop\AIS
+git init
+git add .
+git commit -m "Initial commit before Render deploy"
+```
+
+Then on GitHub, create a new private repo (e.g., `astro-suite`) and follow the
+"push existing repository" instructions GitHub shows you. They'll look like:
+
+```bash
+git remote add origin https://github.com/YOUR-USERNAME/astro-suite.git
+git branch -M main
+git push -u origin main
+```
+
+If you already have it on GitHub: skip this step.
+
+---
+
+## Step 2 — Make sure `requirements.txt` is correct
+
+We already added `fastapi`, `uvicorn`, `python-multipart`, `pydantic`,
+`opencv-python-headless`, `mediapipe`, `numpy` to your `requirements.txt`.
+
+Just verify it has all of these:
+
+```
+streamlit
+pyswisseph
+geopy
+timezonefinder
+streamlit-local-storage
+google-generativeai
+qdrant-client
+sentence-transformers
+weasyprint
+jinja2
+indic-transliteration
+Pillow
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+opencv-python-headless
+mediapipe
+numpy
+```
+
+If yours has all these, you're good.
+
+---
+
+## Step 3 — Sign in to Render
+
+1. Go to https://render.com
+2. Click **Get Started** → sign in with GitHub
+3. When prompted, give Render access to your `astro-suite` repo (or "all
+   repos" — easier for one-time setup)
+
+---
+
+## Step 4 — Create the Web Service
+
+On the Render dashboard:
+
+1. Click **New +** (top right) → **Web Service**
+2. Find your `astro-suite` repo and click **Connect**
+3. Fill in the form:
+
+| Field | Value |
+|---|---|
+| Name | `astro-suite-api` (or any name you like) |
+| Region | Pick the closest one to you (e.g., **Singapore** for India) |
+| Branch | `main` |
+| Root Directory | leave blank |
+| Runtime | **Python 3** |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn api.main:app --host 0.0.0.0 --port $PORT` |
+| Instance Type | **Free** |
+
+4. Don't click **Create Web Service** yet — first add env vars below.
+
+---
+
+## Step 5 — Add environment variables (your secret keys)
+
+Scroll down to **Environment Variables**. Click **Add Environment Variable**
+and add these three:
+
+| Key | Value |
+|---|---|
+| `GEMINI_API_KEY` | (your Gemini API key — same one in `.streamlit/secrets.toml`) |
+| `PYTHON_VERSION` | `3.11` |
+| `WEB_CONCURRENCY` | `1` |
+
+**Why these:**
+- `GEMINI_API_KEY` is needed by the AI features. Without it, AI endpoints fail.
+- `PYTHON_VERSION` forces Render to use 3.11 (the version your code is tested on).
+- `WEB_CONCURRENCY=1` limits to 1 worker process on the free tier — keeps memory under the 512 MB limit. (You can raise it on paid tiers.)
+
+Now click **Create Web Service**.
+
+---
+
+## Step 6 — Wait for the first build (5-10 min)
+
+Render will:
+1. Pull your code from GitHub
+2. Install all the packages in `requirements.txt`
+3. Start your FastAPI app
+
+You'll see scrolling logs. When it says **"Your service is live"** at the
+top, you're done.
+
+You'll get a URL like `https://astro-suite-api.onrender.com`.
+
+---
+
+## Step 7 — Test it (the fun part)
+
+Open these URLs in your browser:
+
+1. **Health check** — `https://astro-suite-api.onrender.com/health`
+   - Should return: `{"status":"ok"}`
+
+2. **API docs** — `https://astro-suite-api.onrender.com/docs`
+   - This is the interactive Swagger UI. You can hit EVERY endpoint from
+     here with forms. It's how you'll test new features as you build them.
+
+3. **Try an endpoint**:
+   - Open `/docs` → click `POST /api/v1/profiles/validate` → click "Try it out" →
+     paste this in the request body:
+     ```json
+     {
+       "name": "Test",
+       "date": "1995-06-15",
+       "time": "06:30",
+       "place": "Delhi",
+       "lat": 28.6,
+       "lon": 77.2,
+       "tz": "Asia/Kolkata",
+       "gender": "M",
+       "exact_time": true
+     }
+     ```
+   - Click "Execute". You should see a 200 response.
+
+If you got the 200 response — **your mobile-app backend is live.**
+
+---
+
+## Step 8 — About the "sleep" behaviour (free tier)
+
+Render free apps **sleep after 15 minutes of inactivity**. First request
+after sleeping takes ~1 minute (cold start), then it's fast.
+
+For development, this is fine. When you have real users:
+
+- **Option A** — keep the free tier and use a free "uptime monitor" like
+  https://uptimerobot.com to ping your `/health` every 14 minutes (keeps
+  it warm). Free. Works fine for low traffic.
+- **Option B** — upgrade to Render Starter at $7/month (always on, faster CPU)
+- **Option C** — move to your own VPS (Hetzner CX22 €4.5/mo). Same code,
+  no Docker required, see VPS section at the end.
+
+---
+
+## Step 9 — Updating the code
+
+After the first deploy, **every time you push to GitHub, Render auto-rebuilds**.
+
+Workflow:
+
+```bash
+# 1. Edit code (or have Claude Code / Antigravity / Codex edit it)
+# 2. Commit + push
+git add .
+git commit -m "describe what you changed"
+git push
+
+# 3. Render auto-detects the push and rebuilds (~5 min)
+# 4. Live URL is updated automatically
+```
+
+You never have to manually deploy again.
+
+---
+
+## Step 10 — Point Streamlit at the backend (optional)
+
+If you want your existing Streamlit prototype to call the new FastAPI
+backend (so it acts like a "web client" instead of running everything
+locally), do this:
+
+1. In Streamlit Cloud → your app → **Settings** → **Secrets**
+2. Add this line:
+   ```
+   BACKEND_URL = "https://astro-suite-api.onrender.com"
+   ```
+3. We'll wire this into the views in the next refactor phase.
+
+For now, just leaving Streamlit running as-is is fine.
+
+---
+
+## Local testing (you can do this anytime)
+
+Run the FastAPI backend on your laptop:
+
+```bash
+cd C:\Users\hinsh\Desktop\AIS
+
+# Set the Gemini key first (only first time)
+set GEMINI_API_KEY=your_actual_key_here
+
+# Start the backend
+uvicorn api.main:app --reload --port 8000
+```
+
+Then open `http://localhost:8000/docs` — same Swagger UI as on Render,
+but running on your machine. Use this when developing — Render is for
+"is it live on the internet" testing.
+
+---
+
+## Future — Supabase (database + auth)
+
+When you're ready to add user accounts + persistent storage:
+
+1. Sign up at https://supabase.com (free)
+2. Create a project (free tier: 500 MB database, 1 GB file storage)
+3. Add these env vars in Render:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_KEY`
+4. We'll write the database tables (`users`, `profiles`, `saved_kundlis`)
+   when you ask for that phase
+
+Don't add Supabase yet — for now, you're testing the backend shape.
+
+---
+
+## Future — VPS migration (when you grow)
+
+When you cross ~1-2k active users and want to leave Render's free tier:
+
+1. Buy a Hetzner CX22 VPS (~€4.50/mo, takes 5 min to set up)
+2. Run the exact same FastAPI code on the VPS via `systemd` + `uvicorn`
+3. Free Caddy reverse proxy gives you auto-HTTPS
+4. (Optional) Self-host Supabase + Qdrant on the same VPS via docker-compose
+
+No code changes needed. Just a different host. Total monthly cost: ~Rs 450
+for the VPS, $0 for software.
+
+I can write the VPS migration guide when you're ready — for now, focus
+on getting the Render deploy working.
+
+---
+
+## Troubleshooting
+
+**"Build failed: pip install failed"**
+→ Open the build log on Render. Usually a typo in `requirements.txt`. Fix
+   it, push to GitHub, Render rebuilds.
+
+**"Application failed to start"**
+→ Check the runtime log on Render. Often a missing env var. Verify
+   `GEMINI_API_KEY` is set in **Environment Variables**, not as a
+   build-time variable.
+
+**"500 error on /api/v1/kundli/free"**
+→ Open the runtime log on Render — the exact Python traceback is there.
+   Copy it to Claude Code with "fix this error" and you'll get the fix.
+
+**"It works on my laptop but not on Render"**
+→ Usually a path issue. Most paths in our code are already relative to
+   the repo root, so this should be rare. If it happens, the error in
+   Render's log will tell you exactly what file is missing.
+
+---
+
+That's it. After step 7, you have a real mobile-app backend running on
+free infrastructure. Everything else is iteration.

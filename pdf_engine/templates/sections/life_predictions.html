@@ -1,0 +1,48 @@
+{% if ai_content %}
+{% set topic_titles = {
+  "personality": "Your Personality & Character",
+  "career": "Career & Profession",
+  "health": "Health & Constitution",
+  "wealth": "Wealth & Finance",
+  "marriage": "Marriage & Partnership",
+  "education": "Education & Learning",
+  "family": "Family & Relationships",
+  "spirituality": "Spirituality & Inner Path",
+  "children": "Children & Progeny",
+  "love_life": "Love Life",
+  "manglik_analysis": "Manglik Dosha Analysis",
+  "sade_sati_narrative": "Sade Sati — Saturn's 7.5-Year Cycle",
+  "kaal_sarp_narrative": "Kaal Sarp Axis Reading",
+  "lucky_factors": "Your Lucky Factors",
+  "remedies_narrative": "Personalised Remedies",
+  "year_current": "This Year Ahead",
+  "year_next": "Next Year",
+  "year_after_next": "The Year After Next",
+  "major_dasha": "Your Current Mahadasha",
+  "next_dasha": "Your Next Mahadasha",
+} %}
+
+{% for topic, prose in ai_content.items() %}
+{% if prose %}
+<section class="section" data-title="{{ topic_titles.get(topic, topic|replace('_',' ')|title) }}">
+  <div class="section-header">
+    <div class="deity-mark"></div>
+    <h2>{{ topic_titles.get(topic, topic|replace('_',' ')|title) }}</h2>
+    <span class="eyebrow">Personalised Reading</span>
+  </div>
+
+  <p class="small muted" style="margin-bottom:14pt;">
+    This reading is generated specifically from your chart's actual placements —
+    not generic horoscope text. It refers to YOUR planets, signs, and houses.
+  </p>
+
+  <div class="prose-block">
+    <p style="text-align: justify; line-height: 1.75; font-size: 11pt;
+              text-indent: 1.5em;">{{ prose }}</p>
+  </div>
+
+  <div class="ornament" style="margin-top:18pt;"><span class="dot"></span></div>
+</section>
+{% endif %}
+{% endfor %}
+{% endif %}

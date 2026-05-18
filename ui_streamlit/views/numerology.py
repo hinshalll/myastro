@@ -18,7 +18,7 @@ from ai_engine.prompts import build_numerology_prompt
 from ui_streamlit.state import get_default_profile
 from ui_streamlit.helpers import get_local_today
 from ui_streamlit.components import render_profile_form, resolve_profile, stream_ai_with_followup
-from ui_streamlit.cache import get_knowledge_files_cached
+from ui_streamlit.cache import rag_context_cached
 
 
 def _num_pdf(title, user_name, metadata, chat_key):
@@ -84,6 +84,12 @@ def show_numerology():
             with st.spinner("Computing numbers..."):
                 lp, dest, soul, pers = calculate_numerology_core(name, dob_str, system)
                 dossier = generate_astrology_dossier(prof, d60) if use_astro and prof else None
+                # Pre-fetch RAG context for the specific numbers
+                num_books = ("inum1.md",) if "Vedic" in system else ("wnum.md",)
+                num_ctx = rag_context_cached(
+                    f"life path {lp} destiny {dest} soul urge {soul} personality {pers} numerology meaning",
+                    num_books, k=10
+                )
 
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Life Path",  f"{lp}{'★'   if lp   in [11,22,33] else ''}")
@@ -91,16 +97,15 @@ def show_numerology():
             c3.metric("Soul Urge",  f"{soul}{'★'  if soul in [11,22,33] else ''}")
             c4.metric("Personality",f"{pers}{'★'  if pers in [11,22,33] else ''}")
 
-            st.session_state.num_prompt = build_numerology_prompt(name, dob_str, lp, dest, soul, pers, dossier, question, system)
+            st.session_state.num_prompt = build_numerology_prompt(name, dob_str, lp, dest, soul, pers, dossier, question, system, knowledge_context=num_ctx)
             st.session_state.num_chat   = []
             st.session_state.num_lp     = lp
 
         if "num_prompt" in st.session_state:
-            num_files = (get_knowledge_files_cached(["inum1.md","inum2.md"])
-                         if "Vedic" in system
-                         else get_knowledge_files_cached(["wnum.md"]))
+            # Prompt was already built with RAG context baked in on first click
+            # (see line above setting num_prompt). Do NOT re-fetch RAG here.
             stream_ai_with_followup(st.session_state.num_prompt, "num_chat",
-                                    "Analysing your numbers...", knowledge_files=num_files,
+                                    "Analysing your numbers...", knowledge_files=None,
                                     hide_user_prompt=True)
             pdf = _num_pdf(
                 f"Numerology Report ({system.split('(')[0].strip()})",
@@ -194,12 +199,25 @@ Explain:
             st.session_state.cyc_name_val = cyc_name.strip()
 
         if "cyc_prompt" in st.session_state:
-            num_files = (get_knowledge_files_cached(["inum1.md","inum2.md"])
-                         if "Vedic" in sys3
-                         else get_knowledge_files_cached(["wnum.md"]))
-            stream_ai_with_followup(st.session_state.cyc_prompt, "cyc_chat",
-                                    "Interpreting life cycles...", knowledge_files=num_files,
-                                    hide_user_prompt=True)
+            cyc_sys_val = st.session_state.get("cyc_sys", "Western (Pythagorean)")
+            cyc_books = ("inum1.md",) if "Vedic" in cyc_sys_val else ("wnum.md",)
+            cyc_ctx = rag_context_cached(
+                "personal year pinnacle challenge cycle numerology life path meaning",
+                cyc_books, k=8,
+            )
+            cyc_prompt = st.session_state.cyc_prompt
+            if cyc_ctx:
+                cyc_prompt = (
+                    f"<KNOWLEDGE_CONTEXT>\n{cyc_ctx}\n</KNOWLEDGE_CONTEXT>\n"
+                    "<RULES>Use only the numerology passages above for cycle/pinnacle/challenge "
+                    "doctrine. Do not invent meanings outside them.</RULES>\n\n"
+                    + cyc_prompt
+                )
+            stream_ai_with_followup(
+                cyc_prompt, "cyc_chat",
+                "Interpreting life cycles...", knowledge_files=None,
+                hide_user_prompt=True,
+            )
             pdf = _num_pdf(
                 "Numerology Cycles & Pinnacles",
                 (dp["name"] if dp else ""),

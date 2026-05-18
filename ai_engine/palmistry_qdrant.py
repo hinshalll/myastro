@@ -103,12 +103,12 @@ def query_palmistry(
     or empty string if Qdrant is unavailable.
     """
     try:
-        from qdrant_utils import get_vector_store
+        from qdrant_utils import get_vector_store_pure
     except ImportError:
         return ""
 
     try:
-        vector_store = get_vector_store()
+        vector_store = get_vector_store_pure()
     except Exception as e:
         print(f"[palmistry_qdrant] ERROR: {e}")
         return ""

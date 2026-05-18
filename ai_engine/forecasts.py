@@ -18,7 +18,7 @@ from math_engine.astro_calc import (
 )
 from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
 from ai_engine.gemini_client import generate_content_with_fallback, FREE_MODELS
-from ai_engine.knowledge import get_knowledge_files
+from ai_engine.knowledge import rag_context
 from ai_engine.prompts import (
     GUARDRAILS, build_dashboard_data_prompt, build_daily_tarot_prompt,
 )
@@ -124,6 +124,11 @@ def generate_vedic_forecast(prof_json: str, timeframe: str, today_str: str) -> s
         "Yearly":  "Ignore the Moon. Focus EXCLUSIVELY on slow-moving transits of Jupiter, Saturn, and Rahu.",
     }
 
+    # RAG: pull only the chunks relevant to this rashi + transit + timeframe.
+    # Replaces the previous full-book injection (~254K tokens) with ~5K tokens.
+    rag_query = f"gochara transit moon sign {rashi} {timeframe.lower()} forecast effects house"
+    knowledge_ctx = rag_context(rag_query, ["bphs2.md"], k=10)
+
     prompt = f"""{GUARDRAILS}
 <mission>
 You are an elite Vedic Astrologer. Generate a highly accurate {timeframe} horoscope for a user
@@ -132,10 +137,13 @@ Read the mathematically exact Gochara (transit) data provided below.
 {timeframe_rules[timeframe]}
 </mission>
 
-<KNOWLEDGE_ROUTING>
-Open `bphs2.md` and read the exact rules for these specific planetary transits from the Natal Moon.
-Do not invent transit meanings. Rely strictly on the text.
-</KNOWLEDGE_ROUTING>
+<KNOWLEDGE_CONTEXT>
+{knowledge_ctx}
+</KNOWLEDGE_CONTEXT>
+<RULES>
+Use only the Gochara/transit passages above for classical doctrine. Do not invent transit meanings outside them.
+Anchor every claim to a specific transit line in transit_math.
+</RULES>
 
 <transit_math>
 {transit_data}
@@ -149,8 +157,7 @@ Write extremely concise, 1 to 2 sentence summaries for each category:
 </FORMAT>"""
 
     try:
-        books = get_knowledge_files(["bphs2.md"])
-        return generate_content_with_fallback(prompt, knowledge_files=books)
+        return generate_content_with_fallback(prompt, knowledge_files=None)
     except Exception:
         return "**General:** The cosmic connection is resting.\n\n**Love & Relationships:** Try again later.\n\n**Career & Finance:** API limit reached."
 
@@ -195,8 +202,19 @@ RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN:
         "ACTION":  "The best practical step to take.",
         "MANTRA":  "A short, powerful affirmation."
     }"""
-    dash_tarot_file = get_knowledge_files(["tguide.md"])
-    res = generate_content_with_fallback(json_prompt, knowledge_files=dash_tarot_file)
+    # RAG: only the chunks for this specific card + orientation, not the whole tguide.
+    tarot_ctx = rag_context(
+        f"{daily_card} {daily_state} daily guidance meaning",
+        ["tguide.md"], k=6,
+    )
+    if tarot_ctx:
+        json_prompt = (
+            f"<KNOWLEDGE_CONTEXT>\n{tarot_ctx}\n</KNOWLEDGE_CONTEXT>\n"
+            "<RULES>Use only the tarot passages above for card meaning. "
+            "Do not invent meanings outside them.</RULES>\n\n"
+            + json_prompt
+        )
+    res = generate_content_with_fallback(json_prompt, knowledge_files=None)
     return safe_json(res, {
         "MEANING": "Trust the process unfolding today.",
         "ACTION":  "Observe before making any sudden moves.",

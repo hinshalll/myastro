@@ -1,0 +1,72 @@
+<section class="section" data-title="Auspicious Dates">
+  <div class="section-header">
+    <div class="deity-mark"></div>
+    <h2>Auspicious Dates Calendar</h2>
+    <span class="eyebrow">12-Month Personal Day-of-Week Map</span>
+  </div>
+
+  {% if chart.interpretations and chart.interpretations.auspicious_dates %}
+  {% set ad = chart.interpretations.auspicious_dates %}
+  <div class="two-col">
+    <div>
+      <h4 class="accent">Favourable weekdays</h4>
+      <p>
+        {% if ad.favourable_weekdays %}
+          <strong>{{ ad.favourable_weekdays|join(', ') }}</strong>
+        {% else %}<span class="muted">—</span>{% endif %}
+      </p>
+      <p class="small muted">
+        Driven by your current Vimshottari MD &amp; AD lords. Best for
+        beginnings: contracts, ventures, big decisions, mantra initiation.
+      </p>
+    </div>
+    <div>
+      <h4 class="muted">Cautionary weekdays</h4>
+      <p>
+        {% if ad.cautionary_weekdays %}
+          <strong>{{ ad.cautionary_weekdays|join(', ') }}</strong>
+        {% else %}<span class="muted">—</span>{% endif %}
+      </p>
+      <p class="small muted">
+        Driven by your 8th-lord and Rahu. Better for completion, rest, and
+        avoiding sharp confrontation. Not unlucky — just not for new starts.
+      </p>
+    </div>
+  </div>
+
+  <div class="ornament"></div>
+
+  <h3>Janma Nakshatra anchor</h3>
+  <p>
+    Your birth nakshatra is <strong>{{ ad.janma_nakshatra }}</strong>. Roughly
+    once per month the transiting Moon returns to {{ ad.janma_nakshatra }} —
+    that day is your most personally-auspicious day each month for major
+    decisions, taking vows, beginning mantra practice, or marking a new chapter.
+  </p>
+
+  <p class="small">{{ ad.guidance }}</p>
+
+  <div class="ornament"></div>
+  <h3>Month-by-Month</h3>
+  <table class="data">
+    <thead>
+      <tr><th>Month</th><th>Favourable Days</th><th>Cautionary Days</th></tr>
+    </thead>
+    <tbody>
+      {% for m in ad.monthly %}
+      <tr>
+        <td><strong>{{ m.month }}</strong></td>
+        <td><span class="accent">{{ m.favourable_weekdays|join(', ') }}</span></td>
+        <td><span class="muted">{{ m.cautionary_weekdays|join(', ') }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="small muted" style="margin-top:10pt;">
+    For day-precise muhurta on specific events (marriage, housewarming,
+    business launch), pair this calendar with a Panchanga consultation —
+    the calendar gives the field, the muhurta gives the exact moment.
+  </p>
+  {% endif %}
+</section>

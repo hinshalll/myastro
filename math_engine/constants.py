@@ -8,6 +8,12 @@ SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
 PLANETS = {"Sun":swe.SUN,"Moon":swe.MOON,"Mars":swe.MARS,"Mercury":swe.MERCURY,
            "Jupiter":swe.JUPITER,"Venus":swe.VENUS,"Saturn":swe.SATURN}
 
+# Outer planets — modern additions (not part of classical Vedic 9-graha set).
+# Used for chart display (some apps include them) and Western appendix.
+# Yoga / dasha / dignity detection skips them automatically since they
+# aren't in DASHA_ORDER / SIGN_LORDS_MAP / OWN_SIGNS.
+OUTER_PLANETS = {"Uranus": swe.URANUS, "Neptune": swe.NEPTUNE, "Pluto": swe.PLUTO}
+
 DIGNITIES = {"Sun":(0,6),"Moon":(1,7),"Mars":(9,3),"Mercury":(5,11),
              "Jupiter":(3,9),"Venus":(11,5),"Saturn":(6,0)}
 

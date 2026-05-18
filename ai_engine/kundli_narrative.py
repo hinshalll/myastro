@@ -44,8 +44,8 @@ from ai_engine.gemini_client import get_ai_model_by_name, FREE_MODELS
 _SYSTEM_RULES = """
 <ROLE>
 You are a senior Vedic-astrology copywriter producing narrative prose for a
-premium printed kundli (60-80 pages). The native is reading this once and
-keeping it for life. Tone: dignified, warm, specific, lightly poetic.
+premium printed kundli. The native is reading this once and keeping it for
+life. Tone: dignified, warm, specific, lightly poetic.
 Never generic. Never preachy. Never "you might be a person who…".
 </ROLE>
 

@@ -4,246 +4,597 @@
 <meta charset="utf-8" />
 <title>Janma Kundli — {{ chart.birth_data.name }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  /* ─── Page geometry ─── */
+
+  /* ════════════════════════════════════════════════════════════════
+     NO PAGE BORDERS — content uses full content area. Theme identity
+     comes from inline deity-symbolic icons on every section header,
+     divider, table, and card. Page utilisation is maximised.
+     ════════════════════════════════════════════════════════════════ */
+
+  /* ──────────────────────────────────────────────────────────────────
+     Page geometry — content lives at 12mm × 11mm margin from edge.
+     The DECORATIVE BORDER lives in the white-space strip from edge to
+     content-edge (0–10mm zone). Border SVG is painted OVER the entire
+     page sheet via @page background-image; all decoration is strictly
+     within the margin strip so it NEVER overlaps any content.
+     Page runners (top-right section title, bottom-center page number)
+     sit INSIDE the border at 3mm from edge.
+     ────────────────────────────────────────────────────────────────── */
   @page {
     size: A4;
-    margin: 18mm 14mm 18mm 14mm;
+    margin: 14mm 12mm 16mm 12mm;
+    /* Theme paper fills the full page (so no white strip outside content).
+       Borders are drawn via position:fixed divs below — the approach that
+       worked reliably on every page. No page-bg watermark (acceptable
+       per user feedback). */
+    background-color: {{ theme.paper }};
     @bottom-center {
-      content: counter(page) " · " counter(pages);
+      content: counter(page);
       font-family: {{ theme.body_font|safe }};
-      font-size: 9pt;
-      color: {{ theme.page_numeral_color }};
+      font-size: 7.5pt;
+      font-weight: 500;
+      color: {{ theme.muted }};
+      letter-spacing: 0.18em;
+      margin-bottom: 4mm;
     }
     @top-right {
       content: string(section-title);
-      font-family: {{ theme.heading_font|safe }};
-      font-size: 8pt;
+      font-family: {{ theme.body_font|safe }};
+      font-size: 7pt;
+      font-weight: 600;
       color: {{ theme.muted }};
-      letter-spacing: 0.18em;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
+      margin-top: 4mm;
+      margin-right: 2mm;
     }
   }
-  @page :first { @top-right { content: ""; } @bottom-center { content: ""; } }
+  @page :first {
+    @top-right { content: ""; }
+    @bottom-center { content: ""; }
+    background-image: url("{{ cover_page_border_data_url }}");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
 
-  /* ─── Base typography ─── */
+  /* ════════════════════════════════════════════════════════════════
+     TYPOGRAPHY
+     ════════════════════════════════════════════════════════════════ */
+
+  * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
     color: {{ theme.ink }};
     background: {{ theme.paper }};
     font-family: {{ theme.body_font|safe }};
-    font-size: 11pt;
-    line-height: 1.45;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    font-weight: 400;
   }
-  h1, h2, h3, h4 {
+
+  /* PAGE BORDER — position:fixed divs with NEGATIVE offsets push the border
+     OUT of the @page content area, INTO the margin (white space).
+     WeasyPrint repeats position:fixed on every page automatically.
+     With @page margin 14mm/12mm/16mm/12mm, the negative offsets put the
+     border at 4mm from each page edge — inside the margin strip, never
+     touching content. */
+  .page-border-outer {
+    position: fixed;
+    top: -10mm; left: -8mm; right: -8mm; bottom: -12mm;
+    border: 1.2pt solid {{ theme.primary }};
+    border-radius: 2mm;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .page-border-inner {
+    position: fixed;
+    top: -7mm; left: -5mm; right: -5mm; bottom: -9mm;
+    border: 0.4pt solid {{ theme.muted }};
+    border-radius: 1.5mm;
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 11;
+  }
+  /* Corner deity-themed dots — 4 fixed elements at the four corners */
+  .page-corner {
+    position: fixed;
+    width: 4mm;
+    height: 4mm;
+    background: {{ theme.accent }};
+    border-radius: 50%;
+    border: 0.6pt solid {{ theme.primary }};
+    pointer-events: none;
+    z-index: 12;
+  }
+  .page-corner.tl { top: -12mm; left: -10mm; }
+  .page-corner.tr { top: -12mm; right: -10mm; }
+  .page-corner.bl { bottom: -14mm; left: -10mm; }
+  .page-corner.br { bottom: -14mm; right: -10mm; }
+  h1, h2, h3, h4, h5 {
     font-family: {{ theme.heading_font|safe }};
     color: {{ theme.primary }};
     font-weight: 600;
-    letter-spacing: 0.04em;
-    margin: 0 0 0.6em 0;
+    letter-spacing: -0.005em;
+    margin: 0 0 0.45em 0;
+    line-height: 1.2;
+    overflow-wrap: break-word;
   }
-  h1 { font-size: 28pt; }
-  h2 { font-size: 18pt; }
-  h3 { font-size: 13pt; }
-  h4 { font-size: 11pt; }
-  p  { margin: 0 0 0.5em 0; }
+  h1 { font-size: 28pt; font-weight: 500; }
+  h2 { font-size: 17pt; font-weight: 500; }
+  h3 { font-size: 12pt; font-weight: 600; }
+  h4 { font-size: 10pt; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: {{ theme.accent }}; }
+  h5 { font-size: 9pt; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: {{ theme.muted }}; }
+  p  { margin: 0 0 0.55em 0; overflow-wrap: break-word; }
   a  { color: {{ theme.primary }}; text-decoration: none; }
-  small { color: {{ theme.muted }}; font-size: 9pt; }
+  strong { font-weight: 600; color: {{ theme.ink }}; }
+  em     { font-style: italic; }
+  small  { color: {{ theme.muted }}; font-size: 8.5pt; }
 
-  /* ─── Section primitives ─── */
+  /* ════════════════════════════════════════════════════════════════
+     SECTION HEADER — every section starts with the THEME DEITY ICON
+     inline before the title. This is the primary theme identifier.
+     ════════════════════════════════════════════════════════════════ */
+
   .section {
     page-break-before: always;
     string-set: section-title attr(data-title);
+    padding: 0;
+    max-width: 100%;
   }
   .section:first-child { page-break-before: avoid; }
+
   .section-header {
-    border-bottom: 1.5pt solid {{ theme.primary }};
-    margin-bottom: 14pt;
-    padding-bottom: 6pt;
+    margin: 0 0 12pt 0;
+    padding: 6pt 0 8pt 0;
+    border-bottom: 1pt solid {{ theme.primary }};
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
+    gap: 10pt;
+    max-width: 100%;
+    flex-wrap: nowrap;
   }
-  .section-header h2 { margin: 0; }
+  .section-header .deity-mark {
+    width: 28pt;
+    height: 28pt;
+    flex: 0 0 28pt;
+    background: {{ theme.soft_bg }};
+    border: 0.5pt solid {{ theme.card_border }};
+    border-radius: 50%;
+    background-image: url("{{ section_icon_data_url }}");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 75%;
+  }
+  .section-header h2 {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    color: {{ theme.primary }};
+    font-weight: 500;
+    overflow-wrap: break-word;
+  }
   .section-header .eyebrow {
-    font-family: {{ theme.heading_font|safe }};
-    font-size: 9pt;
-    color: {{ theme.muted }};
-    letter-spacing: 0.2em;
+    font-family: {{ theme.body_font|safe }};
+    font-size: 7pt;
+    font-weight: 600;
+    color: {{ theme.accent }};
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-  }
-  .ornament {
-    height: 18pt;
-    margin: 14pt 0;
-    background: linear-gradient(90deg,
-      transparent 0,
-      {{ theme.muted }} 30%,
-      {{ theme.primary }} 50%,
-      {{ theme.muted }} 70%,
-      transparent 100%);
-    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 18'><path d='M50 9 l-8 -6 a4 4 0 0 0 0 12 z M50 9 l8 -6 a4 4 0 0 1 0 12 z' fill='black'/></svg>") center/auto 18pt no-repeat;
-    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 18'><path d='M50 9 l-8 -6 a4 4 0 0 0 0 12 z M50 9 l8 -6 a4 4 0 0 1 0 12 z' fill='black'/></svg>") center/auto 18pt no-repeat;
+    background: {{ theme.soft_bg }};
+    padding: 2.5pt 8pt;
+    border-radius: 999pt;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* ─── Cover page ─── */
+  /* ════════════════════════════════════════════════════════════════
+     ORNAMENT — themed divider used between subsections
+     ════════════════════════════════════════════════════════════════ */
+
+  .ornament {
+    height: 28pt;
+    margin: 14pt auto;
+    background-image: url("{{ ornament_divider_data_url }}");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 240pt auto;
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     COVER PAGE
+     ════════════════════════════════════════════════════════════════ */
+
+  /* COVER — centered vertical layout with explicit spacing.
+     No flexbox (WeasyPrint paged-flex is unreliable).
+     Distributed: art at top, name middle, keypoints lower-middle, footer bottom. */
   .cover {
     page-break-before: avoid;
     text-align: center;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 24mm 0;
+    width: 100%;
   }
-  .cover .frame {
-    border: 3pt double {{ theme.primary }};
-    padding: 30mm 18mm;
-    width: 70%;
-    background: {{ theme.paper }};
+  .cover .cover-grid {
+    width: 100%;
+    text-align: center;
+    padding: 0;
   }
+  .cover-top    { padding: 8mm 0 4mm 0; }
+  .cover-mid    { padding: 6mm 0 4mm 0; }
+  .cover-keypoints { margin: 6mm auto !important; }
+  .cover-bottom { padding: 8mm 0 4mm 0; }
+
   .cover .deity-line {
     font-family: {{ theme.devanagari_font|safe }};
     color: {{ theme.accent }};
-    font-size: 16pt;
-    margin-bottom: 18pt;
-    letter-spacing: 0.08em;
+    font-size: 14pt;
+    margin-bottom: 14pt;
+    letter-spacing: 0.16em;
+    font-weight: 500;
   }
-  .cover h1.devanagari-name {
-    font-family: {{ theme.devanagari_font|safe }};
-    color: {{ theme.primary }};
-    font-size: 40pt;
-    margin: 0 0 6pt 0;
+  /* Soft framed circular cover art */
+  .cover .cover-art-frame {
+    margin: 6pt auto 0;
+    width: 220pt;
+    height: 220pt;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1.2pt solid {{ theme.accent }};
+    box-shadow: 0 0 0 4pt {{ theme.soft_bg }}, 0 0 0 5pt {{ theme.card_border }};
+    background: {{ theme.paper_alt }};
+    display: flex; align-items: center; justify-content: center;
   }
+  .cover .cover-art-frame img,
+  .cover .cover-art-frame svg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Hero name */
   .cover h1.latin-name {
     font-family: {{ theme.heading_font|safe }};
-    color: {{ theme.ink }};
-    font-size: 22pt;
-    margin: 0 0 22pt 0;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    color: {{ theme.primary }};
+    font-size: 34pt;
+    font-weight: 500;
+    margin: 0 0 6pt 0;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+  }
+  .cover .devanagari-name {
+    font-family: {{ theme.devanagari_font|safe }};
+    color: {{ theme.muted }};
+    font-size: 16pt; font-weight: 500;
+    margin: 0 0 6pt 0; line-height: 1.1;
   }
   .cover .subtitle {
-    font-family: {{ theme.heading_font|safe }};
-    color: {{ theme.muted }};
-    font-size: 14pt;
-    letter-spacing: 0.3em;
+    color: {{ theme.accent }};
+    font-size: 10pt;
+    letter-spacing: 0.42em;
     text-transform: uppercase;
-    margin-bottom: 14pt;
+    font-weight: 600;
+    margin: 4pt 0 0 0;
   }
-  .cover .birth-line {
+  /* Mid-cover ornament between name and key points */
+  .cover .ornament {
+    text-align: center;
+    margin: 12pt auto;
+    height: 14pt;
+  }
+  .cover .ornament .dot {
+    display: inline-block;
+    width: 6pt; height: 6pt;
+    border-radius: 50%;
+    background: {{ theme.accent }};
+    box-shadow: 0 0 0 2pt {{ theme.paper }}, 0 0 0 3pt {{ theme.accent }};
+  }
+  .cover .ornament::before,
+  .cover .ornament::after {
+    content: "";
+    display: inline-block;
+    width: 60pt; height: 0.7pt;
+    background: {{ theme.muted }};
+    opacity: 0.6;
+    vertical-align: middle;
+    margin: 0 8pt;
+  }
+
+  /* Key-points 3-column grid */
+  .cover-keypoints {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10pt;
+    margin: 4pt auto;
+    max-width: 460pt;
+  }
+  .cover-keypoints .kp-cell {
+    background: {{ theme.soft_bg }};
+    border: 0.5pt solid {{ theme.card_border }};
+    border-radius: 6pt;
+    padding: 9pt 7pt;
+    text-align: center;
+  }
+  .cover-keypoints .kp-label {
+    font-size: 7.5pt;
+    color: {{ theme.muted }};
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4pt;
+  }
+  .cover-keypoints .kp-value {
+    font-family: {{ theme.heading_font|safe }};
+    color: {{ theme.primary }};
+    font-size: 16pt;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  .cover-keypoints .kp-value-small {
+    font-family: {{ theme.heading_font|safe }};
+    color: {{ theme.primary }};
+    font-size: 11pt;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .cover-keypoints .kp-sub {
+    font-size: 7.5pt;
+    color: {{ theme.muted }};
+    margin-top: 2pt;
     font-style: italic;
+  }
+
+  /* Bottom: birth info + ornament + signature */
+  .cover .birth-line {
+    font-size: 11pt;
+    margin: 3pt 0;
     color: {{ theme.ink }};
-    font-size: 12pt;
-    margin: 14pt 0 4pt 0;
+    line-height: 1.5;
+  }
+  .cover .birth-label {
+    color: {{ theme.muted }};
+    font-size: 9.5pt;
+    font-style: italic;
+  }
+  .cover-footer-ornament {
+    background: url("{{ ornament_divider_data_url }}") center / contain no-repeat;
+    height: 24pt;
+    margin: 10pt 0 8pt 0;
   }
   .cover .footnote {
     color: {{ theme.muted }};
-    font-size: 9pt;
-    margin-top: 28pt;
-    letter-spacing: 0.06em;
+    font-size: 7.5pt;
+    letter-spacing: 0.08em;
+    line-height: 1.5;
+    font-style: italic;
+  }
+  .cover .key-points {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8pt;
+    margin: 14pt auto 10pt;
+    max-width: 380pt;
+  }
+  .cover .kp-cell {
+    background: {{ theme.soft_bg }};
+    border: 0.4pt solid {{ theme.card_border }};
+    border-radius: 5pt;
+    padding: 7pt 5pt;
+    overflow: hidden;
+  }
+  .cover .kp-cell .kp-label {
+    font-size: 7pt;
+    color: {{ theme.muted }};
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 3pt;
+  }
+  .cover .kp-cell .kp-value {
+    font-family: {{ theme.heading_font|safe }};
+    color: {{ theme.primary }};
+    font-size: 12pt;
+    font-weight: 600;
+    line-height: 1.1;
+    overflow-wrap: break-word;
+  }
+  .cover .birth-summary {
+    margin: 12pt auto 8pt auto;
+    font-size: 10pt;
+    line-height: 1.7;
+    max-width: 360pt;
+  }
+  .cover .footnote {
+    color: {{ theme.muted }};
+    font-size: 7.5pt;
+    margin-top: 16pt;
+    letter-spacing: 0.1em;
+    line-height: 1.5;
   }
 
-  /* ─── Data layouts ─── */
+  /* ════════════════════════════════════════════════════════════════
+     CARDS & LAYOUTS — width-safe, theme-tinted
+     ════════════════════════════════════════════════════════════════ */
+
   .two-col, .three-col {
     display: grid;
-    gap: 16pt;
+    gap: 12pt;
+    max-width: 100%;
   }
   .two-col   { grid-template-columns: 1fr 1fr; }
   .three-col { grid-template-columns: 1fr 1fr 1fr; }
+  .two-col > *, .three-col > * { min-width: 0; max-width: 100%; }
+
+  .card {
+    background: {{ theme.soft_bg }};
+    border: 0.5pt solid {{ theme.card_border }};
+    border-radius: 6pt;
+    padding: 9pt 11pt;
+    margin: 6pt 0;
+    max-width: 100%;
+    position: relative;
+  }
+  .card h3, .card h4 { margin-top: 0; }
+
+  /* ════════════════════════════════════════════════════════════════
+     TABLES — header tinted with theme deity icon inline
+     ════════════════════════════════════════════════════════════════ */
 
   table.data {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 10pt;
-    margin: 8pt 0 14pt;
+    max-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 9pt;
+    margin: 8pt 0 12pt;
+    border-radius: 5pt;
+    overflow: hidden;
+    table-layout: auto;
   }
   table.data th, table.data td {
-    border: 0.5pt solid {{ theme.muted }};
-    padding: 4pt 8pt;
+    border-bottom: 0.4pt solid {{ theme.card_border }};
+    padding: 5pt 7pt;
     text-align: left;
     vertical-align: middle;
+    overflow-wrap: break-word;
   }
   table.data thead th {
-    background: {{ theme.primary }};
-    color: {{ theme.paper }};
+    background: {{ theme.soft_bg }};
+    color: {{ theme.primary }};
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: 9pt;
+    font-size: 8pt;
     font-weight: 600;
+    border-bottom: 1pt solid {{ theme.primary }};
   }
-  table.data tbody tr:nth-child(even) td {
-    background: rgba(0,0,0,0.025);
+  /* Theme accent — small deity glyph above every table */
+  table.data {
+    position: relative;
   }
+  table.data thead::before {
+    content: "";
+    display: block;
+    height: 8pt;
+    background: url("{{ section_icon_data_url }}") left center / 12pt no-repeat,
+                linear-gradient(90deg, {{ theme.accent }} 0, {{ theme.accent }} 16pt, transparent 16pt);
+    opacity: 0.7;
+    margin-bottom: 2pt;
+  }
+  table.data tbody tr:nth-child(even) td { background: rgba(255,255,255,0.4); }
+  table.data tbody tr:last-child td      { border-bottom: none; }
   td.dignity    { color: {{ theme.accent }}; font-weight: 600; }
   td.retrograde { color: {{ theme.accent }}; }
   td.numeric    { text-align: right; font-variant-numeric: tabular-nums; }
 
-  /* ─── Chart grid (16 vargas) ─── */
+  .badge {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 600;
+    padding: 2pt 7pt;
+    border-radius: 999pt;
+    letter-spacing: 0.04em;
+  }
+  .badge.accent  { background: {{ theme.soft_bg }}; color: {{ theme.accent }}; }
+  .badge.primary { background: {{ theme.soft_bg }}; color: {{ theme.primary }}; }
+  .badge.muted   { background: rgba(0,0,0,0.04); color: {{ theme.muted }}; }
+
+  /* ════════════════════════════════════════════════════════════════
+     CHARTS — all SVGs scale to container, never overflow
+     ════════════════════════════════════════════════════════════════ */
+
+  svg { max-width: 100%; height: auto; }
+
   .varga-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 10pt;
-    margin-top: 6pt;
+    gap: 5pt;
+    margin-top: 8pt;
+    max-width: 100%;
   }
   .varga-cell {
     text-align: center;
+    background: {{ theme.soft_bg }};
+    border-radius: 5pt;
+    padding: 4pt 3pt;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .varga-cell svg {
+    width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
   }
   .varga-cell .vname {
     font-family: {{ theme.heading_font|safe }};
-    font-size: 9pt;
+    font-size: 8.5pt;
+    font-weight: 600;
     margin: 4pt 0 0 0;
     color: {{ theme.primary }};
+    line-height: 1.15;
   }
   .varga-cell .vsubtitle {
-    font-size: 8pt;
+    font-size: 7pt;
     color: {{ theme.muted }};
-    font-style: italic;
+    line-height: 1.25;
   }
 
-  /* ─── Big chart (D1 / D9 page) ─── */
   .chart-block {
     text-align: center;
     margin: 8pt 0 14pt;
+    max-width: 100%;
   }
   .chart-block svg {
-    width: 60%;
+    width: 60% !important;
     max-width: 360pt;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
   }
   .chart-caption {
     font-style: italic;
-    font-size: 10pt;
+    font-size: 9pt;
     color: {{ theme.muted }};
     margin-top: 4pt;
   }
 
-  /* ─── Yogas / Doshas lists ─── */
-  .yoga-card, .dosha-card {
-    border-left: 3pt solid {{ theme.primary }};
-    background: rgba(0,0,0,0.02);
-    padding: 8pt 12pt;
+  /* ════════════════════════════════════════════════════════════════
+     YOGAS / DOSHAS / REMEDIES — themed cards
+     ════════════════════════════════════════════════════════════════ */
+
+  .yoga-card, .dosha-card, .remedy-card {
+    page-break-inside: avoid;
+    background: {{ theme.soft_bg }};
+    border: 0.5pt solid {{ theme.card_border }};
+    border-radius: 6pt;
+    padding: 9pt 12pt;
     margin: 6pt 0;
+    max-width: 100%;
+    position: relative;
   }
-  .yoga-card.dosha-card { border-left-color: {{ theme.accent }}; }
-  .yoga-card h4, .dosha-card h4 {
+  /* Accent bar on left edge of yoga/dosha cards */
+  .yoga-card { border-left: 2.5pt solid {{ theme.primary }}; }
+  .dosha-card { border-left: 2.5pt solid {{ theme.accent }}; }
+  .remedy-card { border-left: 2.5pt solid {{ theme.secondary }}; }
+
+  .yoga-card h4, .dosha-card h4, .remedy-card h4 {
     margin: 0 0 2pt 0;
-    color: {{ theme.primary }};
+    font-size: 10.5pt;
+    text-transform: none;
+    letter-spacing: 0.005em;
+    font-weight: 600;
   }
+  .yoga-card h4 { color: {{ theme.primary }}; }
+  .dosha-card h4 { color: {{ theme.accent }}; }
+  .remedy-card h4 { color: {{ theme.primary }}; }
   .yoga-card .cat, .dosha-card .severity {
-    font-size: 9pt;
+    font-size: 8.5pt;
     color: {{ theme.muted }};
     font-style: italic;
+    margin-bottom: 4pt;
   }
-
-  /* ─── Remedies block ─── */
-  .remedy-card {
-    border: 0.5pt solid {{ theme.muted }};
-    padding: 10pt 12pt;
-    margin: 6pt 0;
-    background: rgba(0,0,0,0.015);
-  }
-  .remedy-card h4 { color: {{ theme.accent }}; margin: 0 0 4pt 0; }
   .remedy-card .mantra {
     font-family: {{ theme.devanagari_font|safe }};
     color: {{ theme.primary }};
@@ -252,13 +603,26 @@
   }
 
   /* Utility */
-  .muted { color: {{ theme.muted }}; }
+  .muted  { color: {{ theme.muted }}; }
   .accent { color: {{ theme.accent }}; }
   .center { text-align: center; }
-  .small { font-size: 9pt; }
+  .small  { font-size: 9pt; }
+  .smaller { font-size: 8.5pt; }
+  .page-break { page-break-before: always; }
+  .themed-divider { text-align: center; margin: 10pt 0; }
+  .themed-divider svg { width: 200pt; height: 20pt; }
+
 </style>
 </head>
 <body>
+
+<!-- Page border + corner dots — drawn on every page via position:fixed -->
+<div class="page-border-outer"></div>
+<div class="page-border-inner"></div>
+<div class="page-corner tl"></div>
+<div class="page-corner tr"></div>
+<div class="page-corner bl"></div>
+<div class="page-corner br"></div>
 
 {% for section in sections %}
   {% include "sections/" ~ section ~ ".html" ignore missing %}

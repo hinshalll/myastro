@@ -1,0 +1,26 @@
+<section class="section" data-title="Lal Kitab">
+  <div class="section-header">
+    <div class="deity-mark"></div>
+    <h2>Lal Kitab — House by House</h2>
+    <span class="eyebrow">The North-Indian Practical Remedy System</span>
+  </div>
+
+  <p class="small">
+    Lal Kitab ("Red Book") is a 19th-century North-Indian astrology + remedy
+    tradition. Its practices are simple, household-level actions — feed crows,
+    keep silver, respect mother, plant a tree — designed to neutralise heavy
+    karma without elaborate ritual. Below: a Lal Kitab note for each of your
+    12 houses with daily practices specific to your chart.
+  </p>
+
+  {% if chart.interpretations and chart.interpretations.lal_kitab %}
+  {% for h in range(1, 13) %}
+  {% set lk = chart.interpretations.lal_kitab[h] %}
+  <div class="yoga-card" style="margin-top:10pt;">
+    <h4>House {{ h }} — Lord {{ lk.lord }}{% if lk.occupants %} · Occupants: {{ lk.occupants|join(', ') }}{% endif %}</h4>
+    <p style="margin:4pt 0 0;">{{ lk.text }}</p>
+    <p class="small muted" style="margin:4pt 0 0;">{{ lk.extra }}</p>
+  </div>
+  {% endfor %}
+  {% endif %}
+</section>

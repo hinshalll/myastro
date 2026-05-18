@@ -16,7 +16,7 @@ import streamlit as st
 
 from math_engine.astro_calc import geocode_place, timezone_for_latlon
 from math_engine.dossier_builder import get_live_cosmic_weather
-from ai_engine.knowledge import get_knowledge_files, get_comparison_reference_digest
+from ai_engine.knowledge import rag_context
 from ai_engine.forecasts import (
     generate_western_forecast,
     generate_vedic_forecast,
@@ -41,13 +41,8 @@ def get_live_cosmic_weather_cached():
 
 
 @st.cache_data(ttl=timedelta(hours=24), show_spinner=False)
-def get_knowledge_files_cached(names: list):
-    return get_knowledge_files(names)
-
-
-@st.cache_data(ttl=timedelta(hours=24), show_spinner=False)
-def get_comparison_reference_digest_cached():
-    return get_comparison_reference_digest()
+def rag_context_cached(query: str, books_tuple: tuple, k: int = 8) -> str:
+    return rag_context(query, list(books_tuple), k=k)
 
 
 @st.cache_data(ttl=timedelta(hours=24), show_spinner=False)

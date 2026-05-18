@@ -1,0 +1,70 @@
+{% if chart.interpretations and chart.interpretations.planet_analyses %}
+{% for planet in ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn","Rahu","Ketu"] %}
+{% set p = chart.interpretations.planet_analyses[planet] %}
+<section class="section page-break" data-title="{{ planet }}">
+  <div class="section-header">
+    <div class="deity-mark"></div>
+    <h2>{{ planet }} — Your {{ planet }}</h2>
+    <span class="eyebrow">
+      {{ p.sign }} · H{{ p.house }} · {{ p.dignity }}
+      {% if p.is_retrograde %} · Retrograde{% endif %}
+      {% if p.is_combust %} · Combust{% endif %}
+    </span>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <h4>Placement</h4>
+      <p class="small">
+        <strong>Sign:</strong> {{ p.sign }} ({{ p.sign_element }} — <em>{{ p.sign_nature }}</em>)<br>
+        <strong>House:</strong> {{ p.house }} — {{ p.house_meta.theme }}<br>
+        <strong>Degree:</strong> {{ p.degree }}<br>
+        <strong>Nakshatra:</strong> {{ p.nakshatra }} (Pada {{ p.pada }}) ·
+        Lord: {{ p.nakshatra_lord }}<br>
+        <strong>Dignity:</strong> {{ p.dignity }}<br>
+        <strong>Shadbala:</strong> {{ p.shadbala_status }}
+      </p>
+    </div>
+    <div>
+      <h4>What this planet rules in you</h4>
+      <p class="small">
+        <strong>Natural significations:</strong> {{ p.natural_significations }}<br>
+        <strong>Body:</strong> {{ p.body_significations }}
+      </p>
+    </div>
+  </div>
+
+  <h3>How this {{ planet }} expresses</h3>
+  <p>{{ p.in_house_text }}</p>
+
+  <div class="two-col">
+    <div>
+      <h4 class="accent">Positive Expression</h4>
+      <p class="small">{{ p.positive_traits }}.</p>
+    </div>
+    <div>
+      <h4 class="muted">Shadow Expression</h4>
+      <p class="small">{{ p.challenge_traits }} — to be consciously navigated.</p>
+    </div>
+  </div>
+
+  {% if ai_content and ai_content.get('planet_' ~ planet) %}
+  <div class="ornament"><span class="dot"></span></div>
+  <h3>Personalised reading for your {{ planet }}</h3>
+  <p style="text-align: justify; line-height: 1.7; font-size: 10.5pt;">
+    {{ ai_content['planet_' ~ planet] }}
+  </p>
+  {% endif %}
+
+  <div class="ornament"></div>
+  <h4>For strengthening this {{ planet }}</h4>
+  <p class="small">
+    <strong>Deity:</strong> {{ p.deity }} ·
+    <strong>Auspicious day:</strong> {{ p.remedy_day }} ·
+    <strong>Colour:</strong> {{ p.remedy_color }} ·
+    <strong>Metal:</strong> {{ p.remedy_metal }}.
+    See the Remedies section for the full mantra, ratna and daan programme.
+  </p>
+</section>
+{% endfor %}
+{% endif %}

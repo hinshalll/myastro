@@ -1,0 +1,55 @@
+{% if chart.interpretations and chart.interpretations.house_analyses %}
+{% for h in range(1, 13) %}
+{% set a = chart.interpretations.house_analyses[h] %}
+<section class="section page-break" data-title="House {{ h }}">
+  <div class="section-header">
+    <div class="deity-mark"></div>
+    <h2>House {{ h }} — {{ a.name }}</h2>
+    <span class="eyebrow">{{ a.theme }}</span>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <h4>Sign &amp; Lord</h4>
+      <p>
+        <strong>Sign:</strong> {{ a.sign }} ({{ a.sign_modality }} {{ a.sign_element }}) —
+        <em>{{ a.sign_nature }}</em><br>
+        <strong>Lord:</strong> {{ a.sign_lord }}<br>
+        <strong>Strength:</strong>
+        <span class="accent">{{ a.strength }}</span>
+        <span class="muted">— {{ a.strength_note }}</span>
+      </p>
+    </div>
+    <div>
+      <h4>Significations</h4>
+      <p class="small">
+        {% for s in a.signifies %}{{ s }}{% if not loop.last %} · {% endif %}{% endfor %}
+      </p>
+      <p class="small muted">Body: {{ a.body }}</p>
+    </div>
+  </div>
+
+  <h3>Lord placement</h3>
+  <p>{{ a.lord_text }}</p>
+
+  <h3>Planets in this house</h3>
+  <p>{{ a.occupants_text }}</p>
+
+  {% if ai_content and ai_content.get('house_' ~ h) %}
+  <div class="ornament"><span class="dot"></span></div>
+  <h3>Personalised reading for your H{{ h }}</h3>
+  <p style="text-align: justify; line-height: 1.7; font-size: 10.5pt;">
+    {{ ai_content['house_' ~ h] }}
+  </p>
+  {% endif %}
+
+  {% if a.aspecting %}
+  <h4>Aspecting this house</h4>
+  <p class="small">
+    {% for p in a.aspecting %}<strong>{{ p }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}
+    — these planets cast their drishti (gaze) on this house, contributing to its outcomes.
+  </p>
+  {% endif %}
+</section>
+{% endfor %}
+{% endif %}

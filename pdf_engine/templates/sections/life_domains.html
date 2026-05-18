@@ -1,0 +1,69 @@
+{% if chart.interpretations and chart.interpretations.life_domains %}
+{% for domain, d in chart.interpretations.life_domains.items() %}
+<section class="section page-break" data-title="{{ domain }}">
+  <div class="section-header">
+    <div class="deity-mark"></div>
+    <h2>{{ domain }}</h2>
+    <span class="eyebrow">{{ d.verdict }}</span>
+  </div>
+
+  <p class="small muted">
+    <strong>Karaka(s):</strong> {{ d.karaka }}
+  </p>
+
+  <h3>Houses governing {{ domain }}</h3>
+  <table class="data">
+    <thead>
+      <tr><th>House</th><th>Sign</th><th>Lord</th><th>Occupants</th><th>Strength</th></tr>
+    </thead>
+    <tbody>
+      {% for h in d.relevant_houses %}
+      <tr>
+        <td><strong>H{{ h.house }}</strong></td>
+        <td>{{ h.sign }}</td>
+        <td>{{ h.sign_lord }}</td>
+        <td>{% if h.occupants %}{{ h.occupants|join(', ') }}{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>
+          {% if h.strength == "Strong" %}<span class="accent">{{ h.strength }}</span>
+          {% elif h.strength == "Weak" %}<span class="muted">{{ h.strength }}</span>
+          {% else %}{{ h.strength }}{% endif %}
+          {% if h.note %}<br><span class="small muted">{{ h.note }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Significator planets for {{ domain }}</h3>
+  <table class="data">
+    <thead>
+      <tr><th>Planet</th><th>Sign</th><th>House</th><th>Dignity</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      {% for p in d.relevant_planets %}
+      <tr>
+        <td><strong>{{ p.planet }}</strong></td>
+        <td>{{ p.sign }}</td>
+        <td>H{{ p.house }}</td>
+        <td>
+          {% if p.dignity == "Exalted" %}<span class="accent">{{ p.dignity }}</span>
+          {% elif p.dignity == "Debilitated" %}<span class="muted">{{ p.dignity }}</span>
+          {% else %}{{ p.dignity }}{% endif %}
+        </td>
+        <td>
+          {% if p.is_retrograde %}<span class="muted">Retrograde</span>{% endif %}
+          {% if p.is_combust %}{% if p.is_retrograde %} · {% endif %}<span class="muted">Combust</span>{% endif %}
+          {% if not p.is_retrograde and not p.is_combust %}<span class="small muted">direct, uncombust</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="small muted" style="margin-top:8pt;">
+    Read this domain's chapter alongside the per-house and per-planet pages for
+    the deepest reading.
+  </p>
+</section>
+{% endfor %}
+{% endif %}

@@ -1,25 +1,85 @@
 <section class="section cover" data-title="">
-  <div class="frame">
-    <div class="deity-line">॥ श्री गणेशाय नमः ॥</div>
-    <div class="subtitle">{{ theme.cover_subtitle }}</div>
-    <h1 class="devanagari-name">{{ devanagari_name }}</h1>
-    <h1 class="latin-name">{{ chart.birth_data.name }}</h1>
-    <div class="ornament"></div>
-    <div class="birth-line">
-      Born {{ chart.datetime_local.strftime("%A, %d %B %Y") }}
+  <div class="cover-grid">
+
+    <!-- ── Top — invocation + deity art ─────────────────────── -->
+    <div class="cover-top">
+      <div class="deity-line">॥ श्री गणेशाय नमः ॥</div>
+      {% if cover_art_image_url %}
+      <div class="cover-art-frame">
+        <img src="{{ cover_art_image_url }}" alt="" />
+      </div>
+      {% elif cover_art_svg %}
+      <div class="cover-art-frame">{{ cover_art_svg|safe }}</div>
+      {% endif %}
     </div>
-    <div class="birth-line">
-      at {{ chart.datetime_local.strftime("%I:%M %p") }} ·
-      {{ chart.birth_data.place }}
+
+    <!-- ── Middle — Name + subtitle ────────────────────────── -->
+    <div class="cover-mid">
+      <h1 class="latin-name">{{ chart.birth_data.name }}</h1>
+      {% if devanagari_name and devanagari_name != chart.birth_data.name %}
+      <div class="devanagari-name">{{ devanagari_name }}</div>
+      {% endif %}
+      <div class="subtitle">— Janma Kundli —</div>
+
+      <div class="ornament">
+        <span class="dot"></span>
+      </div>
     </div>
-    <div class="birth-line">
-      {{ chart.lagna.sign }} Lagna · {{ chart.planets["Moon"].sign }} Moon ·
-      {{ chart.planets["Sun"].sign }} Sun
+
+    <!-- ── Lower-middle — key chart points (3 columns × 2 rows) -->
+    <div class="cover-keypoints">
+      <div class="kp-cell">
+        <div class="kp-label">Lagna</div>
+        <div class="kp-value">{{ chart.lagna.sign }}</div>
+        <div class="kp-sub">{{ chart.lagna.degree_in_sign_dms }}</div>
+      </div>
+      <div class="kp-cell">
+        <div class="kp-label">Moon Sign</div>
+        <div class="kp-value">{{ chart.planets['Moon'].sign }}</div>
+        <div class="kp-sub">Pada {{ chart.planets['Moon'].pada }}</div>
+      </div>
+      <div class="kp-cell">
+        <div class="kp-label">Sun Sign</div>
+        <div class="kp-value">{{ chart.planets['Sun'].sign }}</div>
+        <div class="kp-sub">{{ chart.planets['Sun'].nakshatra }}</div>
+      </div>
+      <div class="kp-cell">
+        <div class="kp-label">Nakshatra</div>
+        <div class="kp-value-small">{{ chart.planets['Moon'].nakshatra }}</div>
+        <div class="kp-sub">Lord: {{ chart.planets['Moon'].nakshatra_lord }}</div>
+      </div>
+      <div class="kp-cell">
+        <div class="kp-label">Tithi</div>
+        <div class="kp-value-small">{{ chart.panchanga.tithi }}</div>
+        <div class="kp-sub">{{ chart.panchanga.paksha }} paksha</div>
+      </div>
+      <div class="kp-cell">
+        <div class="kp-label">Yoga</div>
+        <div class="kp-value-small">{{ chart.panchanga.yoga }}</div>
+        <div class="kp-sub">{{ chart.panchanga.karana }}</div>
+      </div>
     </div>
-    <div class="footnote">
-      Computed with Swiss Ephemeris · Ayanamsha: {{ chart.ayanamsha_used|title }}
-      ({{ "%.4f"|format(chart.ayanamsha_value) }}°) ·
-      Generated {{ generated_at.strftime("%d %b %Y") }}
+
+    <!-- ── Bottom — birth datetime + ornament + signature ──── -->
+    <div class="cover-bottom">
+      <div class="birth-line">
+        <span class="birth-label">Born</span>
+        <strong>{{ chart.datetime_local.strftime("%A, %d %B %Y") }}</strong>
+      </div>
+      <div class="birth-line">
+        <span class="birth-label">at</span>
+        <strong>{{ chart.datetime_local.strftime("%I:%M %p") }}</strong>
+        <span class="birth-label"> · </span>
+        <strong>{{ chart.birth_data.place }}</strong>
+      </div>
+
+      <div class="cover-footer-ornament"></div>
+
+      <div class="footnote">
+        Sidereal · Lahiri Ayanamsha ({{ "%.4f"|format(chart.ayanamsha_value) }}°) ·
+        Swiss Ephemeris · Generated {{ generated_at.strftime("%d %B %Y") }}
+      </div>
     </div>
+
   </div>
 </section>

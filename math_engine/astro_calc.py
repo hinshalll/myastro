@@ -518,16 +518,142 @@ def detect_yogas(ls,moon_sidx,planet_data,r_lon,k_lon):
         yogas.append(("Saraswati Yoga", f"Jupiter(H{jh_s})+Venus(H{vh_s})+Mercury(H{mh_s}) in favorable houses — learning, wisdom, eloquence"))
     else: absent.append("Saraswati Yoga — Jupiter/Venus/Mercury not all in favorable houses")
 
-    h2_lord = SIGN_LORDS_MAP[(ls+1)%12]; h11_lord = SIGN_LORDS_MAP[(ls+10)%12]
-    h2_lord_h = ho(h2_lord); h11_lord_h = ho(h11_lord)
-    if h2_lord == h11_lord:
-        yogas.append(("Dhana Yoga", f"{h2_lord} lords both H2 and H11 — natural wealth axis connection"))
-    elif h2_lord_h and h11_lord_h:
-        if h2_lord_h == h11_lord_h:
-            yogas.append(("Dhana Yoga", f"H2 lord ({h2_lord}) + H11 lord ({h11_lord}) conjunct in H{h2_lord_h} — strong wealth accumulation"))
-        elif ((h11_lord_h - h2_lord_h) % 12) in {0,3,6,9}:
-            yogas.append(("Dhana Yoga", f"H2 lord ({h2_lord}, H{h2_lord_h}) + H11 lord ({h11_lord}, H{h11_lord_h}) in mutual kendra — wealth accumulation"))
-        else: absent.append(f"Dhana Yoga — H2 lord ({h2_lord}) and H11 lord ({h11_lord}) not connected")
+    # ── Dhana Yoga (broadened) — BPHS lists multiple wealth-house-lord combos.
+    # Classical conditions: any of (2L, 5L, 9L, 11L) in mutual conjunction /
+    # mutual aspect / mutual kendra. We previously only checked 2L+11L which
+    # misses most real Dhana Yoga configurations. Now we check all 6 pairs of
+    # the {2L, 5L, 9L, 11L} wealth-lord set and report the strongest match.
+    wealth_lord_houses = {h: SIGN_LORDS_MAP[(ls + h - 1) % 12] for h in (2, 5, 9, 11)}
+    wealth_lord_pos = {h: ho(lord) for h, lord in wealth_lord_houses.items()}
+    dhana_hits = []
+    _checked_pairs = set()
+    for h_a in (2, 5, 9, 11):
+        for h_b in (2, 5, 9, 11):
+            if h_a >= h_b or (h_a, h_b) in _checked_pairs: continue
+            _checked_pairs.add((h_a, h_b))
+            la, lb = wealth_lord_houses[h_a], wealth_lord_houses[h_b]
+            la_h, lb_h = wealth_lord_pos[h_a], wealth_lord_pos[h_b]
+            if la == lb:
+                dhana_hits.append(f"{la} lords both H{h_a} and H{h_b}")
+                continue
+            if not (la_h and lb_h): continue
+            if la_h == lb_h:
+                dhana_hits.append(f"H{h_a}-lord ({la}) + H{h_b}-lord ({lb}) conjunct in H{la_h}")
+            elif ((lb_h - la_h) % 12) in {3, 6, 9}:
+                dhana_hits.append(f"H{h_a}-lord ({la}) H{la_h} + H{h_b}-lord ({lb}) H{lb_h} in mutual kendra")
+    if dhana_hits:
+        yogas.append(("Dhana Yoga", "; ".join(dhana_hits[:3]) + " — wealth-house-lord sambandha"))
+    else:
+        absent.append("Dhana Yoga — no 2/5/9/11 lord sambandha detected")
+
+    # ── Akhand Samrajya Yoga (Brihat Parashara) — "uninterrupted sovereignty",
+    # the great wealth-+-status yoga. Classical conditions:
+    #   1. Lords of 2nd, 9th, and 11th are ALL in own/exaltation/friendly signs.
+    #   2. Jupiter is strong (in own/exalt/kendra/trikona from Lagna).
+    # When this fires the chart has lifetime financial sovereignty.
+    h2_lord  = wealth_lord_houses[2]
+    h11_lord = wealth_lord_houses[11]
+    h9_lord_a = SIGN_LORDS_MAP[(ls + 8) % 12]
+    akhand_lords = (h2_lord, h9_lord_a, h11_lord)
+    def _is_own_or_exalt_or_friendly(planet_name):
+        ps = si(planet_name)
+        if ps is None: return False
+        if planet_name in DIGNITIES and ps == DIGNITIES[planet_name][0]: return True   # exalted
+        if planet_name in OWN_SIGNS and ps in OWN_SIGNS[planet_name]: return True      # own sign
+        # Friendly = sign whose lord is a natural friend
+        # (Approximation: planet is in mooltrikona-friendly sign — checked via
+        # whether the sign's lord is a natural friend.)
+        sign_lord = SIGN_LORDS_MAP.get(ps)
+        friends_map = {
+            "Sun":     {"Moon", "Mars", "Jupiter"},
+            "Moon":    {"Sun", "Mercury"},
+            "Mars":    {"Sun", "Moon", "Jupiter"},
+            "Mercury": {"Sun", "Venus"},
+            "Jupiter": {"Sun", "Moon", "Mars"},
+            "Venus":   {"Mercury", "Saturn"},
+            "Saturn":  {"Mercury", "Venus"},
+        }
+        return sign_lord in friends_map.get(planet_name, set())
+    all_lords_strong = all(_is_own_or_exalt_or_friendly(L) for L in akhand_lords if L)
+    jup_sidx = si("Jupiter")
+    jup_h_for_ak = ho("Jupiter")
+    jup_strong = (
+        jup_sidx is not None and (
+            (jup_sidx == DIGNITIES["Jupiter"][0]) or
+            ("Jupiter" in OWN_SIGNS and jup_sidx in OWN_SIGNS["Jupiter"]) or
+            jup_h_for_ak in {1, 4, 5, 7, 9, 10}
+        )
+    )
+    if all_lords_strong and jup_strong:
+        yogas.append(("Akhand Samrajya Yoga",
+                      f"Lords of H2 ({h2_lord}), H9 ({h9_lord_a}), H11 ({h11_lord}) all in "
+                      f"own/exalt/friendly signs + Jupiter strong — uninterrupted lifetime sovereignty"))
+    else:
+        absent.append("Akhand Samrajya Yoga — 2/9/11 lords not all in own/exalt/friendly OR Jupiter not strong")
+
+    # ── Mahabhagya Yoga (Phaladeepika) — "great fortune". For a chart born by
+    # DAY with Sun, Moon, Lagna all in odd signs (or by NIGHT with all in even
+    # signs). We don't carry day-of-birth gender, so we accept either condition;
+    # the classical interpretation note tells the AI to apply day/night context.
+    sun_sidx_mb = si("Sun"); moon_sidx_mb = si("Moon")
+    if sun_sidx_mb is not None and moon_sidx_mb is not None:
+        all_odd = (ls % 2 == 0) and (sun_sidx_mb % 2 == 0) and (moon_sidx_mb % 2 == 0)
+        all_even = (ls % 2 == 1) and (sun_sidx_mb % 2 == 1) and (moon_sidx_mb % 2 == 1)
+        if all_odd:
+            yogas.append(("Mahabhagya Yoga",
+                          "Sun, Moon, and Lagna all in odd signs — great fortune (day-birth classical reading)"))
+        elif all_even:
+            yogas.append(("Mahabhagya Yoga",
+                          "Sun, Moon, and Lagna all in even signs — great fortune (night-birth classical reading)"))
+        else:
+            absent.append("Mahabhagya Yoga — Sun/Moon/Lagna not aligned in same parity")
+
+    # ── Sankha Yoga (Phaladeepika) — wealth-through-fame yoga. Two classical
+    # versions:
+    #   v1: Lords of 5th and 6th in mutual kendra, with Lagna lord strong.
+    #   v2: Lagna lord in kendra/trikona + 9th lord in kendra/trikona + 10th
+    #       lord strong (less standard, skip).
+    # We implement v1 (the BPHS-aligned version).
+    h5_lord = SIGN_LORDS_MAP[(ls + 4) % 12]
+    h6_lord = SIGN_LORDS_MAP[(ls + 5) % 12]
+    h1_lord_sk = SIGN_LORDS_MAP[ls]
+    h5_lord_h = ho(h5_lord); h6_lord_h = ho(h6_lord); h1_lord_h_sk = ho(h1_lord_sk)
+    if h5_lord_h and h6_lord_h and h1_lord_h_sk:
+        # Mutual kendra (distance 0/3/6/9 in houses)
+        mutual_kendra_56 = ((h6_lord_h - h5_lord_h) % 12) in {0, 3, 6, 9}
+        # Lagna lord strong = in own/exalt OR in kendra/trikona
+        h1l_sidx = si(h1_lord_sk)
+        h1l_strong = h1l_sidx is not None and (
+            (h1_lord_sk in DIGNITIES and h1l_sidx == DIGNITIES[h1_lord_sk][0]) or
+            (h1_lord_sk in OWN_SIGNS and h1l_sidx in OWN_SIGNS[h1_lord_sk]) or
+            h1_lord_h_sk in {1, 4, 5, 7, 9, 10}
+        )
+        if mutual_kendra_56 and h1l_strong:
+            yogas.append(("Sankha Yoga",
+                          f"H5 lord ({h5_lord}) + H6 lord ({h6_lord}) in mutual kendra, "
+                          f"Lagna lord ({h1_lord_sk}) strong — wealth through fame/longevity"))
+        else:
+            absent.append("Sankha Yoga — H5/H6 lords not in mutual kendra or Lagna lord weak")
+
+    # ── Kahala Yoga (Phaladeepika) — leadership-wealth yoga. Lords of 4th and
+    # 9th in mutual kendra OR conjunct, with Lagna lord strong.
+    h4_lord = SIGN_LORDS_MAP[(ls + 3) % 12]
+    h9_lord_k = h9_lord_a   # reuse from Akhand block
+    h4_lord_h = ho(h4_lord); h9_lord_h = ho(h9_lord_k)
+    if h4_lord_h and h9_lord_h and h1_lord_h_sk:
+        kahala_conn = (h4_lord_h == h9_lord_h) or (((h9_lord_h - h4_lord_h) % 12) in {3, 6, 9})
+        h1l_sidx_k = si(h1_lord_sk)
+        h1l_strong_k = h1l_sidx_k is not None and (
+            (h1_lord_sk in DIGNITIES and h1l_sidx_k == DIGNITIES[h1_lord_sk][0]) or
+            (h1_lord_sk in OWN_SIGNS and h1l_sidx_k in OWN_SIGNS[h1_lord_sk]) or
+            h1_lord_h_sk in {1, 4, 5, 7, 9, 10}
+        )
+        if kahala_conn and h1l_strong_k:
+            yogas.append(("Kahala Yoga",
+                          f"H4 lord ({h4_lord}) + H9 lord ({h9_lord_k}) connected "
+                          f"+ Lagna lord ({h1_lord_sk}) strong — leadership, command over resources"))
+        else:
+            absent.append("Kahala Yoga — H4/H9 lords not connected or Lagna lord weak")
 
     h10_occ = [pn for pn in list(planet_data.keys())+["Rahu","Ketu"] if ho(pn)==10]
     if h10_occ and all(p in {"Jupiter","Venus","Mercury","Moon"} for p in h10_occ):
@@ -586,21 +712,100 @@ def calculate_sade_sati(natal_moon_sidx):
     return f"NOT ACTIVE (Saturn is {diff} signs from natal Moon in {sign_name(natal_moon_sidx)})."
 
 
-def check_manglik_dosha(ls,moon_sidx,mars_sidx):
-    mh_l=whole_sign_house(ls,mars_sidx); mh_m=whole_sign_house(moon_sidx,mars_sidx)
-    il=mh_l in [1,4,7,8,12]; im=mh_m in [1,4,7,8,12]
-    if il and im: return "HIGH MANGLIK — Mars in Manglik house from both Ascendant and Moon"
-    elif il: return "MILD MANGLIK — Mars in Manglik house from Ascendant only"
-    elif im: return "MILD MANGLIK — Mars in Manglik house from Moon only"
-    return "NOT MANGLIK — No Kuja Dosha"
+def check_manglik_dosha(ls, moon_sidx, mars_sidx, mars_lon=None, planet_data=None):
+    """
+    Classical Kuja (Manglik) Dosha verdict with dignity + aspect cancellations.
+
+    Manglik houses (counted from Lagna AND from Moon): 1, 4, 7, 8, 12.
+
+    Classical cancellations applied (when planet_data is supplied):
+      • Mars in own sign (Aries / Scorpio) — dosha CANCELLED
+      • Mars exalted (Capricorn) — dosha CANCELLED
+      • Mars debilitated (Cancer) — dosha INTENSIFIED
+      • Jupiter or Venus aspect / conjunction with Mars — MITIGATED
+      • Saturn conjunct Mars (same sign) — MITIGATED
+
+    Older 3-argument call sites still work — cancellations simply aren't
+    evaluated unless mars_lon + planet_data are passed.
+    """
+    mh_l = whole_sign_house(ls, mars_sidx)
+    mh_m = whole_sign_house(moon_sidx, mars_sidx)
+    il = mh_l in [1, 4, 7, 8, 12]
+    im = mh_m in [1, 4, 7, 8, 12]
+
+    if not il and not im:
+        return "NOT MANGLIK — No Kuja Dosha"
+
+    cancellations = []
+    if mars_sidx in (0, 7):        # Aries / Scorpio = Mars's own signs
+        cancellations.append("Mars in own sign")
+    if mars_sidx == 9:             # Capricorn = exalted
+        cancellations.append("Mars exalted")
+    debilitated = (mars_sidx == 3) # Cancer
+
+    if planet_data is not None and mars_lon is not None:
+        def _signed_sep(a, b):
+            sep = abs(((a - b) + 360) % 360)
+            return min(sep, 360 - sep)
+
+        for benefic in ("Jupiter", "Venus"):
+            entry = planet_data.get(benefic)
+            if entry is None: continue
+            b_lon = entry[0] if isinstance(entry, (tuple, list)) else entry
+            sep = _signed_sep(mars_lon, b_lon)
+            if sep <= 8.0:
+                cancellations.append(f"{benefic} conjunct Mars")
+            elif abs(sep - 180) <= 8.0:
+                cancellations.append(f"{benefic} opposes Mars")
+
+        sat_entry = planet_data.get("Saturn")
+        if sat_entry is not None:
+            sat_lon = sat_entry[0] if isinstance(sat_entry, (tuple, list)) else sat_entry
+            if sign_index_from_lon(sat_lon) == mars_sidx:
+                cancellations.append("Saturn conjunct Mars")
+
+    if cancellations:
+        tag = "WEAK" if not (il and im) else "MILD"
+        return f"{tag} MANGLIK (cancellations: {', '.join(cancellations)}) — significantly mitigated"
+
+    if debilitated:
+        if il and im:
+            return "VERY HIGH MANGLIK — Mars debilitated in Manglik house from both Lagna and Moon"
+        return "HIGH MANGLIK — Mars debilitated in Manglik house"
+
+    if il and im:
+        return "HIGH MANGLIK — Mars in Manglik house from both Ascendant and Moon"
+    elif il:
+        return "MILD MANGLIK — Mars in Manglik house from Ascendant only"
+    return "MILD MANGLIK — Mars in Manglik house from Moon only"
 
 
-def get_manglik_cancellation_verdict(ma,mb):
-    m1="NOT MANGLIK" not in ma; m2="NOT MANGLIK" not in mb
-    if m1 and m2: return "MANGLIK DOSHA CANCELLED — Both partners are Manglik (classical cancellation). No remedy required."
-    elif not m1 and not m2: return "No Manglik Dosha in either chart."
-    who="Person 1 is Manglik" if m1 else "Person 2 is Manglik"
-    return f"MANGLIK IMBALANCE — {who}, the other is not. Carefully chosen Muhurta and remedies advisable."
+def get_manglik_cancellation_verdict(ma, mb):
+    """
+    Pairwise Manglik verdict aware of severity tiers introduced above:
+    NOT MANGLIK / WEAK / MILD / HIGH / VERY HIGH.
+    """
+    def severity(m):
+        if "NOT MANGLIK" in m:  return 0
+        if "VERY HIGH" in m:    return 4
+        if "HIGH MANGLIK" in m: return 3
+        if "MILD" in m:         return 2
+        if "WEAK" in m:         return 1
+        return 2
+
+    sa, sb = severity(ma), severity(mb)
+
+    if sa == 0 and sb == 0:
+        return "No Manglik Dosha in either chart."
+
+    if sa > 0 and sb > 0:
+        if max(sa, sb) <= 2:
+            return "MANGLIK DOSHA CANCELLED — Both partners have mild Manglik (mutual classical cancellation). No remedy required."
+        return ("MANGLIK BALANCED — Both partners are Manglik (mutual classical cancellation), "
+                "but at least one severity is high. Muhurta + remedy still advisable.")
+
+    who = f"Person 1 ({ma})" if sa > 0 else f"Person 2 ({mb})"
+    return f"MANGLIK IMBALANCE — {who} is Manglik, the other is not. Carefully chosen Muhurta and remedies advisable."
 
 
 def calculate_arudha_lagna(ls, planet_data, r_lon, k_lon):
@@ -1206,7 +1411,28 @@ def house_score(facts, house):
 
 
 def topic_yoga_score(facts, names, planet_data=None, ls=None, lagna_lon=None, jd_ut=None):
-    return sum(weight for name, weight in names.items() if name in facts["yogas"])
+    """Sum the weights of yogas in `names` that are present in the chart, with
+    each weight scaled by `yoga_strength_multiplier()` — so a Dhana Yoga with
+    debilitated lords contributes less than one with exalted lords.
+
+    The multiplier is clamped to [0.4, 1.3] to keep wealth yogas from going
+    to zero on weak charts (classical doctrine: yoga always promises something)
+    AND from inflating beyond ~1.3× of raw weight (prevents stacking-bloat).
+
+    Falls back to raw flat-add when planet_data/ls/lagna_lon are not provided
+    (older call sites).
+    """
+    total = 0.0
+    have_context = planet_data is not None and ls is not None and lagna_lon is not None and jd_ut is not None
+    for name, weight in names.items():
+        if name not in facts["yogas"]: continue
+        if have_context:
+            mult = yoga_strength_multiplier(name, facts, planet_data, ls, lagna_lon, jd_ut)
+            mult = max(0.4, min(1.3, mult))
+        else:
+            mult = 1.0
+        total += weight * mult
+    return total
 
 
 def topic_house_connection(facts, planets, houses):
@@ -1255,12 +1481,24 @@ def benefic_support(facts, houses):
 
 
 def extract_kp_promise(dossier_text, house_number):
+    """Read the KP H{n} sub-lord verdict score (0/1/2/3) from a dossier.
+
+    Returns -1 instead of the silent `1` fallback when the dossier doesn't
+    expose the KP section at all — that way upstream scorers can detect
+    "we have no KP signal" vs. "the chart's KP signal is genuinely neutral".
+    A console warning is printed so format-drift bugs surface immediately.
+    """
     facts = parse_chart_facts(dossier_text)
     if house_number in facts["kp"]:
         return facts["kp"][house_number]["score"]
     pattern = rf"H{house_number} KP Promise[^|]+\| VERDICT: ([^\n]+)"
     match = re.search(pattern, dossier_text)
-    return kp_score_from_verdict(match.group(1)) if match else 1
+    if match:
+        return kp_score_from_verdict(match.group(1))
+    import sys
+    print(f"[extract_kp_promise] WARNING: no KP promise found for H{house_number} "
+          f"— dossier may be malformed or KP section missing.", file=sys.stderr)
+    return 1   # neutral fallback (preserves existing call-site behaviour)
 
 
 def extract_planet_dignity(dossier_text, planet_name):
@@ -1284,14 +1522,69 @@ def extract_planet_house(dossier_text, planet_name):
     return planet_house(parse_chart_facts(dossier_text), planet_name)
 
 
-def recalc_math(dossier):
+def recalc_math_from_profile(profile):
+    """
+    Build the same chart-math tuple as recalc_math() but compute it DIRECTLY
+    from a BirthData profile dict instead of regex-parsing the printed dossier.
+
+    Eliminates the silent 50.0 fallback class of bugs: when the dossier-text
+    format drifts even slightly, regex recalc_math returns None and every
+    Compare Profile scorer falls back to neutral. Direct computation from
+    profile primitives can't drift.
+
+    profile must contain: date (ISO or date), time (HH:MM or time), tz, lat, lon.
+    """
+    from datetime import date as _date, datetime as _datetime
+    d = profile["date"]
+    if isinstance(d, str): d = _date.fromisoformat(d)
+    t = profile["time"]
+    if isinstance(t, str): t = _datetime.strptime(t, "%H:%M").time()
+
+    jd_ut, _, _ = local_to_julian_day(d, t, profile["tz"])
+    lagna_lon, _ = get_lagna_and_cusps(jd_ut, profile["lat"], profile["lon"])
+    ls = sign_index_from_lon(lagna_lon)
+    placidus_cusps = get_placidus_cusps(jd_ut, profile["lat"], profile["lon"])
+    planet_data = {pn: get_planet_longitude_and_speed(jd_ut, pid) for pn, pid in PLANETS.items()}
+    r_lon = get_rahu_longitude(jd_ut)
+    k_lon = (r_lon + 180.0) % 360
+    planet_data["Rahu"] = (r_lon, -0.05)
+    planet_data["Ketu"] = (k_lon, -0.05)
+    return ls, lagna_lon, planet_data, placidus_cusps, jd_ut, r_lon, k_lon
+
+
+def recalc_math(dossier, profile=None):
+    """Recover the chart's Julian Day + planet longitudes + cusps.
+
+    PREFERRED PATH: pass `profile` (the BirthData dict) — direct computation,
+    no regex, no silent fallback.
+
+    LEGACY PATH: only `dossier` provided — regex-parses the printed report.
+    Returns None on parse failure and logs a clear stderr warning so the
+    50.0 fallback in calculate_*_score() is visible.
+    """
+    if profile is not None:
+        try:
+            return recalc_math_from_profile(profile)
+        except Exception as e:
+            import sys
+            print(f"[recalc_math] WARNING: profile path failed ({e}); falling back to regex.",
+                  file=sys.stderr)
+
+    import sys
     time_match = re.search(r"Time:\s*(.*?)\s*\(", dossier)
     coord_match = re.search(r"Coordinates:\s*([0-9.]+)([NS]),\s*([0-9.]+)([EW])\s*\|\s*Timezone:\s*([^\s\n]+)", dossier)
-    if not time_match or not coord_match: return None
+    if not time_match or not coord_match:
+        print(f"[recalc_math] WARNING: failed to parse Time/Coordinates from dossier "
+              f"(time_match={bool(time_match)}, coord_match={bool(coord_match)}). "
+              f"Scoring functions will fall back to neutral 50.0 — outputs unreliable.",
+              file=sys.stderr)
+        return None
     dt_str = time_match.group(1).strip()
     try:
         dt_local = datetime.strptime(dt_str, "%d %b %Y, %I:%M %p")
-    except: return None
+    except Exception as e:
+        print(f"[recalc_math] WARNING: time parse failed for '{dt_str}': {e}", file=sys.stderr)
+        return None
     lat_val, lat_dir, lon_val, lon_dir, tz_name = coord_match.groups()
     lat = float(lat_val) if lat_dir == 'N' else -float(lat_val)
     lon = float(lon_val) if lon_dir == 'E' else -float(lon_val)
@@ -1388,20 +1681,54 @@ def calculate_argala(house_idx, f):
 
 
 def yoga_strength_multiplier(yoga_name, facts, planet_data, ls, lagna_lon, jd_ut):
-    if yoga_name == "Gajakesari Yoga":
-        jup = get_p_str("Jupiter", planet_data, ls, facts, lagna_lon, jd_ut)
-        moon = get_p_str("Moon", planet_data, ls, facts, lagna_lon, jd_ut)
-        return ((jup + moon) / 2.0) / 75.0
-    elif yoga_name == "Hamsa Yoga":
-        return get_p_str("Jupiter", planet_data, ls, facts, lagna_lon, jd_ut) / 75.0
-    elif yoga_name == "Malavya Yoga":
-        return get_p_str("Venus", planet_data, ls, facts, lagna_lon, jd_ut) / 75.0
+    """Scale a yoga's contribution by the mean strength of its constituent
+    planets. A Dhana Yoga with debilitated lords contributes less than one
+    with exalted lords. Returned value is roughly in [0.4, 1.3] after clamp;
+    1.0 = constituents at neutral 75-Shadbala baseline.
+    """
+    def _ps(p): return get_p_str(p, planet_data, ls, facts, lagna_lon, jd_ut)
+    def _avg(planets):
+        ps = [_ps(p) for p in planets if p]
+        return (sum(ps) / len(ps)) / 75.0 if ps else 1.0
+
+    # House-lord helpers for wealth yogas
+    h2_lord  = facts.get("house_lords", {}).get(2,  {}).get("planet")
+    h4_lord  = facts.get("house_lords", {}).get(4,  {}).get("planet")
+    h5_lord  = facts.get("house_lords", {}).get(5,  {}).get("planet")
+    h6_lord  = facts.get("house_lords", {}).get(6,  {}).get("planet")
+    h9_lord  = facts.get("house_lords", {}).get(9,  {}).get("planet")
+    h11_lord = facts.get("house_lords", {}).get(11, {}).get("planet")
+    h1_lord  = facts.get("house_lords", {}).get(1,  {}).get("planet")
+
+    # Pancha Mahapurusha + Gajakesari + Chandra-Mangala (existing)
+    if   yoga_name == "Gajakesari Yoga":     return _avg(["Jupiter", "Moon"])
+    elif yoga_name == "Hamsa Yoga":          return _avg(["Jupiter"])
+    elif yoga_name == "Malavya Yoga":        return _avg(["Venus"])
     elif yoga_name in {"Ruchaka Yoga", "Chandra-Mangala Yoga"}:
-        return get_p_str("Mars", planet_data, ls, facts, lagna_lon, jd_ut) / 75.0
-    elif yoga_name == "Bhadra Yoga":
-        return get_p_str("Mercury", planet_data, ls, facts, lagna_lon, jd_ut) / 75.0
-    elif yoga_name == "Shasha Yoga":
-        return get_p_str("Saturn", planet_data, ls, facts, lagna_lon, jd_ut) / 75.0
+                                              return _avg(["Mars"])
+    elif yoga_name == "Bhadra Yoga":         return _avg(["Mercury"])
+    elif yoga_name == "Shasha Yoga":         return _avg(["Saturn"])
+
+    # Wealth yogas — scale by mean strength of constituent planets
+    elif yoga_name == "Dhana Yoga":
+        return _avg([h2_lord, h5_lord, h9_lord, h11_lord])
+    elif yoga_name == "Lakshmi Yoga":
+        return _avg([h9_lord, "Venus"])
+    elif yoga_name == "Akhand Samrajya Yoga":
+        return _avg([h2_lord, h9_lord, h11_lord, "Jupiter"])
+    elif yoga_name == "Mahabhagya Yoga":
+        return _avg(["Sun", "Moon", h1_lord])
+    elif yoga_name == "Sankha Yoga":
+        return _avg([h5_lord, h6_lord, h1_lord])
+    elif yoga_name == "Kahala Yoga":
+        return _avg([h4_lord, h9_lord, h1_lord])
+
+    # Raja Yoga, Parivartana, Viparita Raja — scale by Lagna lord as a proxy
+    # for "is this person's chart structurally healthy enough to use this"
+    elif yoga_name in {"Raja Yoga", "Parivartana Yoga", "Viparita Raja Yoga",
+                       "Dharma-Karma Adhipati Yoga"}:
+        return _avg([h1_lord])
+
     return 1.0
 
 
@@ -1475,3 +1802,263 @@ def get_moon_lon_from_profile(profile):
     jd, _, __ = local_to_julian_day(d, t, profile['tz'])
     lon, _ = get_planet_longitude_and_speed(jd, PLANETS["Moon"])
     return lon
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EVENT TIMING ATLAS — Lifetime Vimshottari sequence + per-event activation
+# windows. Solves the "at what age will I..." class of consultation questions
+# by handing the AI precomputed answers instead of asking it to infer.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Classical karaka maturation ages (Bhrigu / Brihat Parashara). The age at which
+# each planet's significations "lock in" as durable life results.
+KARAKA_MATURATION = {
+    "Jupiter": 16,   # wisdom, children, dharma
+    "Sun":     22,   # authority, father, soul-purpose
+    "Moon":    24,   # mind, mother, public-facing self
+    "Venus":   25,   # marriage, partnerships, refinement
+    "Mars":    28,   # courage, action, technical mastery
+    "Mercury": 32,   # commerce, intellect, profession
+    "Saturn":  36,   # career permanence, discipline, responsibility
+    "Rahu":    42,   # foreign / non-classical gains
+    "Ketu":    48,   # detachment, moksha-orientation
+}
+
+# Houses that govern each major life event (Parashari + KP combined).
+# Significator = a planet that (a) owns one of these houses, (b) occupies one,
+# (c) has its nakshatra-lord in one, or (d) is a natural karaka.
+EVENT_HOUSE_MAP = {
+    "Earning / Income":   {"houses": {2, 10, 11},      "karakas": {"Sun", "Mercury", "Saturn"}},
+    "Marriage / Spouse":  {"houses": {2, 7, 11},       "karakas": {"Venus", "Jupiter"}},
+    "Career / Profession":{"houses": {1, 6, 10, 11},   "karakas": {"Sun", "Saturn", "Mercury"}},
+    "Children":           {"houses": {2, 5, 11},       "karakas": {"Jupiter"}},
+    "Property / Home":    {"houses": {4, 11},          "karakas": {"Mars", "Moon"}},
+    "Education":          {"houses": {2, 4, 5, 9},     "karakas": {"Mercury", "Jupiter"}},
+    "Foreign / Travel":   {"houses": {3, 9, 12},       "karakas": {"Rahu", "Moon"}},
+    "Health / Longevity": {"houses": {1, 8},           "karakas": {"Sun", "Saturn"}},
+    "Spiritual / Moksha": {"houses": {5, 8, 9, 12},    "karakas": {"Ketu", "Jupiter", "Saturn"}},
+    "Fame / Recognition": {"houses": {1, 5, 9, 10, 11},"karakas": {"Sun", "Jupiter"}},
+}
+
+
+def build_lifetime_dasha_sequence(dt_birth, moon_lon):
+    """Full Vimshottari Mahadasha sequence from birth through ~120 years.
+
+    Returns list of dicts:
+      [{"lord": str, "years": float, "start": datetime, "end": datetime,
+        "start_age": float, "end_age": float, "is_balance": bool}, ...]
+    The first entry is the partial-balance MD of the nakshatra-starting lord.
+    """
+    ns = 360.0 / 27
+    idx = int((moon_lon % 360) // ns)
+    start_lord = NAKSHATRA_LORDS[idx]
+    balance = DASHA_YEARS[start_lord] * (1 - ((moon_lon % 360 % ns) / ns))
+    si = DASHA_ORDER.index(start_lord)
+    seq = DASHA_ORDER[si:] + DASHA_ORDER[:si]
+    md_list = [(seq[0], balance, True)] + [(l, float(DASHA_YEARS[l]), False) for l in seq[1:]]
+
+    out = []
+    cursor = dt_birth
+    for lord, yrs, is_bal in md_list:
+        end = cursor + timedelta(days=yrs * YEAR_DAYS)
+        out.append({
+            "lord": lord,
+            "years": yrs,
+            "start": cursor,
+            "end": end,
+            "start_age": (cursor - dt_birth).days / YEAR_DAYS,
+            "end_age":   (end    - dt_birth).days / YEAR_DAYS,
+            "is_balance": is_bal,
+        })
+        cursor = end
+    return out
+
+
+def _planet_signifies_houses(pname, target_houses, ls, planet_data, r_lon, k_lon):
+    """True if `pname` is a classical significator of any house in `target_houses`.
+    Combines: occupied house + owned houses + nakshatra-lord chain.
+    """
+    sigs = get_planet_house_significations(pname, ls, planet_data, r_lon, k_lon)
+    return bool(sigs & set(target_houses))
+
+
+def _get_md_significator_role(lord, event_houses, event_karakas, ls, planet_data, r_lon, k_lon):
+    """Classify HOW a given MD lord activates an event area, or '' if it doesn't.
+    Roles in descending priority:
+      'house_lord'   — owns one of the event houses (strongest, structural)
+      'house_occupy' — sits in one of the event houses
+      'karaka'       — natural karaka of the event
+      'kp_signify'   — signifies via nakshatra-lord chain only
+    """
+    if lord in ("Unknown", None) or lord not in planet_data and lord not in ("Rahu", "Ketu"):
+        return ""
+
+    # Own houses (rashi ownership)
+    owned_houses = {whole_sign_house(ls, sidx) for sidx, l in SIGN_LORDS_MAP.items() if l == lord}
+    if owned_houses & set(event_houses):
+        return "house_lord"
+
+    # Occupancy
+    lon = get_planet_lon_helper(lord, planet_data, r_lon, k_lon)
+    if lon is not None:
+        occ_h = whole_sign_house(ls, sign_index_from_lon(lon))
+        if occ_h in event_houses:
+            return "house_occupy"
+
+    if lord in event_karakas:
+        return "karaka"
+
+    # Nakshatra-lord chain (KP-style)
+    if _planet_signifies_houses(lord, event_houses, ls, planet_data, r_lon, k_lon):
+        return "kp_signify"
+
+    return ""
+
+
+def _format_md_window(md_entry, role, event_name, ls, planet_data, r_lon, k_lon, event_houses):
+    """One-line description of why this MD activates the event area."""
+    lord = md_entry["lord"]
+    sa, ea = md_entry["start_age"], md_entry["end_age"]
+    sy, ey = md_entry["start"].strftime("%b %Y"), md_entry["end"].strftime("%b %Y")
+
+    owned = sorted({whole_sign_house(ls, sidx) for sidx, l in SIGN_LORDS_MAP.items() if l == lord})
+    owned_str = f"owns H{','.join(str(h) for h in owned if h in event_houses)}" if (set(owned) & event_houses) else ""
+
+    lon = get_planet_lon_helper(lord, planet_data, r_lon, k_lon)
+    occ_h = whole_sign_house(ls, sign_index_from_lon(lon)) if lon is not None else None
+    occ_str = f"in H{occ_h}" if occ_h in event_houses else ""
+
+    role_label = {
+        "house_lord":   "STRONG (house-lord)",
+        "house_occupy": "MODERATE (occupies event house)",
+        "karaka":       "MODERATE (natural karaka)",
+        "kp_signify":   "WEAK (KP nakshatra-chain only)",
+    }.get(role, "")
+
+    reason_bits = [b for b in (owned_str, occ_str) if b]
+    reason = "; ".join(reason_bits) if reason_bits else f"karaka of {event_name}"
+
+    return (f"    • {lord:<8} MD — age {sa:5.1f} → {ea:5.1f}  "
+            f"({sy} → {ey})  [{role_label}; {reason}]")
+
+
+def build_event_timing_atlas(profile, dasha_info, ls, planet_data, r_lon, k_lon, placidus_cusps):
+    """The Event Timing Atlas — precomputed timing windows for major life events.
+
+    This is the answer-source for "at what age will I..." consultation questions.
+    Returns a multi-line string ready to drop into the dossier.
+
+    Methodology (classical Parashari + KP confirmation):
+      1. Build the lifetime Mahadasha sequence with ages.
+      2. For each event area (earning, marriage, career, …), find every MD
+         whose lord significantly activates that area (lord/occupy/karaka/KP).
+      3. For the CURRENT MD only, also walk its antardashas and flag any AD
+         whose lord activates the area (within-MD precision).
+      4. Mention karaka maturation ages overlapping the lifetime.
+    """
+    # 1. Parse birth datetime from profile.
+    pd_date = date.fromisoformat(profile['date']) if isinstance(profile['date'], str) else profile['date']
+    pd_time = datetime.strptime(profile['time'], "%H:%M").time() if isinstance(profile['time'], str) else profile['time']
+    _, dt_birth, _ = local_to_julian_day(pd_date, pd_time, profile['tz'])
+
+    # 2. Now-time in the user's local zone (for "today's age" framing).
+    dt_now_local = datetime.now(ZoneInfo(profile['tz']))
+    current_age = (dt_now_local - dt_birth).days / YEAR_DAYS
+
+    # 3. Lifetime MD sequence.
+    moon_lon = planet_data["Moon"][0]
+    lifetime = build_lifetime_dasha_sequence(dt_birth, moon_lon)
+
+    lines = []
+    lines.append("EVENT TIMING ATLAS — Lifetime Vimshottari + Karaka Maturation")
+    lines.append("(Pre-computed activation windows — cite these directly for 'when/what age' questions.)")
+    lines.append(f"Birth: {dt_birth.strftime('%d %b %Y, %H:%M')} ({profile['tz']}) | Now: {dt_now_local.strftime('%d %b %Y')} | Current age: {current_age:.1f}")
+    lines.append("")
+
+    # 4. Lifetime MD sequence table.
+    lines.append("LIFETIME MAHADASHA SEQUENCE (lord, age window, calendar window):")
+    for md in lifetime:
+        marker = "  ◀ NOW" if md["start_age"] <= current_age < md["end_age"] else ""
+        bal = " [partial-balance from birth]" if md["is_balance"] else ""
+        lines.append(f"  {md['lord']:<8} : age {md['start_age']:5.1f} → {md['end_age']:5.1f}   "
+                     f"({md['start'].strftime('%b %Y')} → {md['end'].strftime('%b %Y')}){marker}{bal}")
+    lines.append("")
+
+    # 5. Karaka maturation table (filter to ones in the user's possible lifespan).
+    lines.append("KARAKA MATURATION AGES (the age at which each planet's signification 'locks in'):")
+    for planet, age in sorted(KARAKA_MATURATION.items(), key=lambda kv: kv[1]):
+        passed = "✓ already matured" if current_age >= age else f"matures in {age - current_age:.1f} yrs"
+        lines.append(f"  {planet:<8} matures at age {age:>2}  ({passed})")
+    lines.append("")
+
+    # 6. Per-event activation windows.
+    lines.append("PER-EVENT ACTIVATION WINDOWS (which MDs activate which life areas):")
+    for event_name, spec in EVENT_HOUSE_MAP.items():
+        houses, karakas = spec["houses"], spec["karakas"]
+
+        # Identify the house lords for the event houses
+        house_lords = sorted({SIGN_LORDS_MAP[(ls + h - 1) % 12] for h in houses})
+
+        lines.append("")
+        lines.append(f"  ── {event_name} ──")
+        lines.append(f"    Required houses : {sorted(houses)}   |   "
+                     f"House-lords in this chart: {', '.join(house_lords)}   |   "
+                     f"Natural karakas: {', '.join(sorted(karakas))}")
+
+        # Walk lifetime MDs and flag activators
+        activator_lines = []
+        for md in lifetime:
+            # Skip MDs entirely in the past beyond ~5 years (they're history but
+            # still worth showing — user said past windows are also useful).
+            role = _get_md_significator_role(
+                md["lord"], houses, karakas, ls, planet_data, r_lon, k_lon
+            )
+            if role:
+                activator_lines.append(
+                    _format_md_window(md, role, event_name, ls, planet_data, r_lon, k_lon, houses)
+                )
+
+        if activator_lines:
+            for ln in activator_lines:
+                lines.append(ln)
+        else:
+            lines.append("    • (no lifetime MD strongly activates this area — event hinges on transits/yogas)")
+
+        # Within-current-MD antardasha precision
+        cur_md = dasha_info.get("current_md", "Unknown")
+        if cur_md != "Unknown":
+            cur_md_years = dasha_info.get("md_total_years", 0)
+            if cur_md_years > 0:
+                mi = DASHA_ORDER.index(cur_md)
+                aseq = DASHA_ORDER[mi:] + DASHA_ORDER[:mi]
+                ad_cursor = dasha_info["md_start"]
+                ad_hits = []
+                for al in aseq:
+                    ay = (cur_md_years * DASHA_YEARS[al]) / 120.0
+                    ad_end = ad_cursor + timedelta(days=ay * YEAR_DAYS)
+                    role = _get_md_significator_role(
+                        al, houses, karakas, ls, planet_data, r_lon, k_lon
+                    )
+                    if role and role in ("house_lord", "house_occupy", "karaka"):
+                        marker = " ◀ NOW" if dasha_info["ad_start"] <= ad_cursor < dasha_info["ad_end"] else ""
+                        ad_hits.append(
+                            f"      ↳ {cur_md}/{al} AD: "
+                            f"{ad_cursor.strftime('%b %Y')} → {ad_end.strftime('%b %Y')}  "
+                            f"[{role}]{marker}"
+                        )
+                    ad_cursor = ad_end
+                if ad_hits:
+                    lines.append(f"    Within current {cur_md} MD — fine-grained antardasha hits:")
+                    for h in ad_hits[:6]:  # cap noise
+                        lines.append(h)
+
+    lines.append("")
+    lines.append("READING RULES (apply when user asks 'when/what age'):")
+    lines.append("  1. Cite the earliest STRONG window the user has not yet aged out of.")
+    lines.append("  2. If asked about a past event, identify which STRONG/MODERATE window it fell into.")
+    lines.append("  3. Karaka maturation is a secondary anchor — mention if it falls inside a STRONG MD/AD window.")
+    lines.append("  4. KP cusp 'NOT PROMISED' verdicts mean 'the cusp gate is weak', NOT 'the event won't happen'.")
+    lines.append("     Dasha activation can still trigger the event with classical-style effort.")
+    lines.append("  5. NEVER refuse a timing question. The Atlas above always has at least one window per event.")
+
+    return "\n".join(lines)

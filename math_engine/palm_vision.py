@@ -37,6 +37,7 @@ import io
 import cv2
 import numpy as np
 import PIL.Image
+import PIL.ImageOps
 import mediapipe as mp
 
 mp_hands = mp.solutions.hands
@@ -53,10 +54,16 @@ CFG = {
     "target_width":      1024,    # Resize input to this width (good for VLM tokens)
     "clahe_clip":        2.5,
     "clahe_tile":        (8, 8),
-    "blur_min":          80,      # Laplacian variance threshold
+    # Blur thresholds: 40 = soft-warning level (mobile JPEG compression still
+    # readable); 15 = hard-fail (truly unusable). Mobile uploads routinely
+    # land in the 30-60 range but the VLM still reads lines well — softening
+    # this gate fixed the "always blurry on mobile" complaint.
+    "blur_warn":         40,      # Below this: warn user but still attempt reading
+    "blur_hardfail":     15,      # Below this: image is genuinely unreadable
     "value_min":         35,
     "value_max":         235,
-    "min_resolution":    600,     # Smallest dimension threshold
+    "min_resolution":    400,     # Smallest dimension threshold (was 600 —
+                                  #   too strict for compressed mobile uploads)
     "mount_crop_frac":   0.22,    # Mount crop size as fraction of palm height
 }
 
@@ -73,9 +80,17 @@ HAND_TYPES = {
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _resize_to_width(rgb, target_width):
+    """Resize image to target_width, preserving aspect ratio.
+
+    DOWNSCALE ONLY — never upscale. Mobile browsers often compress uploads to
+    ~720-800px before sending; upscaling those to 1024 via interpolation adds
+    blur and tanks the Laplacian-variance sharpness score below the threshold.
+    The result was the "blurry photo" hard-block firing on every mobile upload
+    even when the photo was perfectly in focus.
+    """
     h, w = rgb.shape[:2]
-    if w == target_width:
-        return rgb
+    if w <= target_width:
+        return rgb   # already small enough — never upscale
     scale = target_width / w
     return cv2.resize(rgb, (target_width, int(h * scale)), interpolation=cv2.INTER_AREA)
 
@@ -112,27 +127,44 @@ def enhance_for_vlm(rgb):
 
 
 def _assess_quality(rgb):
-    """Returns (issues_list, metrics_dict). Issues are actionable user-facing."""
-    issues = []
+    """Returns (issues_list, metrics_dict). Issues are actionable user-facing.
+
+    Two-tier blur gate (split-out fix for the mobile "always blurry" bug):
+      • Above blur_warn (40): no complaint.
+      • Between blur_hardfail (15) and blur_warn (40): soft warning shown but
+        is_usable stays True — the VLM still gets the image and produces a
+        reading. Mobile JPEG-compressed uploads routinely land here.
+      • Below blur_hardfail (15): hard-fail, image is genuinely unreadable.
+
+    is_usable is now ONLY false on: hard-blur, severe exposure, sub-min
+    resolution. A "warn" blur no longer aborts the AI call.
+    """
+    issues_hard = []   # block the AI call
+    issues_soft = []   # warn but still call the AI
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
     blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
     mean_v = float(cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)[:, :, 2].mean())
     h, w = rgb.shape[:2]
 
-    if blur_score < CFG["blur_min"]:
-        issues.append("Image is blurry. Re-take with steady hands and good focus.")
-    if mean_v < CFG["value_min"]:
-        issues.append("Image is too dark. Use better lighting.")
-    if mean_v > CFG["value_max"]:
-        issues.append("Image is overexposed. Avoid direct flash on the palm.")
-    if min(h, w) < CFG["min_resolution"]:
-        issues.append("Image resolution is low. Use a higher-resolution photo.")
+    if blur_score < CFG["blur_hardfail"]:
+        issues_hard.append("Image is very blurry. Re-take with steady hands and good focus.")
+    elif blur_score < CFG["blur_warn"]:
+        issues_soft.append("Image is slightly soft — reading will proceed but may be less detailed.")
 
+    if mean_v < CFG["value_min"]:
+        issues_hard.append("Image is too dark. Use better lighting.")
+    if mean_v > CFG["value_max"]:
+        issues_hard.append("Image is overexposed. Avoid direct flash on the palm.")
+    if min(h, w) < CFG["min_resolution"]:
+        issues_hard.append("Image resolution is too low. Use a higher-resolution photo.")
+
+    issues = issues_hard + issues_soft
     return issues, {
-        "blur_score":  round(blur_score, 1),
-        "mean_v":      round(mean_v, 1),
-        "resolution":  f"{w}x{h}",
-        "is_usable":   len(issues) == 0,
+        "blur_score":   round(blur_score, 1),
+        "mean_v":       round(mean_v, 1),
+        "resolution":   f"{w}x{h}",
+        "is_usable":    len(issues_hard) == 0,   # only HARD issues block the AI
+        "issues_list":  issues,
     }
 
 
@@ -510,7 +542,14 @@ def analyze_palm(image_bytes):
     Always returns these keys; missing data yields empty dict / unknown values
     rather than crashing.
     """
-    img = PIL.Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img = PIL.Image.open(io.BytesIO(image_bytes))
+    # CRITICAL for mobile uploads: apply EXIF orientation BEFORE conversion.
+    # Mobile phones embed an Orientation tag rather than rotating pixel data.
+    # PIL does not auto-apply this. If skipped, portrait photos arrive sideways
+    # → MediaPipe fails to detect the hand AND Laplacian variance reads weird.
+    # exif_transpose is a no-op when no EXIF rotation tag is present, so PC
+    # uploads are unaffected.
+    img = PIL.ImageOps.exif_transpose(img).convert("RGB")
     raw = _resize_to_width(np.array(img), CFG["target_width"])
     raw = _gray_world_balance(raw)
 

@@ -174,8 +174,12 @@ def generate_astrology_dossier(profile,include_d60=False,compact=False):
         
         # KP EVENT PROMISE ANALYSIS — key houses checked per kp3.md rules
         lines.append(f"\nKP EVENT PROMISE ANALYSIS (Sub-Lord of each cusp vs required houses):")
-        lines.append("  [Parashari shows NATURE of life. KP shows IF & WHEN events MANIFEST.]")
-        lines.append("  [AI RULE: Use these verdicts as the FINAL WORD on event promise/denial.]")
+        lines.append("  [KP cusp verdicts are ONE of three timing layers. They show whether the")
+        lines.append("   CUSP GATE alone promises an event. They DO NOT override Parashari Dasha.]")
+        lines.append("  [AI RULE: A 'NOT PROMISED' KP verdict means the cusp gate is weak —")
+        lines.append("   it does NOT mean 'the event will never happen'. Dasha-lord activation")
+        lines.append("   still triggers the event, just with classical-style effort. For 'when/")
+        lines.append("   what age' questions, ALWAYS use the EVENT TIMING ATLAS below as primary.]")
         for h_check in [7, 10, 6, 5, 4, 2, 9, 12]:
             try:
                 promise_line = get_kp_cusp_promise(h_check, ls, planet_data, r_lon, k_lon, placidus_cusps)
@@ -219,6 +223,18 @@ def generate_astrology_dossier(profile,include_d60=False,compact=False):
     lines.append(f"\nFULL ANTARDASHA SEQUENCE IN {dasha_info['current_md'].upper()} MAHADASHA:")
     lines.append("(Use ONLY these exact dates — do NOT calculate independently)")
     for row in ad_table: lines.append(row)
+
+    # ── EVENT TIMING ATLAS — precomputed answers for "when/what age" questions ──
+    if not compact:
+        try:
+            atlas = build_event_timing_atlas(
+                profile, dasha_info, ls, planet_data, r_lon, k_lon, placidus_cusps
+            )
+            lines.append("\n" + atlas)
+        except Exception as e:
+            # Atlas is additive — never break the dossier if it fails.
+            lines.append(f"\nEVENT TIMING ATLAS: (unavailable: {type(e).__name__})")
+
     lines.append(f"\nCURRENT AFFLICTIONS:\nSade Sati: {sade_sati}")
     return "\n".join(lines)
 

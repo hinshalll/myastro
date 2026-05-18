@@ -1,23 +1,73 @@
 <section class="section" data-title="Yogas">
   <div class="section-header">
-    <h2>Yogas — Auspicious Planetary Combinations</h2>
-    <span class="eyebrow">{{ chart.yogas|length }} yogas active</span>
+    <div class="deity-mark"></div>
+    <h2>Yogas in Your Chart</h2>
+    <span class="eyebrow">{{ chart.yogas|length }} yoga{{ "s" if chart.yogas|length != 1 else "" }} active</span>
   </div>
 
   <p class="small">
-    A yoga is a specific combination of planets that activates a defined life
-    pattern. The yogas detected in your chart shape its most powerful currents.
+    A yoga is a specific arrangement of planets that produces a defined
+    pattern in life. The yogas formed in your chart are listed below with
+    a short explanation of what each one tends to give.
   </p>
 
   {% if chart.yogas %}
     {% for y in chart.yogas %}
-    <div class="yoga-card">
+    <div class="yoga-card" {% if loop.index0 > 0 and loop.index0 % 3 == 0 %}style="page-break-before: always;"{% endif %}>
       <h4>{{ y.name }}</h4>
       <div class="cat">{{ y.category }}{% if y.planets_involved %} · {{ y.planets_involved|join(", ") }}{% endif %}</div>
-      <p style="margin: 4pt 0 0;">{{ y.description }}</p>
+      <p style="margin: 4pt 0 0; line-height:1.65;">{{ y.description }}</p>
     </div>
     {% endfor %}
   {% else %}
-    <p class="muted">No classical yogas matched the standard rule library for this chart. Sub-classical yogas may still be present and will be highlighted in a future expansion of the rule library.</p>
+    <p class="muted">No yogas from the classical rule library matched this chart. Other lesser-known yogas may still be present and will be picked up as the library expands.</p>
   {% endif %}
+
+  <div class="ornament"></div>
+  <h3>Yoga Audit (Library Coverage)</h3>
+  <p class="small muted">
+    Every yoga the rule library checks for is listed below. "Present" rows
+    are the ones above; the others are confirmed absent in your chart.
+  </p>
+  <table class="data">
+    <thead><tr><th>Yoga</th><th>Status</th><th>Category</th></tr></thead>
+    <tbody>
+      {% set present_names = chart.yogas|map(attribute='name')|list %}
+      {% set library = [
+        ("Gajakesari Yoga",        "Lunar — Jupiter pairing"),
+        ("Ruchaka Yoga",           "Pancha Mahapurusha — Mars"),
+        ("Bhadra Yoga",            "Pancha Mahapurusha — Mercury"),
+        ("Hamsa Yoga",             "Pancha Mahapurusha — Jupiter"),
+        ("Malavya Yoga",           "Pancha Mahapurusha — Venus"),
+        ("Shasha Yoga",            "Pancha Mahapurusha — Saturn"),
+        ("Budha-Aditya Yoga",      "Solar — Mercury conjunct Sun"),
+        ("Chandra-Mangala Yoga",   "Moon-Mars"),
+        ("Adhi Yoga",              "Lunar — benefics from Moon"),
+        ("Raja Yoga",              "Power & authority"),
+        ("Dharma-Karma Adhipati Yoga", "Career & dharma"),
+        ("Parivartana Yoga",       "Mutual sign exchange"),
+        ("Viparita Raja Yoga",     "Rise after fall"),
+        ("Lakshmi Yoga",           "Wealth and prosperity"),
+        ("Saraswati Yoga",         "Knowledge and wisdom"),
+        ("Amala Yoga",             "10th house — clean reputation"),
+        ("Dhana Yoga",             "Wealth axis"),
+        ("Sunapha Yoga",           "Planets in 2nd from Moon"),
+        ("Anapha Yoga",            "Planets in 12th from Moon"),
+        ("Durudhura Yoga",         "Planets flanking Moon"),
+        ("Veshi Yoga",             "Planets in 2nd from Sun"),
+        ("Voshi Yoga",             "Planets in 12th from Sun"),
+        ("Ubhayachari Yoga",       "Planets flanking Sun"),
+        ("Shubha Kartari Yoga",    "Benefics flanking Lagna"),
+        ("Kemadruma Yoga (Negative)", "Moon isolation"),
+        ("Neecha Bhanga Raja Yoga","Debilitation cancelled"),
+      ] %}
+      {% for name, cat in library %}
+      <tr>
+        <td>{{ name }}</td>
+        <td>{% if name in present_names %}<span class="accent">● Present</span>{% else %}<span class="muted">○ Absent</span>{% endif %}</td>
+        <td><span class="muted">{{ cat }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </section>

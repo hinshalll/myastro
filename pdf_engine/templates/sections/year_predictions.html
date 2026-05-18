@@ -1,0 +1,41 @@
+<section class="section" data-title="Year Predictions">
+  <div class="section-header">
+    <div class="deity-mark"></div>
+    <h2>Year-by-Year Predictions</h2>
+    <span class="eyebrow">Next 5 Years · Vimshottari-driven</span>
+  </div>
+
+  <p class="small">
+    Each year is read primarily through the active Vimshottari Mahadasha and
+    Antardasha lords on January 1 of that year. The Mahadasha sets the
+    backdrop (a multi-year era); the Antardasha colours the foreground
+    (8-18 months typically).
+  </p>
+
+  {% if chart.interpretations and chart.interpretations.year_predictions %}
+  {% for yp in chart.interpretations.year_predictions %}
+  <div class="yoga-card" style="margin-top:10pt;">
+    <h3 style="margin-bottom:4pt;">{{ yp.year }} — {{ yp.period_label }}</h3>
+    <p class="small muted" style="margin-top:0;">
+      MD {{ yp.md_lord }}{% if yp.ad_lord %} · AD {{ yp.ad_lord }}{% endif %}
+    </p>
+    {% for line in yp.theme_lines %}
+      <p style="margin:4pt 0 0;">{{ line }}</p>
+    {% endfor %}
+    <p style="margin:6pt 0 0;"><strong>Year outlook:</strong> {{ yp.outlook }}</p>
+    {% if yp.focus_traits %}
+    <p class="small accent" style="margin:4pt 0 0;">
+      <strong>Bring forward:</strong> {{ yp.focus_traits }}.
+    </p>
+    {% endif %}
+    {% if yp.challenge_traits %}
+    <p class="small muted" style="margin:2pt 0 0;">
+      <strong>Watch for:</strong> {{ yp.challenge_traits }}.
+    </p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted"><em>Year predictions require the Vimshottari Dasha to be computed.</em></p>
+  {% endif %}
+</section>

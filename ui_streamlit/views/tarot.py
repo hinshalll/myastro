@@ -17,7 +17,9 @@ from ai_engine.prompts import (
 from ui_streamlit.components import (
     render_tarot_overlay, stream_ai_with_followup, tarot_reversed_help,
 )
-from ui_streamlit.cache import get_knowledge_files_cached
+from ui_streamlit.cache import rag_context_cached
+
+from ai_engine.knowledge import build_topic_query
 
 from datetime import date
 
@@ -92,9 +94,15 @@ def show_tarot():
         if st.session_state.tarot3_drawn and st.session_state.tarot3_cards:
             render_tarot_overlay(st.session_state.tarot3_cards, st.session_state.tarot3_states, "three")
             st.markdown(f"**Cards:** {' · '.join(f'{c} ({s})' for c,s in zip(st.session_state.tarot3_cards, st.session_state.tarot3_states))}")
-            prompt = build_tarot_prompt(q, st.session_state.tarot3_cards, st.session_state.tarot3_states, st.session_state.tarot3_mode)
+            cards_str = " ".join(st.session_state.tarot3_cards)
+            states_str = " ".join(st.session_state.tarot3_states)
+            tarot_ctx = rag_context_cached(
+                f"{q} {cards_str} {states_str} tarot meaning",
+                ("tguide.md",), k=8
+            )
+            prompt = build_tarot_prompt(q, st.session_state.tarot3_cards, st.session_state.tarot3_states, st.session_state.tarot3_mode, knowledge_context=tarot_ctx)
             stream_ai_with_followup(prompt, "tarot3_chat", "Interpreting the cards...",
-                                    knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                                    knowledge_files=None,
                                     hide_user_prompt=True)
             pdf = _tarot_pdf("Three-Card Tarot Reading",
                 {"Cards": " · ".join(f"{c} ({s})" for c,s in zip(
@@ -122,10 +130,14 @@ def show_tarot():
         if st.session_state.yn_drawn and st.session_state.yn_card:
             render_tarot_overlay([st.session_state.yn_card], [st.session_state.yn_state], "one")
             st.markdown(f"**Card:** {st.session_state.yn_card} ({st.session_state.yn_state})")
+            yn_ctx = rag_context_cached(
+                f"{q} {st.session_state.yn_card} {st.session_state.yn_state} tarot meaning upright reversed",
+                ("tguide.md",), k=6
+            )
             stream_ai_with_followup(
-                build_yesno_prompt(q, st.session_state.yn_card, st.session_state.yn_state),
+                build_yesno_prompt(q, st.session_state.yn_card, st.session_state.yn_state, knowledge_context=yn_ctx),
                 "yn_chat", "Sensing the answer...",
-                knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                knowledge_files=None,
                 hide_user_prompt=True,
             )
             pdf = _tarot_pdf("Yes / No Oracle",
@@ -153,9 +165,14 @@ def show_tarot():
             render_tarot_overlay(st.session_state.cc_cards, st.session_state.cc_states, "ten")
             for i, (c, s) in enumerate(zip(st.session_state.cc_cards, st.session_state.cc_states)):
                 st.markdown(f"**{CELTIC_CROSS_POSITIONS[i]}:** {c} ({s})")
-            prompt = build_celtic_cross_prompt(q or "General life overview", st.session_state.cc_cards, st.session_state.cc_states)
+            cc_cards_str = " ".join(st.session_state.cc_cards)
+            cc_ctx = rag_context_cached(
+                f"{q or 'general life overview'} {cc_cards_str} celtic cross tarot spread",
+                ("tguide.md",), k=10
+            )
+            prompt = build_celtic_cross_prompt(q or "General life overview", st.session_state.cc_cards, st.session_state.cc_states, knowledge_context=cc_ctx)
             stream_ai_with_followup(prompt, "cc_chat", "Weaving the narrative...",
-                                    knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                                    knowledge_files=None,
                                     hide_user_prompt=True)
             pdf = _tarot_pdf("Celtic Cross Tarot Reading",
                 {"Cards": ", ".join(st.session_state.cc_cards[:3]) + "..."}, "cc_chat")
@@ -181,10 +198,14 @@ def show_tarot():
             render_tarot_overlay([card], ["Upright"], "one")
             st.markdown(f"**Your Birth Card:** {card}")
             st.caption("This card never changes — it is your permanent soul archetype.")
+            bc_ctx = rag_context_cached(
+                f"{card} birth card tarot soul archetype lifelong meaning",
+                ("tguide.md",), k=6
+            )
             stream_ai_with_followup(
-                build_birth_card_prompt(card, str(st.session_state.bc_dob)),
+                build_birth_card_prompt(card, str(st.session_state.bc_dob), knowledge_context=bc_ctx),
                 "bc_chat", "Unlocking archetype...",
-                knowledge_files=get_knowledge_files_cached(["tguide.md"]),
+                knowledge_files=None,
                 hide_user_prompt=True,
             )
             pdf = _tarot_pdf("Tarot Birth Card Reading",

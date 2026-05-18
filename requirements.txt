@@ -1,21 +1,26 @@
 streamlit
-numpy<2
-mediapipe==0.10.14
-opencv-python-headless==4.10.0.82
-google-generativeai
 pyswisseph
 geopy
 timezonefinder
 streamlit-local-storage
-imageio
-imageio-ffmpeg
-Pillow
-requests
-scikit-image==0.25.2
-fpdf2==2.7.9
-scipy
+google-generativeai
 qdrant-client
-langchain-qdrant
-langchain
-langchain-huggingface
 sentence-transformers
+weasyprint
+jinja2
+indic-transliteration
+Pillow
+
+# ── FastAPI backend (api/) ─────────────────────────────────────────
+# These are added so the same repo can run two services:
+#   • Streamlit prototype (current)        — `streamlit run ui_streamlit/app.py`
+#   • FastAPI backend for mobile/web app    — `uvicorn api.main:app`
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+
+# ── Palm / Vision deps (used by palm_vision module) ────────────────
+opencv-python-headless
+mediapipe
+numpy

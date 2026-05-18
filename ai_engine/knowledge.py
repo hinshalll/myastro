@@ -1,71 +1,148 @@
-import os
-import requests
+"""
+ai_engine/knowledge.py
+======================
+Streamlit-free RAG primitives for the Astro Suite.
 
-def get_knowledge_files(file_names):
-    """Loads MD reference files locally first, then falls back to GitHub."""
-    loaded_texts = []
+Public API:
+  rag_chunks(query, books, k)            -> [(text, metadata), ...]
+  rag_context(query, books, k, header)   -> formatted <KNOWLEDGE_CONTEXT> block
+  build_topic_query(topic, dossier, ...) -> compact high-signal query string
+  build_comparison_knowledge(criteria)   -> per-criterion multi-query digest
+
+Every chunk is filtered by `metadata.book` so the LLM only ever sees passages
+from the books that feature is allowed to cite. Replaces the old full-text
+injection (`get_knowledge_files`) that shipped ~250K tokens per call.
+"""
+
+import re
+from typing import Iterable, List, Tuple
+
+from qdrant_client.http import models as qmodels
+from qdrant_utils import get_vector_store_pure
+
+_TOP_K_DEFAULT = 8
+_MAX_CHUNK_CHARS = 1200
+
+def rag_chunks(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT) -> List[Tuple[str, dict]]:
+    """Return [(page_content, metadata), ...] filtered to `books` (filenames like 'bphs1.md')."""
+    books = [b.strip() for b in books if b and b.strip()]
+    if not books or not query.strip():
+        return []
     
-    for name in file_names:
-        try:
-            # Strictly clean the URL to prevent 'No connection adapter' errors
-            clean_name = name.strip(" '\n\r")
-            local_candidates = [
-                os.path.join(os.path.expanduser("~"), "Desktop", "aiguide", clean_name),
-                os.path.join(os.path.expanduser("~"), "Desktop", "aiguide", "Being Used", clean_name),
-            ]
-            for local_path in local_candidates:
-                if os.path.exists(local_path):
-                    with open(local_path, "r", encoding="utf-8", errors="ignore") as fh:
-                        text = fh.read()
-                    loaded_texts.append(f"\n--- START OF REFERENCE BOOK: {clean_name} ---\n{text}\n--- END OF REFERENCE BOOK: {clean_name} ---\n")
-                    break
-            if len(loaded_texts) and loaded_texts[-1].startswith(f"\n--- START OF REFERENCE BOOK: {clean_name} ---"):
+    vs = get_vector_store_pure()                 # cached singleton (process-wide, no @st)
+    flt = qmodels.Filter(must=[
+        qmodels.FieldCondition(
+            key="metadata.book",
+            match=qmodels.MatchAny(any=books),
+        )
+    ])
+    
+    try:
+        docs = vs.similarity_search(query=query, k=k, filter=flt)
+    except Exception as e:
+        print(f"[rag_chunks] Error: {e}")
+        return []
+        
+    out = []
+    for d in docs:
+        text = (d.page_content or "")[:_MAX_CHUNK_CHARS]
+        out.append((text, d.metadata or {}))
+    return out
+
+def rag_context(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT,
+                header: str = "Classical passages retrieved for this question:") -> str:
+    """Return a single formatted block ready to drop into a prompt."""
+    chunks = rag_chunks(query, books, k=k)
+    if not chunks:
+        return ""
+    parts = [header]
+    for i, (text, meta) in enumerate(chunks, 1):
+        book = meta.get("book", "unknown")
+        chap = meta.get("chapter", "")
+        sys_ = meta.get("system", "")
+        parts.append(f"\n[{i}] ({book} | {sys_} | {chap})\n{text}")
+    return "\n".join(parts)
+
+
+def build_topic_query(*, topic: str, dossier: str | None = None, extras: dict | None = None) -> str:
+    """Assemble a compact, high-signal query string for a fixed topic."""
+    extras = extras or {}
+    seeds = {
+        "parashari":  "lagna lord placement nakshatra yoga atmakaraka moon sign navamsa dignity vargottama",
+        "timing":     "vimshottari dasha antardasha mahadasha bhukti results lord period",
+        "kp":         "cusp sub lord significator promise marriage career children 2 7 11 6 10 11",
+        "horary":     "prashna horary kp ruling planet moon cusp sub lord question",
+        "match":      "ashtakoot guna milan navamsa upapada lagna marriage compatibility nadi bhakoot",
+        "compare":    "house strength karaka dignity yoga divisional D9 D10 D2 lifetime promise",
+        "gochara":    "transit gochara saturn jupiter rahu sade sati moon natal house",
+        "numerology": "life path destiny soul urge personality pinnacle challenge",
+        "tarot":      "major arcana minor arcana upright reversed meaning archetype",
+    }
+    base = seeds.get(topic, topic)
+    parts = [base]
+    
+    if dossier:
+        # Extract high-signal facts: ascendant, moon sign/nakshatra, MD/AD, yogas, AK/DK
+        signals = []
+        
+        lagna_match = re.search(r'Ascendant\s*\([^)]+\):\s*([\w\s]+)', dossier, re.IGNORECASE)
+        if lagna_match: signals.append(f"Lagna {lagna_match.group(1).strip()}")
+            
+        moon_match = re.search(r'Moon\s+Sign:\s*([\w\s]+)', dossier, re.IGNORECASE)
+        if moon_match: signals.append(f"Moon in {moon_match.group(1).strip()}")
+        
+        md_ad_match = re.search(r'Current Period:\s*(\w+\s*MD\s*/\s*\w+\s*AD)', dossier, re.IGNORECASE)
+        if md_ad_match: signals.append(f"Dasha {md_ad_match.group(1).strip()}")
+        
+        ak_dk_match = re.search(r'(AK:\s*\w+\s*\|\s*DK:\s*\w+)', dossier, re.IGNORECASE)
+        if ak_dk_match: signals.append(ak_dk_match.group(1).strip())
+            
+        if signals:
+            parts.append(" ".join(signals))
+            
+    for v in extras.values():
+        if v: parts.append(str(v))
+    return " ".join(parts)[:512]
+
+
+def build_comparison_knowledge(selected_criteria: list) -> str:
+    """
+    Replace get_comparison_reference_digest() with criterion-targeted RAG.
+    Queries bphs1.md + kp3.md for most criteria.
+    Adds htrh2.md for Relationship-type criteria.
+    Deduplicates chunks and hard-caps at 24 to stay token-light.
+    """
+    BASE_BOOKS = ("bphs1.md", "kp3.md")
+    RELATIONSHIP_BOOKS = ("bphs1.md", "kp3.md", "htrh2.md")
+
+    seed_map = {
+        "Wealth":          "house 2 11 5 9 lord jupiter venus dhana yoga D2 hora KP H2 H11",
+        "Relationship":    "house 7 venus jupiter darakaraka D9 manglik navamsa upapada H7 KP promise",
+        "Career":          "house 10 6 11 sun saturn mercury amatyakaraka D10 raja yoga KP H10",
+        "Health":          "lagna lord house 6 8 3 sun moon saturn D9 D12 KP H1 H6 H8 maraka",
+        "Happiness":       "house 4 moon 5 9 11 jupiter venus gajakesari hamsa malavya kemadruma",
+        "Luck":            "house 9 5 jupiter D9 lakshmi gajakesari KP H9 H11 purva punya",
+        "Spiritual":       "house 12 9 8 5 ketu jupiter saturn atmakaraka moksha hamsa viparita raja",
+        "Struggles":       "lagna moon affliction dusthana sav kemadruma war combustion gandanta viparita",
+        "Hidden Pitfalls": "house 8 12 6 nodes afflicted atmakaraka darakaraka gandanta combustion war dead avastha KP denial",
+    }
+
+    seen_ids = set()
+    blocks = []
+    for crit in selected_criteria:
+        q = seed_map.get(crit, crit)
+        # Use relationship books for relationship-type criteria
+        is_rel = any(k in crit.lower() for k in ["relation", "marriage", "spouse", "compat"])
+        books = RELATIONSHIP_BOOKS if is_rel else BASE_BOOKS
+        for text, meta in rag_chunks(q, books, k=4):
+            key = (meta.get("book"), meta.get("chapter"), text[:80])
+            if key in seen_ids:
                 continue
-            github_url = f"https://raw.githubusercontent.com/hinshalll/text2kprompt/main/aiguide/{clean_name}"
-            
-            # Fetch the raw markdown text directly from GitHub
-            response = requests.get(github_url, timeout=15)
-            response.raise_for_status() 
-            
-            # Wrap the text so the AI knows exactly which book it is reading
-            file_content = f"\n--- START OF REFERENCE BOOK: {clean_name} ---\n{response.text}\n--- END OF REFERENCE BOOK: {clean_name} ---\n"
-            loaded_texts.append(file_content)
-            
-        except Exception as e:
-            # Raise the exception so Streamlit aborts the cache and tries cleanly next time
-            raise Exception(f"Network error loading {name}. Please check your connection and try again. Details: {e}")
-            
-    return loaded_texts
+            seen_ids.add(key)
+            blocks.append(f"[{crit} | {meta.get('book')} | {meta.get('chapter')}]\n{text}")
+        if len(blocks) >= 24:
+            break
 
-
-def get_comparison_reference_digest():
-    """
-    Token-light reference pack for Compare Profiles.
-    Uses a compact digest from BPHS1 + KP3 instead of attaching multi-MB books.
-    """
-    return ["""
---- START OF REFERENCE DIGEST: BPHS1.md + KP3.md for Compare Profiles ---
-Use this digest as the book authority for comparison output.
-
-PARASHARI / BPHS1 PRINCIPLES
-- Judge a topic from the relevant house, its lord, occupants, aspects/associations, natural karaka, dignity, yogas, and appropriate varga.
-- House meanings used here: H1 body/vitality/self; H2 wealth/family/speech; H3 courage/effort; H4 peace of mind/home/happiness/property; H5 intelligence/children/fame/purva punya; H6 disease/debts/enemies/competition; H7 spouse/marriage/partnership; H8 longevity/sudden reversals/hidden matters; H9 fortune/dharma/guru; H10 profession/status/honour; H11 gains/fulfilment; H12 losses/expenditure/moksha.
-- Divisional chart use: Hora for wealth; Navamsa for spouse and durable inner strength; Dashamsa for power, position and career; Dvadashamsa can support constitution/family inheritance; Vimsamsa is for worship/spiritual progress when available; Trimsamsa is for evils and hidden adversity.
-- Dignity matters: exaltation/own sign/vargottama strengthen; debility/enemy sign/combustion/planetary war/bad avastha weaken or spoil results unless cancelled by Neecha Bhanga or other protection.
-- Yogas matter only when the causing planets are strong enough. Kendra-trikona links, yogakarakas and Raja/Dhana/Lakshmi-type yogas support high promise; Kemadruma and severe malefic hemming raise burden.
-- Longevity and health use Lagna, Lagna lord, H3/H8, maraka pressure from H2/H7, Saturn, Sun, Moon, and afflictions. Do not turn this into medical diagnosis.
-- Spirituality uses H9/H12/H8/H5, Ketu, Jupiter, Saturn, Atmakaraka/Karakamsa ideas, and moksha-oriented varga support.
-
-KP3 PRINCIPLES
-- KP refines whether an event manifests. The star lord shows the main house results; the sub-lord selects/denies the specific outcome.
-- A cusp sub-lord that signifies the event houses promises the event; if it signifies opposing houses, it delays, obstructs or denies.
-- Marriage/engagement: houses 2, 7 and 11 are primary; 3 and 9 can support agreement/consent.
-- Finance: H2 is bank position/self-acquisition; H11 is profit/net gain; H12 is loss/expense. For service-linked money include H10.
-- Profession/status: H10 is position, fame, reputation and profession; H11 is fulfilment/realisation; H6 supports service, competition and victory over opponents.
-- Partnership/business: H7 with H2/H10/H11 supports success; H8/H12 links weaken.
-- Disease judgment uses the 6th cusp sub-lord and its star/sub links; chronicity and danger require H8/H12 context.
-
-COMPARISON OUTPUT RULE
-- Python scores are final. Explain rankings with chart evidence and this digest. Do not recalculate, invent positions, or use current transits/Sade Sati/current dasha to alter lifetime baseline scores.
---- END OF REFERENCE DIGEST ---
-"""]
+    if not blocks:
+        return ""
+    return "Classical rulebook passages selected per criterion:\n\n" + "\n\n".join(blocks)

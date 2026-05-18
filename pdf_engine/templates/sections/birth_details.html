@@ -1,5 +1,6 @@
 <section class="section" data-title="Birth Details">
   <div class="section-header">
+    <div class="deity-mark"></div>
     <h2>Birth Details</h2>
     <span class="eyebrow">Janma Vivaran</span>
   </div>
@@ -53,15 +54,7 @@
     </table>
   </div>
 
-  {% if chart.nakshatra_profile %}
-  <h3 style="margin-top: 16pt;">Avakahada Chakra</h3>
-  <table class="data">
-    <thead><tr><th colspan="2">Classical Birth Summary</th></tr></thead>
-    <tbody>
-      {% for row in chart.nakshatra_profile.avakahada_chakra %}
-        <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
+  {# Avakahada Chakra moved out — it appears in the Nakshatra Profile section
+     where it belongs classically. Avoids the duplicate "Classical Birth
+     Summary" table that previously rendered in both sections. #}
 </section>

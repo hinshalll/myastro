@@ -1,17 +1,19 @@
 <section class="section" data-title="Sudarshan Chakra">
   <div class="section-header">
+    <div class="deity-mark"></div>
     <h2>Sudarshan Chakra</h2>
-    <span class="eyebrow">Three-Eye Composite — Lagna · Moon · Sun</span>
+    <span class="eyebrow">Combined view — Lagna · Moon · Sun</span>
   </div>
 
   {% if chart.sudarshan_chakra %}
   {% set sc = chart.sudarshan_chakra %}
 
   <p class="small">
-    Read every planet from <strong>three reference points simultaneously</strong>:
-    the Lagna (body), the Moon (mind), and the Sun (soul). When a planet sits
-    in a strong house from all three references, its significations manifest
-    powerfully. When it sits in dusthanas from all three, the lesson is karmic.
+    Read every planet from <strong>three reference points at the same time</strong>:
+    the Lagna (body), the Moon (mind), and the Sun (vitality/role). When a planet
+    sits in a strong house from all three references, its results show up
+    fully. When it sits in difficult houses (6, 8, 12) from all three, that
+    planet's results need conscious work.
   </p>
 
   <h3>Planet Views</h3>
@@ -39,7 +41,7 @@
     </div>
     <div>
       <h4 class="muted">Triple-Weak Planets</h4>
-      <p>{% if sc.triple_weak %}<strong>{{ sc.triple_weak|join(", ") }}</strong> require sustained inner work — they sit in difficult houses from all three references.{% else %}<span class="muted">None — every planet has at least one well-placed reference.</span>{% endif %}</p>
+      <p>{% if sc.triple_weak %}<strong>{{ sc.triple_weak|join(", ") }}</strong> sit in difficult houses (6, 8, 12) from all three references — their results come slowly and need extra effort.{% else %}<span class="muted">None — every planet has at least one well-placed reference.</span>{% endif %}</p>
     </div>
   </div>
   {% endif %}
