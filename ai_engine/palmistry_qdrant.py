@@ -11,7 +11,6 @@ IMPORTANT:
 - Requires palmistry.md to have been ingested first via the ingestion app.
 """
 
-import streamlit as st
 from qdrant_client.http import models as qdrant_models
 
 

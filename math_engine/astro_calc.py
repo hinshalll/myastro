@@ -1110,12 +1110,7 @@ def get_pinnacle_cycles(dob_str):
     return r1,r2,r3,r4
 
 
-def get_tarot_birth_card(dob_str):
-    digits=[int(c) for c in dob_str.replace('-','') if c.isdigit()]
-    total=sum(digits)
-    while total>22: total=sum(int(d) for d in str(total))
-    if total==22 or total==0: return FULL_TAROT_DECK[0]
-    return FULL_TAROT_DECK[total-1]
+# get_tarot_birth_card moved to features/tarot/service.py as get_birth_card.
 
 
 def extract_base_score(dossier_text, house_number):

@@ -81,11 +81,7 @@ PYTH_MAP={'a':1,'b':2,'c':3,'d':4,'e':5,'f':6,'g':7,'h':8,'i':9,'j':1,'k':2,'l':
 CHALDEAN_MAP={'a':1,'b':2,'c':3,'d':4,'e':5,'f':8,'g':3,'h':5,'i':1,'j':1,'k':2,'l':3,
               'm':4,'n':5,'o':7,'p':8,'q':1,'r':2,'s':3,'t':4,'u':6,'v':6,'w':6,'x':5,'y':1,'z':7}
 
-FULL_TAROT_DECK = ["The Fool","The Magician","The High Priestess","The Empress","The Emperor",
-    "The Hierophant","The Lovers","The Chariot","The Strength","The Hermit",
-    "Wheel of Fortune","Justice","The Hanged Man","Death","Temperance","The Devil",
-    "The Tower","The Star","The Moon","The Sun","Judgement","The World"]
-
+# FULL_TAROT_DECK moved to features/tarot/constants.py
 COMPARISON_CRITERIA = ["Wealth Potential — Who builds the most wealth?",
     "Relationship Quality — Who has the best marriage/love life?",
     "Career Success — Who reaches the highest professional position?",
@@ -105,19 +101,7 @@ PERSONAL_YEAR_MEANINGS = {1:"New beginnings, independence, leadership.",
     22:"Mastery, large-scale building, legacy (Master Number).",
     33:"Compassion, teaching, healing (Master Number)."}
 
-CELTIC_CROSS_POSITIONS = [
-    "1. The Present — Core issue or central energy",
-    "2. The Challenge — What crosses or complicates",
-    "3. The Foundation — Unconscious influences, deep roots",
-    "4. The Past — What is passing or recently passed",
-    "5. The Crown — Potential outcome or conscious goal",
-    "6. The Near Future — What approaches in coming weeks",
-    "7. The Self — Your attitude, how you show up",
-    "8. External Influences — Others or environment",
-    "9. Hopes & Fears — Inner tension",
-    "10. The Outcome — Most likely resolution"]
-
-TAROT_BASE="https://raw.githubusercontent.com/hinshalll/text2kprompt/main/tarot/"
+# CELTIC_CROSS_POSITIONS and TAROT_BASE moved to features/tarot/constants.py
 
 NAV_PAGES = ["Dashboard", "Consultation Room", "The Oracle", "Mystic Tarot", "Horoscopes", "Numerology", "Palm Reading", "Kundli", "Saved Profiles"]
 

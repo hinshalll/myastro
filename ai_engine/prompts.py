@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 from ai_engine.knowledge import rag_context
 from ai_engine.gemini_client import generate_content_with_fallback
 from math_engine.dossier_builder import calculate_and_rank_profiles
-from math_engine.constants import PERSONAL_YEAR_MEANINGS, CELTIC_CROSS_POSITIONS
+from math_engine.constants import PERSONAL_YEAR_MEANINGS
 from math_engine.astro_calc import (
     get_personal_year, get_personal_month, get_personal_day, get_pinnacle_cycles,
 )
@@ -226,85 +226,6 @@ Write a flowing, warm, professional reading covering:
 </mission>
 
 <user_chart_data>{dossier}</user_chart_data>"""
-
-
-def build_deep_analysis_prompt(dossier):
-    return f"""{GUARDRAILS}
-
-<SYSTEM>
-You have two systems to use — each for what it does best:
-
-PARASHARI handles: Who this person IS (character, psychology, life themes, karmic purpose, spiritual path, relationship nature, family patterns). Uses yogas, house lords, dignities, Atmakaraka, D9/D10 divisional charts.
-
-KP handles: IF events will HAPPEN and WHEN (marriage promised or denied, career service vs business, property acquisition, children). Uses the KP EVENT PROMISE ANALYSIS section which Python pre-computed. The PROMISED/DENIED verdicts are final — do not override them.
-
-DASHA handles: BROAD TIMING WINDOWS — which life themes are activated in each period.
-
-NEVER mix these roles. Never use Parashari to answer "when will I marry" — that is KP's answer.
-NEVER use KP sub-lords to describe personality — that is Parashari's answer.
-</SYSTEM>
-
-<MATH_LOCK>
-- All degrees, dates, nakshatra names, house numbers come ONLY from the dossier
-- The KP EVENT PROMISE ANALYSIS verdicts are Python-computed — cite them as-is
-- The ANTARDASHA TABLE dates are exact — never calculate differently
-- Bhava Chalit shifts: if a planet shifted houses, interpret it in its SHIFTED house
-- Vargottama/D9-Exalted planets carry extra strength — mention this
-</MATH_LOCK>
-
-<mission>
-Write a complete, professional life reading structured as follows:
-
-## 1. Core Identity & Lagna (PARASHARI)
-   Use: Ascendant sign + Lagna Lord chain (sign, house, nakshatra, dignity, Avastha)
-   Add: Atmakaraka identity — the soul's core lesson and drive
-   Add: Key yogas present — what qualities/themes they bestow (NOT when they manifest)
-   
-## 2. Mind, Emotions & Mental World (PARASHARI)  
-   Use: Moon (sign, house, nakshatra, Avastha) + Mercury for intellect
-   Add: Sade Sati phase if active — the current emotional/transformational period
-   Add: Ketu's house — the soul's past-life comfort zone and detachment area
-
-## 3. Career & Profession (PARASHARI for nature | KP for promise)
-   Parashari: 10th lord, D10 Dasamsa, Amatyakaraka — WHAT field/nature of work
-   KP: Read the H10 KP Promise verdict from the dossier — cite it exactly
-   KP: Check if current MD/AD lords signify 6-10-11 (active career period?)
-   Combine: "Your chart shows [Parashari nature] and KP confirms [H10 verdict]"
-
-## 4. Wealth & Finances (PARASHARI for themes | KP for promise)
-   Parashari: H2 and H11 lords, Dhana yogas, D2 Hora
-   KP: Read H2 KP Promise verdict — cite exactly
-   Combine: Timeline of wealth activation using Dasha + KP confirmation
-
-## 5. Relationships & Marriage (PARASHARI for spouse nature | KP for event promise)
-   Parashari: H7 lord/sign, Venus/Jupiter condition, D9 Navamsa H7 — describes SPOUSE QUALITIES
-   KP: Read H7 KP Promise verdict — is marriage PROMISED or DENIED? Cite exactly
-   KP: Marriage Timing Clues — which Dasha periods are active for marriage?
-   NOTE: This is where Parashari + KP integration is most powerful. Use both fully.
-
-## 6. Health & Vitality (PARASHARI for constitution | KP for specific vulnerabilities)
-   Parashari: Lagna lord strength, H6 lord, H8 lord, any afflictions to H1
-   KP: Read H6 KP Promise verdict — what health patterns does this indicate?
-
-## 7. Spiritual Path, Karma & Higher Purpose (PARASHARI only)
-   Use: Atmakaraka (soul's mission), Rahu/Ketu axis (karmic direction), H9 + H12 lords
-   No KP needed here — spiritual life is Parashari's domain
-
-## 8. Current Life Period & Near Future (DASHA + KP)
-   Use: Current MD/AD/PD from the dossier (exact dates from table — cite them)
-   What does the MD lord's house ownership/occupation activate?
-   What does the AD lord add or restrict?
-   KP check: does the current AD lord signify the event houses? Active or inactive window?
-
-## 9. Remedies (ONLY for genuine afflictions)
-   ONLY recommend remedies for: debilitated planets WITHOUT Neecha Bhanga, combust planets, Graha Yuddha losers
-   Keep practical: gemstones, mantras, lifestyle suggestions
-   Do NOT recommend remedies for every planet
-</mission>
-
-<user_chart_data>
-{dossier}
-</user_chart_data>"""
 
 
 def build_matchmaking_prompt(dos_a, dos_b, koota, canc, prof_a, prof_b, marital_a, marital_b, kp_a, kp_b, knowledge_context: str = "", compatibility_index=None):
@@ -683,120 +604,8 @@ FULL NATAL DOSSIER:
 </natal_and_transit_data>"""
 
 
-def build_tarot_prompt(question, cards, states, mode="General Guidance", knowledge_context: str = ""):
-    TAROT_MODES = {"General Guidance": {"roles": ["Situation / Past", "Challenge / Present", "Advice / Future"],
-        "instruction": "General life overview — where they are, what blocks them, best path forward."},
-     "Love & Dynamics": {"roles": ["Your Energy", "Their Energy", "The Connection / Outcome"],
-        "instruction": "Read through the lens of a relationship or emotional dynamic."},
-     "Decision / Two Paths": {"roles": ["Path A", "Path B", "Hidden Factor / Recommendation"],
-        "instruction": "Contrast the two paths. Card 3 is the deciding weight or hidden truth."}}
-    cfg = TAROT_MODES.get(mode, TAROT_MODES["General Guidance"])
-    roles = cfg["roles"]
-    cards_str = "\n".join(f"  {i+1}. {roles[i]}: {cards[i]} ({states[i]})" for i in range(len(cards)))
-    knowledge_block = f"""<KNOWLEDGE_CONTEXT>
-{knowledge_context}
-</KNOWLEDGE_CONTEXT>
-<RULES>
-Base your interpretation of each card entirely on the passages above. Do not invent meanings outside them.
-If a card is Reversed, interpret its energy as blocked, internalised, or delayed.
-</RULES>""" if knowledge_context else """<RULES>
-Base your interpretation on established tarot archetypes. If a card is Reversed, interpret its energy as blocked or delayed.
-</RULES>"""
-    return f"""<mission>
-You are an expert, intuitive Tarot Reader. Python has cryptographically drawn the following spread:
-{cards_str}
-Question: "{question}" | Spread: {mode} | Focus: {cfg['instruction']}
-</mission>
-
-{knowledge_block}
-
-<FORMAT>
-- Overall Summary (2-3 sentences)
-- Card-by-Card (each card's meaning in its specific spread position)
-- Combined Message (how the three interact)
-- Practical Action Step
-- One-Line Takeaway
-</FORMAT>"""
-
-
-def build_yesno_prompt(question, card, state, knowledge_context: str = ""):
-    knowledge_block = f"""<KNOWLEDGE_CONTEXT>
-{knowledge_context}
-</KNOWLEDGE_CONTEXT>
-<RULES>
-Read the core energy of this card from the passages above.
-Upright cards generally lean Yes; Reversed lean No — but factor in the archetype from the passages.
-</RULES>""" if knowledge_context else """<RULES>
-Upright cards generally lean Yes; Reversed lean No — factor in the card's archetype.
-</RULES>"""
-    return f"""<mission>
-You are an expert Tarot Reader — Yes/No Oracle mode.
-Question: "{question}" | Card drawn: {card} ({state})
-</mission>
-{knowledge_block}
-<FORMAT>
-1. Clear verdict: YES / LIKELY YES / UNCLEAR / LIKELY NO / NO
-2. Why — the card's specific energy in this context (2-3 sentences from the guide)
-3. Condition — what must happen (or be avoided)
-4. One-Line Takeaway
-</FORMAT>"""
-
-
-def build_celtic_cross_prompt(question, cards, states, knowledge_context: str = ""):
-    cards_str = "\n".join(f"  {CELTIC_CROSS_POSITIONS[i]}: {cards[i]} ({states[i]})" for i in range(10))
-    knowledge_block = f"""<KNOWLEDGE_CONTEXT>
-{knowledge_context}
-</KNOWLEDGE_CONTEXT>
-<RULES>
-Synthesize these 10 cards strictly based on the meanings in the passages above. Look for patterns (suits clustering, Major Arcana count).
-</RULES>""" if knowledge_context else ""
-    return f"""<mission>
-You are an expert Tarot Reader — Celtic Cross spread.
-Question: "{question}"
-Ten-card spread:
-{cards_str}
-</mission>
-{knowledge_block}
-<FORMAT>
-- Core Message (Cards 1+2 tension)
-- Position-by-position reading
-- Patterns & Themes observed
-- Overall Narrative & Practical Guidance
-- Final One-Line Takeaway
-</FORMAT>"""
-
-
-def build_birth_card_prompt(card, dob, knowledge_context: str = ""):
-    knowledge_block = f"""<KNOWLEDGE_CONTEXT>
-{knowledge_context}
-</KNOWLEDGE_CONTEXT>
-<RULES>
-Interpret this card as a deep, lifelong energy based strictly on the passages above.
-</RULES>""" if knowledge_context else ""
-    return f"""<mission>
-You are an expert Tarot Reader — Tarot Birth Card reading.
-Date of Birth: {dob} | Tarot Birth Card: {card}
-</mission>
-{knowledge_block}
-<FORMAT>
-1. Core symbolism of this card (from the guide)
-2. How this archetype manifests as a lifelong theme
-3. Core strengths & Core challenges
-4. Karmic lesson & Personal mantra
-</FORMAT>"""
-
-
-def build_daily_tarot_prompt(card, state, knowledge_context: str = ""):
-    knowledge_block = f"""<KNOWLEDGE_CONTEXT>
-{knowledge_context}
-</KNOWLEDGE_CONTEXT>
-<RULES>
-Extract the practical daily advice for this exact card and state from the passages above only.
-</RULES>""" if knowledge_context else ""
-    return f"""<mission>
-You are an expert Tarot Reader — Daily Guidance reading. Today's card: {card} ({state})
-</mission>
-{knowledge_block}"""
+# Tarot prompts moved to features/tarot/prompts.py
+# Daily tarot prompt (used by Dashboard) also lives there as build_daily_card_prompt.
 
 
 def build_numerology_prompt(name, dob_str, lp, dest, soul, pers, astro_dossier=None, user_q="", system="Western (Pythagorean)", knowledge_context: str = ""):

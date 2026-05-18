@@ -6,7 +6,7 @@ from datetime import datetime, date, time
 
 import streamlit.components.v1 as components
 
-from math_engine.constants import TAROT_BASE
+from features.tarot.constants import TAROT_BASE
 from math_engine.astro_calc import geocode_place, timezone_for_latlon
 from ai_engine.gemini_client import FREE_MODELS, get_ai_model_by_name
 

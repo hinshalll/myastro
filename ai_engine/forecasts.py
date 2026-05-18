@@ -17,11 +17,10 @@ from math_engine.astro_calc import (
     sign_index_from_lon, sign_name, get_rahu_longitude,
 )
 from math_engine.dossier_builder import generate_astrology_dossier, get_gochara_overlay
-from ai_engine.gemini_client import generate_content_with_fallback, FREE_MODELS
+from ai_engine.gemini_client import generate_content_with_fallback
 from ai_engine.knowledge import rag_context
-from ai_engine.prompts import (
-    GUARDRAILS, build_dashboard_data_prompt, build_daily_tarot_prompt,
-)
+from ai_engine.prompts import GUARDRAILS, build_dashboard_data_prompt
+from features.tarot.prompts import build_daily_card_prompt
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -194,7 +193,7 @@ def fetch_daily_tarot(prof_json: str, today_str: str, daily_card: str, daily_sta
     Returns a dict with keys: MEANING, ACTION, MANTRA.
     today_str is passed in so the @st.cache_data TTL key works correctly.
     """
-    base_prompt = build_daily_tarot_prompt(daily_card, daily_state)
+    base_prompt = build_daily_card_prompt(daily_card, daily_state)
     json_prompt = base_prompt + """
 RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN:
     {

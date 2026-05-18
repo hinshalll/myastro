@@ -33,7 +33,7 @@ from ui_streamlit.components import inject_nebula_css, render_sidebar, render_bo
 from ui_streamlit.views.dashboard      import show_dashboard
 from ui_streamlit.views.consultation   import show_consultation_room
 from ui_streamlit.views.oracle         import show_oracle
-from ui_streamlit.views.tarot          import show_tarot
+from features.tarot.view               import show_tarot
 from ui_streamlit.views.horoscopes     import show_horoscopes
 from ui_streamlit.views.numerology     import show_numerology
 from ui_streamlit.views.vault          import show_vault

@@ -9,7 +9,8 @@ import swisseph as swe
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 
-from math_engine.constants import PLANETS, DASHA_ORDER, FULL_TAROT_DECK, TAROT_BASE
+from math_engine.constants import PLANETS, DASHA_ORDER
+from features.tarot.constants import FULL_TAROT_DECK, TAROT_BASE
 from math_engine.astro_calc import (
     local_to_julian_day, get_planet_longitude_and_speed,
     sign_index_from_lon, calculate_tara_bala,
