@@ -36,7 +36,7 @@ from ui_streamlit.views.oracle         import show_oracle
 from features.tarot.view               import show_tarot
 from features.horoscopes.view          import show_horoscopes
 from ui_streamlit.views.numerology     import show_numerology
-from ui_streamlit.views.vault          import show_vault
+from features.vault.view               import show_vault
 from ui_streamlit.views.palmistry      import show_palmistry
 from ui_streamlit.views.kundli         import show_kundli
 
