@@ -32,7 +32,7 @@ from ui_streamlit.state import (
 from ui_streamlit.components import inject_nebula_css, render_sidebar, render_bottom_nav
 from features.dashboard.view           import show_dashboard
 from features.consultation.view        import show_consultation_room
-from ui_streamlit.views.oracle         import show_oracle
+from features.oracle         import show_oracle
 from features.tarot.view               import show_tarot
 from features.horoscopes.view          import show_horoscopes
 from features.numerology.view          import show_numerology

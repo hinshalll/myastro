@@ -15,7 +15,7 @@ import streamlit as st
 
 from math_engine.constants import COMPARISON_CRITERIA
 
-from ui_streamlit.views.oracle._shared import (
+from features.oracle._shared import (
     collapse_sidebar_on_mobile,
     generate_astrology_dossier,
     build_comparison_knowledge, build_comparison_prompt,

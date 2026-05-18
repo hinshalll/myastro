@@ -15,7 +15,7 @@ Logic flow:
 
 import streamlit as st
 
-from ui_streamlit.views.oracle._shared import (
+from features.oracle._shared import (
     collapse_sidebar_on_mobile,
     PLANETS, SIGN_LORDS_MAP,
     local_to_julian_day, get_planet_longitude_and_speed,

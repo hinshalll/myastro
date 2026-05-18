@@ -15,7 +15,7 @@ Logic flow:
 
 import streamlit as st
 
-from ui_streamlit.views.oracle._shared import (
+from features.oracle._shared import (
     collapse_sidebar_on_mobile,
     local_to_julian_day, generate_astrology_dossier,
     calculate_destiny_confirmation,

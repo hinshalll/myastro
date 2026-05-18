@@ -10,7 +10,7 @@ pulls classical transit passages → AI weaves them with the chart.
 
 import streamlit as st
 
-from ui_streamlit.views.oracle._shared import (
+from features.oracle._shared import (
     collapse_sidebar_on_mobile,
     generate_astrology_dossier, get_gochara_overlay,
     build_topic_query, rag_context_cached,

@@ -24,16 +24,16 @@ already a standalone screen.
 
 import streamlit as st
 
-from ui_streamlit.views.oracle._shared import collapse_sidebar_on_mobile
+from features.oracle._shared import collapse_sidebar_on_mobile
 
 # Re-export each show_*() so external code can import directly if it wants
 # to skip the legacy dropdown (e.g. when building a separate menu).
-from ui_streamlit.views.oracle.deep_analysis import show_deep_analysis
-from ui_streamlit.views.oracle.matchmaking   import show_matchmaking
-from ui_streamlit.views.oracle.marriage      import show_marriage
-from ui_streamlit.views.oracle.gochara       import show_gochara
-from ui_streamlit.views.oracle.compare       import show_compare
-from ui_streamlit.views.oracle.prashna       import show_prashna
+from features.oracle.deep_analysis import show_deep_analysis
+from features.oracle.matchmaking   import show_matchmaking
+from features.oracle.marriage      import show_marriage
+from features.oracle.gochara       import show_gochara
+from features.oracle.compare       import show_compare
+from features.oracle.prashna       import show_prashna
 
 
 # Legacy dropdown labels — kept as-is so st.session_state.active_mission
