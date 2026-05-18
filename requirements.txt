@@ -10,6 +10,7 @@ weasyprint
 jinja2
 indic-transliteration
 Pillow
+torchvision
 
 # ── FastAPI backend (api/) ─────────────────────────────────────────
 # These are added so the same repo can run two services:
