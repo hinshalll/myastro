@@ -56,9 +56,9 @@ from api.deps import init_app_singletons
 
 # ── App init ──────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="AIS Backend",
+    title="Myastro Backend",
     description="Vedic-astrology + AI divination backend. "
-                "Powers the AIS web app and the mobile app via the same endpoints.",
+                "Powers the Myastro web app and the mobile app via the same endpoints.",
     version="1.0.0",
 )
 
@@ -81,18 +81,21 @@ async def _startup():
     init_app_singletons()
 
 
-# ── Health check (Render uses this to know the service is alive) ──────────────
-@app.get("/", tags=["meta"])
+# ── Health check (Render + UptimeRobot use this to know the service is alive) ─
+# Accepts BOTH GET and HEAD because UptimeRobot's free tier only sends HEAD
+# requests. The default `@app.get` decorator only accepts GET, which would
+# return 405 to HEAD checks. `api_route` lets one handler serve both methods.
+@app.api_route("/", methods=["GET", "HEAD"], tags=["meta"])
 async def root():
     return {
-        "service": "AIS Backend",
+        "service": "Myastro Backend",
         "status":  "ok",
         "docs":    "/docs",
         "version": "1.0.0",
     }
 
 
-@app.get("/health", tags=["meta"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["meta"])
 async def health():
     return {"status": "ok"}
 
