@@ -38,7 +38,7 @@ from features.horoscopes.view          import show_horoscopes
 from features.numerology.view          import show_numerology
 from features.vault.view               import show_vault
 from ui_streamlit.views.palmistry      import show_palmistry
-from ui_streamlit.views.kundli         import show_kundli
+from features.kundli.view              import show_kundli
 
 # ── page config ───────────────────────────────────────────────────────────────
 APP_NAME = "ASTRO SUITE beta"

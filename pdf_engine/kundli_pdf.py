@@ -906,7 +906,7 @@ def build_kundli_pdf(
     if include_ai_narrative:
         # Old karmic-story narrative (premium only — kept for back-compat)
         try:
-            from ai_engine.kundli_narrative import generate as _narrate
+            from features.kundli.narrative import generate as _narrate
             narrative = _narrate(chart, language=language)
         except Exception:
             narrative = None
@@ -914,7 +914,7 @@ def build_kundli_pdf(
         # tier = 'free' (8 topics, ~150 words each, ~₹0.1)
         #      = 'premium' (20 topics, ~220 words each, ~₹0.4)
         try:
-            from ai_engine.kundli_content import generate_kundli_content
+            from features.kundli.content import generate_kundli_content
             # Premium tier when the user opted into a deep PDF; free tier otherwise
             tier = "premium" if include_western_appendix else "free"
             ai_content = generate_kundli_content(

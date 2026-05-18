@@ -26,7 +26,7 @@ from math_engine.kundli import (
 )
 from pdf_engine import build_kundli_pdf, THEMES
 from pdf_engine.kundli_pdf import render as render_chart_svg
-from ai_engine.kundli_content import (
+from features.kundli.content import (
     generate_kundli_content, is_available as ai_is_available,
 )
 
