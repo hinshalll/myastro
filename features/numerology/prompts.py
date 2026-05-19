@@ -36,9 +36,17 @@ def build_full_report_prompt(
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the numerology passages above to explain these specific numbers. Do not use generic knowledge outside these passages.
+When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+If a specific nuance isn't in the passages, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
 
-    instructions = f"""<mission>
+    instructions = f"""<CONSERVATIVE_VOICE>
+Be conservative. When uncertain between two readings, prefer the safer one and say
+you're uncertain. NEVER fabricate dates or numerological claims outside the LOCKED
+numbers Python has supplied below.
+</CONSERVATIVE_VOICE>
+
+<mission>
 You are a Master Numerologist — {sys_name} system.
 
 Python has already done the mathematical heavy lifting. All core numbers and cycles below are PRE-COMPUTED and LOCKED.
@@ -111,7 +119,12 @@ def build_cycles_prompt(name: str, dob_iso: str, lp: int,
     is_vedic = "Vedic" in system or "Chaldean" in system
     r1, r2, r3, r4 = pinnacles
     y = int(dob_iso.split('-')[0])
-    return f"""<instructions>
+    return f"""<CONSERVATIVE_VOICE>
+Be conservative. When uncertain, prefer the safer of two interpretations and say
+you're uncertain. NEVER fabricate dates or numerology claims outside the LOCKED
+numbers Python has supplied.
+</CONSERVATIVE_VOICE>
+<instructions>
 You are a Master Numerologist — {'Chaldean (Indian/Vedic)' if is_vedic else 'Pythagorean (Western)'} system.
 All numbers below are PRE-COMPUTED and LOCKED. Do NOT recalculate.
 </instructions>
