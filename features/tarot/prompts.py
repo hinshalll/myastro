@@ -23,6 +23,13 @@ _THREE_CARD_MODES = {
 }
 
 
+_CONSERVATIVE_PREFIX = (
+    "Be conservative. When uncertain between two readings, prefer the safer one "
+    "and say you're uncertain. Never fabricate card meanings — if the passages "
+    "don't cover a nuance, say so rather than guessing.\n\n"
+)
+
+
 def _knowledge_block(knowledge_context: str, fallback_rules: str) -> str:
     if knowledge_context:
         return (
@@ -31,6 +38,8 @@ def _knowledge_block(knowledge_context: str, fallback_rules: str) -> str:
             "Base your interpretation of each card entirely on the passages above. "
             "Do not invent meanings outside them.\n"
             "If a card is Reversed, interpret its energy as blocked, internalised, or delayed.\n"
+            "If a specific nuance you'd like to add isn't in the passages, omit it "
+            "rather than guessing — saying 'this isn't covered in the guide I was given' is acceptable.\n"
             "</RULES>"
         )
     return f"<RULES>\n{fallback_rules}\n</RULES>"
@@ -51,7 +60,7 @@ def build_three_card_prompt(question: str, cards: list[str], states: list[str],
         "Base your interpretation on established tarot archetypes. "
         "If a card is Reversed, interpret its energy as blocked or delayed.",
     )
-    return f"""<mission>
+    return f"""{_CONSERVATIVE_PREFIX}<mission>
 You are an expert, intuitive Tarot Reader. Python has cryptographically drawn the following spread:
 {cards_str}
 Question: "{question}" | Spread: {mode} | Focus: {cfg['instruction']}
@@ -84,7 +93,7 @@ def build_yes_no_prompt(question: str, card: str, state: str,
             "Read the core energy of this card from the passages above.\n"
             "Upright cards generally lean Yes; Reversed lean No — but factor in the archetype from the passages.",
         )
-    return f"""<mission>
+    return f"""{_CONSERVATIVE_PREFIX}<mission>
 You are an expert Tarot Reader — Yes/No Oracle mode.
 Question: "{question}" | Card drawn: {card} ({state})
 </mission>
@@ -112,7 +121,7 @@ def build_celtic_cross_prompt(question: str, cards: list[str], states: list[str]
         "Look for patterns (suits clustering, Major Arcana count).\n"
         "</RULES>"
     ) if knowledge_context else ""
-    return f"""<mission>
+    return f"""{_CONSERVATIVE_PREFIX}<mission>
 You are an expert Tarot Reader — Celtic Cross spread.
 Question: "{question}"
 Ten-card spread:
@@ -137,7 +146,7 @@ def build_birth_card_prompt(card: str, dob: str, knowledge_context: str = "") ->
         "Interpret this card as a deep, lifelong energy based strictly on the passages above.\n"
         "</RULES>"
     ) if knowledge_context else ""
-    return f"""<mission>
+    return f"""{_CONSERVATIVE_PREFIX}<mission>
 You are an expert Tarot Reader — Tarot Birth Card reading.
 Date of Birth: {dob} | Tarot Birth Card: {card}
 </mission>
@@ -159,7 +168,7 @@ def build_daily_card_prompt(card: str, state: str, knowledge_context: str = "") 
         "Extract the practical daily advice for this exact card and state from the passages above only.\n"
         "</RULES>"
     ) if knowledge_context else ""
-    return f"""<mission>
+    return f"""{_CONSERVATIVE_PREFIX}<mission>
 You are an expert Tarot Reader — Daily Guidance reading. Today's card: {card} ({state})
 </mission>
 {kb}"""
