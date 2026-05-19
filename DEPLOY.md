@@ -109,7 +109,7 @@ On the Render dashboard:
 | Root Directory | leave blank |
 | Runtime | **Python 3** |
 | Build Command | `pip install -r requirements.txt` |
-| Start Command | `uvicorn api.main:app --host 0.0.0.0 --port $PORT` |
+| Start Command | `uvicorn fastapi_main:app --host 0.0.0.0 --port $PORT` |
 | Instance Type | **Free** |
 
 4. Don't click **Create Web Service** yet — first add env vars below.
@@ -248,7 +248,7 @@ cd C:\Users\hinsh\Desktop\AIS
 set GEMINI_API_KEY=your_actual_key_here
 
 # Start the backend
-uvicorn api.main:app --reload --port 8000
+uvicorn fastapi_main:app --reload --port 8000
 ```
 
 Then open `http://localhost:8000/docs` — same Swagger UI as on Render,

@@ -1,26 +1,29 @@
-"""
-shared.pdf/ — Premium kundli PDF rendering engine.
+"""shared.pdf — Premium kundli PDF rendering + reusable PDF helpers.
 
 Pure backend. Zero Streamlit dependency. Returns PDF bytes (or HTML bytes
 when WeasyPrint isn't installed — caller detects via b"%PDF" magic header).
 
-All builder + chart-renderer logic lives in `shared.pdf/kundli_pdf.py`.
-Jinja2 templates live in `shared.pdf/templates/`.
+Module layout (was previously one 983-line `kundli_pdf.py`, now split):
+    themes.py     — Premium themes (palettes) + DEFAULT_THEME for charts
+    charts.py     — SVG renderers for North / South / East Indian styles
+    builder.py    — Jinja2 + WeasyPrint orchestrator (build_kundli_pdf)
+    theme_art.py  — Decorative SVG art (lotus, peacock, trishul, etc.)
+    astro_pdf.py  — Generic markdown→PDF helper (used by every feature)
+    palm_pdf.py   — Palm-reading-specific PDF builder
 """
 
-__all__ = ["build_kundli_pdf", "THEMES", "render"]
+from shared.pdf.themes import THEMES, DEFAULT_THEME
+from shared.pdf.charts import (
+    render, render_chart_for_chart,
+    render_north, render_south, render_east,
+    STYLES, SIGN_ABBR, SIGN_ABBR_3, PLANET_ABBR,
+)
+from shared.pdf.builder import build_kundli_pdf
 
-
-def build_kundli_pdf(*args, **kwargs):
-    """Lazy import — avoids hard dependency on WeasyPrint until first call."""
-    from shared.pdf.kundli_pdf import build_kundli_pdf as _build
-    return _build(*args, **kwargs)
-
-
-def __getattr__(name):
-    # Forward THEMES, render, etc. to the consolidated module on first access
-    if name in ("THEMES", "DEFAULT_THEME", "render", "STYLES",
-                "render_north", "render_south", "render_east"):
-        from shared.pdf import kundli_pdf as _kp
-        return getattr(_kp, name)
-    raise AttributeError(f"module 'shared.pdf' has no attribute {name!r}")
+__all__ = [
+    "build_kundli_pdf",
+    "THEMES", "DEFAULT_THEME",
+    "render", "render_chart_for_chart",
+    "render_north", "render_south", "render_east",
+    "STYLES", "SIGN_ABBR", "SIGN_ABBR_3", "PLANET_ABBR",
+]

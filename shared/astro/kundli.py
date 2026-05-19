@@ -1692,7 +1692,7 @@ def render_chart_svg(chart, *, varga: int = 1, style: str = "north_indian",
     Use this anywhere in the app (free view, compatibility feature,
     transit overlay, mobile renderer) to display the same accurate chart.
     """
-    from shared.pdf.kundli_pdf import render_chart_for_chart
+    from shared.pdf.charts import render_chart_for_chart
     return render_chart_for_chart(
         chart, varga=varga, style=style, size=size,
         theme_name=theme_name, theme=theme,

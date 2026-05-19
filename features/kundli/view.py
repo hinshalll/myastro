@@ -25,7 +25,7 @@ from shared.astro.kundli import (
     BirthData, compute_chart, yoga_audit, sade_sati_timeline,
 )
 from shared.pdf import build_kundli_pdf, THEMES
-from shared.pdf.kundli_pdf import render as render_chart_svg
+from shared.pdf.charts import render as render_chart_svg
 from features.kundli.content import (
     generate_kundli_content, is_available as ai_is_available,
 )

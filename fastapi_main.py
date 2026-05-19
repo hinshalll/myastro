@@ -142,8 +142,7 @@ _FEATURES = [
     ("kundli",       "features.kundli.api"),
     ("palmistry",    "features.palmistry.api"),
     ("vault",        "features.vault.api"),
-    # oracle is the legacy dropdown package; the 6 sub-features don't have
-    # their own FastAPI routers yet — add them here as they get written.
+    ("oracle",       "features.oracle.api"),   # /deep-analysis, /matchmaking, /marriage, /gochara, /compare, /prashna
 ]
 
 for prefix, module_path in _FEATURES:

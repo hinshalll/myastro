@@ -43,7 +43,7 @@ import re
 import time
 from typing import Literal
 
-import google.generativeai as genai
+from shared.ai.gemini_client import init_gemini, get_ai_model_for_json
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -242,13 +242,10 @@ Return ONE JSON object {{"topic_key": "paragraph", ...}} with exactly these keys
 
     for mname in model_chain:
         try:
-            model = genai.GenerativeModel(
+            model = get_ai_model_for_json(
                 model_name=mname,
                 system_instruction=_SYSTEM_RULES,
-                generation_config={
-                    "temperature": 0.7,
-                    "response_mime_type": "application/json",
-                },
+                temperature=0.7,
             )
             resp = model.generate_content(user_prompt)
             raw = resp.text or ""
@@ -298,10 +295,13 @@ def is_available() -> bool:
 
 
 def _configure_api():
+    """Initialise the shared Gemini client. Safe to call repeatedly — only
+    the first call actually configures it (subsequent calls re-init with
+    the same key, which is a no-op cost-wise)."""
     key = _read_gemini_key()
     if not key:
         raise RuntimeError("GEMINI_API_KEY not found (env var or .streamlit/secrets.toml)")
-    genai.configure(api_key=key)
+    init_gemini(key)
 
 
 def generate_kundli_content(

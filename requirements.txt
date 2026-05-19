@@ -3,7 +3,7 @@ pyswisseph
 geopy
 timezonefinder
 streamlit-local-storage
-google-generativeai
+google-genai
 qdrant-client
 sentence-transformers
 weasyprint
