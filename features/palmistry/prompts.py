@@ -45,8 +45,8 @@ def build_palm_reading_prompt(
             "<classical_passages_rules>\n"
             "Use only the passages above for classical doctrine. When you state a "
             "doctrine claim drawn from them, mention which book it came from using "
-            "the [BOOK: filename.md] header at the top of each passage (e.g. "
-            "'Per [BOOK: palmistry.md], a star on Jupiter signals...'). "
+            "a friendly source name (e.g. 'Samudrika Shastra' or 'classical "
+            "palmistry'). NEVER output literal markers like [BOOK: palmistry.md]. "
             "If a nuance isn't in the passages, omit it rather than inventing it.\n"
             "</classical_passages_rules>\n"
         )

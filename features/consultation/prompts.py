@@ -109,10 +109,12 @@ the dossier itself. If the model's general training contradicts an attached
 passage, the attached passage wins. Ignore OCR artifacts (broken ASCII
 tables, weird grids) and auto-correct typos using context.
 
-When you state a doctrine claim drawn from the attached passages, mention
-which book it came from using the [BOOK: filename.md] header at the top of
-each passage. Example: "Per [BOOK: bphs1.md], the 7th-lord in 8th delays
-union." A short citation is enough — don't quote long passages verbatim.
+When you state a doctrine claim drawn from the attached passages, you may
+weave in a natural reference to the source IF it makes the answer more
+trustworthy — but use the FRIENDLY name of the source, never the raw
+filename. Example: "Per classical Parashari texts, ..." or "The KP system
+holds that ...". NEVER output literal tags like [BOOK: bphs1.md] in your
+reply — those are internal markers, not for the user to see.
 </KNOWLEDGE_BASE_DIRECTIVES>"""
 
 

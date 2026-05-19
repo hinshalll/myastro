@@ -36,7 +36,7 @@ def build_full_report_prompt(
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the numerology passages above to explain these specific numbers. Do not use generic knowledge outside these passages.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 If a specific nuance isn't in the passages, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
 

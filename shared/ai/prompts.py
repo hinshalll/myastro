@@ -35,8 +35,9 @@ it or label it as "general principle" rather than presenting it as classical.
 
 CITE_SOURCES = """
 When you state a doctrine claim drawn from a classical text, mention which book it
-came from using the [BOOK: filename.md] header that appears at the top of each
-passage above. Example: "Per [BOOK: bphs1.md], the 7th-lord in 8th delays union."
+from. Use a FRIENDLY name for the source (e.g. "classical Parashari texts",
+"the KP system", "BPHS"), NEVER output literal markers like [BOOK: filename.md] —
+those tags are internal.
 A short citation is enough — don't quote long passages verbatim.
 """
 
@@ -75,7 +76,7 @@ def build_agent_parashari_prompt(dossier, knowledge_context: str = ""):
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the Parashari passages above. Do not invent placements or yogas outside the dossier.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage. Short citation, no long quotes.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal. Keep citations brief — no long verbatim quotes.
 If a fact isn't in the passages or dossier, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
     return f"""{GUARDRAILS}
@@ -119,7 +120,7 @@ def build_agent_timing_prompt(dossier, knowledge_context: str = ""):
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the Dasha/transit passages above. Never calculate dates independently.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 If a fact isn't in the passages or dossier, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
     return f"""{GUARDRAILS}
@@ -163,7 +164,7 @@ def build_agent_kp_prompt(dossier, knowledge_context: str = ""):
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the KP passages above. The cusp SL verdict overrides sign lord indications for event prediction.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 If a fact isn't in the passages or dossier, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
     return f"""{GUARDRAILS}
@@ -266,7 +267,7 @@ def build_matchmaking_prompt(dos_a, dos_b, koota, canc, prof_a, prof_b, marital_
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the matchmaking/compatibility passages above for classical doctrine and synastry rules. Do not invent partner traits, koota interpretations, or dosha logic outside them.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 If a fact isn't in the passages, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
 
@@ -366,7 +367,7 @@ def build_destiny_confirmation_prompt(prof_a, prof_b, dos_a, dos_b, dest_data, k
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the marriage / Jaimini / Upapada Lagna passages above for classical doctrine. Do not invent astrological rules or spouse archetypes outside them.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 If a fact isn't in the passages, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
     return f"""{GUARDRAILS}
@@ -503,7 +504,7 @@ MATH LOCK: The Python rankings are final. Do NOT change rank order or recalculat
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use the classical passages above to explain the astrological basis for each ranking. Do not invent yogas or placements outside the dossiers.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 </RULES>''' if knowledge_context else ""}
 
 <FORMAT>
@@ -589,7 +590,7 @@ def build_prashna_prompt(question, dossier, knowledge_context: str = ""):
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the KP horary passages above for your narrative. You are FORBIDDEN from contradicting the Python Verdict.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 </RULES>""" if knowledge_context else "<RULES>You are FORBIDDEN from contradicting the Python Verdict.</RULES>"
     return f"""{GUARDRAILS}
 <mission>
@@ -616,7 +617,7 @@ def build_transit_prompt(dossier, gochara_overlay, knowledge_context: str = ""):
 </KNOWLEDGE_CONTEXT>
 <RULES>
 Use only the Gochara passages above for transit interpretations.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 If a fact isn't in the passages, say so honestly rather than inventing it.
 </RULES>""" if knowledge_context else ""
     return f"""{GUARDRAILS}

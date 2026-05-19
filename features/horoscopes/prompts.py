@@ -52,7 +52,7 @@ Read the mathematically exact Gochara (transit) data provided below.
 <RULES>
 Use only the Gochara/transit passages above for classical doctrine. Do not invent transit meanings outside them.
 Anchor every claim to a specific transit line in transit_math.
-When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'the KP system', 'Samudrika Shastra') — NEVER output literal markers like [BOOK: filename.md] in your reply. Those tags are internal.
 If a transit nuance isn't in the passages, say so or omit it — don't invent.
 </RULES>
 
