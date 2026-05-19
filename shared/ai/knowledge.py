@@ -48,7 +48,16 @@ def rag_chunks(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT) -> Lis
     if not books or not query.strip():
         return []
 
-    vs = get_vector_store_pure()                 # cached singleton (process-wide, no @st)
+    # Wrap the vector-store init too: a fresh deploy may hit Qdrant before
+    # the collection has been migrated to the hybrid layout. In that case
+    # get_vector_store_pure() raises with a migration hint — degrade
+    # gracefully so the app keeps serving (just without RAG context).
+    try:
+        vs = get_vector_store_pure()              # cached singleton (process-wide, no @st)
+    except Exception as e:
+        print(f"[rag_chunks] vector store unavailable: {e}")
+        return []
+
     flt = qmodels.Filter(must=[
         qmodels.FieldCondition(
             key="metadata.book",
