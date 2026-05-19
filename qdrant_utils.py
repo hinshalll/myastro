@@ -14,14 +14,38 @@ Two layers:
 Backend purity rule: importing this module MUST work without Streamlit installed.
 """
 
+import os
+from pathlib import Path
+
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
 
-QDRANT_URL = "https://5353c359-9bad-4912-b23c-2a38869e4180.us-east-2-0.aws.cloud.qdrant.io"
-QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6YjNiMmJiZTgtNjI1ZS00YzQ3LTk0MDgtMWJlNTFkNGI4MmFmIn0.cX5rpm7QPIYtEeuU8U8FJ3tnUa_PnZfBWkGdHYPCfWE"
-COLLECTION_NAME = "vedic_knowledge"
+
+# ── Secrets loader ────────────────────────────────────────────────────────────
+# Reads env vars FIRST (FastAPI / Render / mobile backend), then falls back to
+# .streamlit/secrets.toml (Streamlit local dev + Streamlit Cloud's secrets UI).
+# Never hardcoded — keeps creds out of git.
+
+def _load_secret(key: str) -> str | None:
+    v = os.environ.get(key)
+    if v:
+        return v
+    sp = Path(__file__).resolve().parent / ".streamlit" / "secrets.toml"
+    if sp.exists():
+        try:
+            import tomllib
+            with open(sp, "rb") as f:
+                return tomllib.load(f).get(key)
+        except Exception:
+            return None
+    return None
+
+
+QDRANT_URL     = _load_secret("QDRANT_URL")
+QDRANT_API_KEY = _load_secret("QDRANT_API_KEY")
+COLLECTION_NAME      = os.environ.get("QDRANT_COLLECTION", "vedic_knowledge")
 EMBEDDING_MODEL_NAME = "BAAI/bge-base-en-v1.5"
 
 # ── Pure (no Streamlit) factories ─────────────────────────────────────────────
@@ -33,6 +57,12 @@ def get_qdrant_client_pure():
     """Process-wide Qdrant client singleton. No Streamlit dependency."""
     global _CLIENT_SINGLETON
     if _CLIENT_SINGLETON is None:
+        if not QDRANT_URL or not QDRANT_API_KEY:
+            raise RuntimeError(
+                "QDRANT_URL / QDRANT_API_KEY not set. "
+                "Add them to .streamlit/secrets.toml for local dev, "
+                "or set them as env vars on Render / Streamlit Cloud."
+            )
         _CLIENT_SINGLETON = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     return _CLIENT_SINGLETON
 
