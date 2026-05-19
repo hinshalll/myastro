@@ -42,6 +42,13 @@ def build_palm_reading_prompt(
     if qdrant_context and len(qdrant_context.strip()) > 50:
         qdrant_block = (
             f"\n<classical_passages>\n{qdrant_context}\n</classical_passages>\n"
+            "<classical_passages_rules>\n"
+            "Use only the passages above for classical doctrine. When you state a "
+            "doctrine claim drawn from them, mention which book it came from using "
+            "the [BOOK: filename.md] header at the top of each passage (e.g. "
+            "'Per [BOOK: palmistry.md], a star on Jupiter signals...'). "
+            "If a nuance isn't in the passages, omit it rather than inventing it.\n"
+            "</classical_passages_rules>\n"
         )
 
     dossier_block = ""
@@ -50,7 +57,9 @@ def build_palm_reading_prompt(
             f"\n<kundli_dossier>\n{dossier}\n</kundli_dossier>\n"
         )
 
-    return f"""You are an expert Vedic palmist trained in classical Samudrika Shastra. You are reading a real photograph of a real human's hand for a paying customer. Be honest, be specific, be warm. Interpret only what you actually observe.
+    return f"""Be conservative. When uncertain between two readings, prefer the safer one and say so. NEVER fabricate planet positions, nakshatras, degrees, or palm features — every claim must come from either the math-derived facts, the Phase A JSON you produce, the kundli dossier, or the classical passages provided.
+
+You are an expert Vedic palmist trained in classical Samudrika Shastra. You are reading a real photograph of a real human's hand for a paying customer. Be honest, be specific, be warm. Interpret only what you actually observe.
 
 ═══ INPUT IMAGES ═══
 1. FULL PALM (labelled top-left) — the user's hand, CLAHE-enhanced for line visibility
