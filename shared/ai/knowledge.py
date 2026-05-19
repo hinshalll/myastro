@@ -14,21 +14,34 @@ from the books that feature is allowed to cite. Replaces the old full-text
 injection (`get_knowledge_files`) that shipped ~250K tokens per call.
 """
 
+import os
 import re
 from typing import Iterable, List, Tuple
 
 from qdrant_client.http import models as qmodels
 from qdrant_utils import get_vector_store_pure
+from shared.ai.reranker import rerank as _rerank, is_disabled as _rerank_disabled
 
 _TOP_K_DEFAULT = 8
 _MAX_CHUNK_CHARS = 1200
+# Over-fetch from Qdrant so the reranker has enough candidates to re-order.
+_RERANK_OVERFETCH = int(os.environ.get("RERANK_OVERFETCH", "25"))
+
 
 def rag_chunks(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT) -> List[Tuple[str, dict]]:
-    """Return [(page_content, metadata), ...] filtered to `books` (filenames like 'bphs1.md')."""
+    """Return [(page_content, metadata), ...] filtered to `books` (filenames like 'bphs1.md').
+
+    Pipeline:
+      1. Qdrant dense vector search → top-N (N = max(k, RERANK_OVERFETCH))
+      2. Cross-encoder reranker → re-order by (query, passage) relevance
+      3. Trim to k
+
+    If RERANK_DISABLE=1, step 2 is skipped and the original top-k is returned.
+    """
     books = [b.strip() for b in books if b and b.strip()]
     if not books or not query.strip():
         return []
-    
+
     vs = get_vector_store_pure()                 # cached singleton (process-wide, no @st)
     flt = qmodels.Filter(must=[
         qmodels.FieldCondition(
@@ -36,18 +49,24 @@ def rag_chunks(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT) -> Lis
             match=qmodels.MatchAny(any=books),
         )
     ])
-    
+
+    fetch_k = k if _rerank_disabled() else max(k, _RERANK_OVERFETCH)
+
     try:
-        docs = vs.similarity_search(query=query, k=k, filter=flt)
+        docs = vs.similarity_search(query=query, k=fetch_k, filter=flt)
     except Exception as e:
         print(f"[rag_chunks] Error: {e}")
         return []
-        
-    out = []
+
+    pairs: List[Tuple[str, dict]] = []
     for d in docs:
         text = (d.page_content or "")[:_MAX_CHUNK_CHARS]
-        out.append((text, d.metadata or {}))
-    return out
+        pairs.append((text, d.metadata or {}))
+
+    if _rerank_disabled() or len(pairs) <= k:
+        return pairs[:k]
+
+    return _rerank(query, pairs, top_k=k)
 
 def rag_context(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT,
                 header: str = "Classical passages retrieved for this question:") -> str:
