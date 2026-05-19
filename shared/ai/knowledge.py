@@ -29,14 +29,20 @@ _RERANK_OVERFETCH = int(os.environ.get("RERANK_OVERFETCH", "25"))
 
 
 def rag_chunks(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT) -> List[Tuple[str, dict]]:
-    """Return [(page_content, metadata), ...] filtered to `books` (filenames like 'bphs1.md').
+    """Return [(text, metadata), ...] filtered to `books` (filenames like 'bphs1.md').
 
     Pipeline:
-      1. Qdrant dense vector search → top-N (N = max(k, RERANK_OVERFETCH))
-      2. Cross-encoder reranker → re-order by (query, passage) relevance
-      3. Trim to k
+      1. Qdrant hybrid (dense BGE + sparse BM25, RRF-fused) → top-N
+         (N = max(k, RERANK_OVERFETCH)).
+      2. CrossEncoder reranker re-orders on the FULL embedded text (which
+         includes the Anthropic-style context prefix when present).
+      3. Trim to k.
+      4. For the returned text, prefer `metadata.raw_chunk` when present
+         so downstream prompts see clean chunk content without the context
+         bloat. Falls back to `page_content` for legacy chunks ingested
+         before Phase 5d.
 
-    If RERANK_DISABLE=1, step 2 is skipped and the original top-k is returned.
+    If RERANK_DISABLE=1, step 2 is skipped.
     """
     books = [b.strip() for b in books if b and b.strip()]
     if not books or not query.strip():
@@ -58,15 +64,24 @@ def rag_chunks(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT) -> Lis
         print(f"[rag_chunks] Error: {e}")
         return []
 
-    pairs: List[Tuple[str, dict]] = []
+    # Keep the full embedded text for the reranker (it benefits from the
+    # contextual prefix); swap to raw_chunk for the returned tuple.
+    full_pairs: List[Tuple[str, dict]] = []
     for d in docs:
-        text = (d.page_content or "")[:_MAX_CHUNK_CHARS]
-        pairs.append((text, d.metadata or {}))
+        full_text = (d.page_content or "")[:_MAX_CHUNK_CHARS]
+        full_pairs.append((full_text, d.metadata or {}))
 
-    if _rerank_disabled() or len(pairs) <= k:
-        return pairs[:k]
+    if not _rerank_disabled() and len(full_pairs) > k:
+        full_pairs = _rerank(query, full_pairs, top_k=k)
+    else:
+        full_pairs = full_pairs[:k]
 
-    return _rerank(query, pairs, top_k=k)
+    out: List[Tuple[str, dict]] = []
+    for full_text, meta in full_pairs:
+        raw = (meta.get("raw_chunk") or "").strip()
+        clean_text = raw[:_MAX_CHUNK_CHARS] if raw else full_text
+        out.append((clean_text, meta))
+    return out
 
 def rag_context(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT,
                 header: str = "Classical passages retrieved for this question:") -> str:
