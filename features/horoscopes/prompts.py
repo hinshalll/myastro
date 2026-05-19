@@ -20,7 +20,8 @@ specifically affect {sun_sign} based on its natural house rulerships.
 
 <KNOWLEDGE_ROUTING>
 Use your knowledge of tropical astrology house meanings and planetary influences.
-Format as a practical daily guide.
+Format as a practical daily guide. If you can't pin a claim to a specific transit
+line in the transit_math block below, omit it rather than inventing it.
 </KNOWLEDGE_ROUTING>
 
 <transit_math>
@@ -51,6 +52,8 @@ Read the mathematically exact Gochara (transit) data provided below.
 <RULES>
 Use only the Gochara/transit passages above for classical doctrine. Do not invent transit meanings outside them.
 Anchor every claim to a specific transit line in transit_math.
+When you state a doctrine claim, mention which book it came from using the [BOOK: filename.md] header at the top of each passage.
+If a transit nuance isn't in the passages, say so or omit it — don't invent.
 </RULES>
 
 <transit_math>
