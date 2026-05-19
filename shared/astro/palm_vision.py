@@ -40,12 +40,36 @@ import PIL.Image
 import PIL.ImageOps
 import mediapipe as mp
 
-mp_hands = mp.solutions.hands
-hands_detector = mp_hands.Hands(
-    static_image_mode=True,
-    max_num_hands=1,
-    min_detection_confidence=0.5,
-)
+# Lazy MediaPipe init — defer `mp.solutions.hands` access until the first
+# palm reading. Some Windows mediapipe wheels expose a broken `mp.solutions`
+# attribute at import time (different version than the Linux/Streamlit-Cloud
+# pinned `mediapipe==0.10.14`); deferring means the rest of the app still
+# boots locally even if palmistry is unusable. On Streamlit Cloud the pinned
+# version works fine, so the first call succeeds immediately.
+
+_hands_detector = None
+
+
+def _get_hands_detector():
+    """Build (and cache) the MediaPipe hands detector on first call.
+    Raises RuntimeError with a helpful message if mediapipe isn't usable."""
+    global _hands_detector
+    if _hands_detector is None:
+        try:
+            _hands_detector = mp.solutions.hands.Hands(
+                static_image_mode=True,
+                max_num_hands=1,
+                min_detection_confidence=0.5,
+            )
+        except AttributeError as e:
+            raise RuntimeError(
+                "MediaPipe is installed but `mp.solutions.hands` is unavailable. "
+                "This usually means the local pip version differs from the pinned "
+                "Linux wheel. Run `pip install -r requirements.txt --upgrade` "
+                "to align with mediapipe==0.10.14. "
+                f"(Original error: {e})"
+            ) from e
+    return _hands_detector
 
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
@@ -556,7 +580,7 @@ def analyze_palm(image_bytes):
     quality_issues, quality_metrics = _assess_quality(raw)
 
     # MediaPipe detection
-    results = hands_detector.process(raw)
+    results = _get_hands_detector().process(raw)
     landmarks_found = bool(results.multi_hand_landmarks)
     lm_dict = None
 

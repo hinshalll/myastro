@@ -1,31 +1,40 @@
-streamlit
-pyswisseph
-geopy
-timezonefinder
-streamlit-local-storage
-google-genai
-qdrant-client
-sentence-transformers
-weasyprint
-jinja2
-indic-transliteration
-Pillow
-torchvision
-
-# ── FastAPI backend (fastapi_main.py) ──────────────────────────────
+# Myastro — pip requirements
+# =============================================================================
 # Same repo runs both:
-#   • Streamlit prototype  — `streamlit run ui_streamlit/app.py`
-#   • FastAPI for mobile/web  — `uvicorn fastapi_main:app`
-fastapi
-uvicorn[standard]
-python-multipart
-pydantic
+#   • Streamlit prototype   →   streamlit run ui_streamlit/app.py
+#   • FastAPI for mobile/web →  uvicorn fastapi_main:app
+#
+# Grouped + minimally pinned. Loose pins (>=) keep installs fast on Streamlit
+# Cloud while still pinning the floor on libraries whose APIs changed.
 
-# ── Palm / Vision deps (used by palm_vision module) ────────────────
-opencv-python-headless
-mediapipe==0.10.14
-numpy
+# ── Streamlit web UI ─────────────────────────────────────────────────────────
+streamlit>=1.39
+streamlit-local-storage>=0.0.25
 
-# ── LangChain integrations (used by qdrant_utils.py for vector search) ─
-langchain-qdrant
-langchain-huggingface
+# ── FastAPI backend (fastapi_main.py) ────────────────────────────────────────
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.0
+
+# ── AI / RAG ─────────────────────────────────────────────────────────────────
+google-genai>=1.0        # New SDK (replaces deprecated google-generativeai)
+qdrant-client>=1.10
+langchain-qdrant>=0.1
+langchain-huggingface>=0.1
+sentence-transformers>=2.7   # Needed by HuggingFaceEmbeddings(BAAI/bge-base-en-v1.5)
+
+# ── Astrology math ───────────────────────────────────────────────────────────
+pyswisseph>=2.10
+geopy>=2.4
+timezonefinder>=6.5
+
+# ── PDF rendering (premium kundli + every feature's download button) ─────────
+weasyprint>=63
+jinja2>=3.1
+indic-transliteration>=2.3   # Devanagari cover-page transliteration
+
+# ── Palm vision (palmistry feature) ──────────────────────────────────────────
+mediapipe==0.10.14      # Pinned — newer wheels break `mp.solutions` access
+opencv-python-headless>=4.10
+Pillow>=10.0
+numpy>=1.26
