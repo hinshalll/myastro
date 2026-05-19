@@ -19,20 +19,35 @@ from typing import List, Tuple
 _RERANKER_SINGLETON = None
 _RERANKER_MODEL_NAME = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
 _DISABLED = os.environ.get("RERANK_DISABLE", "0") == "1"
+_LOAD_FAILED = False   # Sticky flag — set true if first load attempt blew up
+                       # (e.g. OOM on Streamlit Cloud's 1 GB free tier).
 
 
 def is_disabled() -> bool:
-    return _DISABLED
+    """True if the reranker is unavailable for any reason — explicitly disabled
+    OR a previous load attempt failed. Callers should fall back to vector order."""
+    return _DISABLED or _LOAD_FAILED
 
 
 def get_reranker_pure():
-    """Process-wide CrossEncoder singleton. Returns None if disabled."""
-    global _RERANKER_SINGLETON
-    if _DISABLED:
+    """Process-wide CrossEncoder singleton. Returns None if disabled OR if
+    model loading failed (OOM, missing wheel, network, etc.) — the caller
+    will then skip the reranker stage. RAG must never break the request."""
+    global _RERANKER_SINGLETON, _LOAD_FAILED
+    if _DISABLED or _LOAD_FAILED:
         return None
     if _RERANKER_SINGLETON is None:
-        from sentence_transformers import CrossEncoder
-        _RERANKER_SINGLETON = CrossEncoder(_RERANKER_MODEL_NAME, max_length=512)
+        try:
+            from sentence_transformers import CrossEncoder
+            _RERANKER_SINGLETON = CrossEncoder(_RERANKER_MODEL_NAME, max_length=512)
+        except Exception as e:
+            # Most likely Streamlit Cloud OOM (the 568 M-param model + the
+            # BGE-base embedder both fitting in 1 GB is tight). Log once and
+            # silently degrade to no-rerank mode for the rest of the process.
+            print(f"[reranker] disabled — model load failed: "
+                  f"{type(e).__name__}: {e}")
+            _LOAD_FAILED = True
+            return None
     return _RERANKER_SINGLETON
 
 

@@ -1,5 +1,8 @@
 # Streamlit — ignore secrets only, but track config.toml
 .streamlit/secrets.toml
+
+# Claude Code's internal worktree/state — never commit
+.claude/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
