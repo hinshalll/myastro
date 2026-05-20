@@ -25,7 +25,7 @@ CELTIC_CROSS_POSITIONS = [
 ]
 
 # Asset base — front images, video loops, card back.
-TAROT_BASE = "https://raw.githubusercontent.com/hinshalll/text2kprompt/main/tarot/"
+TAROT_BASE = "https://hmspryhmyhegraqccnsh.supabase.co/storage/v1/object/public/palmistry-images/tarot/"
 
 
 def card_image_filename(card_name: str) -> str:

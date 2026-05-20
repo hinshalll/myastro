@@ -47,8 +47,7 @@ MODEL_NAME = "gemini-3.1-flash-lite-preview"
 # all planet names + Sattva/Rajas/Tamas guna zone distribution.
 
 _REF_URL = (
-    "https://hmspryhmyhegraqccnsh.supabase.co/storage/v1/object/public/"
-    "palmistry-images/book_image_18.jpg"
+    "https://hmspryhmyhegraqccnsh.supabase.co/storage/v1/object/public/palmistry-images/palmistry/book_image_18.jpg"
 )
 
 
