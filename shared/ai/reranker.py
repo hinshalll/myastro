@@ -9,16 +9,41 @@ Model: `BAAI/bge-reranker-v2-m3` (568M, multilingual, CPU-friendly).
 Lazy singleton load — first call is slow (~5-10 s on CPU cold start), every
 subsequent call reuses the in-memory model.
 
-Set `RERANK_DISABLE=1` to bypass entirely (debug / Streamlit-Cloud cold-boot).
+Set `RERANK_DISABLE=1` to bypass entirely. The flag is read from env vars
+FIRST, then falls back to .streamlit/secrets.toml (so Streamlit users can
+toggle it via secrets.toml without setting OS env vars).
 Streamlit-free — safe to import from FastAPI / scripts.
 """
 
 import os
+from pathlib import Path
 from typing import List, Tuple
 
+
+# ── Config loader — env first, secrets.toml fallback ────────────────────────
+# (Mirrors the QDRANT_API_KEY / GEMINI_API_KEY pattern used elsewhere so a
+# user who edits .streamlit/secrets.toml gets the expected effect.)
+
+def _load_setting(key: str, default: str = "") -> str:
+    v = os.environ.get(key)
+    if v is not None and v != "":
+        return v
+    try:
+        sp = Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml"
+        if sp.exists():
+            import tomllib
+            with open(sp, "rb") as f:
+                data = tomllib.load(f)
+            if key in data and data[key] not in (None, ""):
+                return str(data[key])
+    except Exception:
+        pass
+    return default
+
+
 _RERANKER_SINGLETON = None
-_RERANKER_MODEL_NAME = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
-_DISABLED = os.environ.get("RERANK_DISABLE", "0") == "1"
+_RERANKER_MODEL_NAME = _load_setting("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+_DISABLED = _load_setting("RERANK_DISABLE", "0") == "1"
 _LOAD_FAILED = False   # Sticky flag — set true if first load attempt blew up
                        # (e.g. OOM on Streamlit Cloud's 1 GB free tier).
 
