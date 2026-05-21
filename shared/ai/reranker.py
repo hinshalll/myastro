@@ -3,16 +3,20 @@ shared.ai.reranker
 ==================
 Cross-encoder reranker — a second-stage filter applied AFTER Qdrant returns
 a generous top-N. Cross-encoders score (query, passage) pairs jointly and
-catch relevance bi-encoder embeddings miss.
+catch relevance the bi-encoder embeddings miss.
 
-Model: `BAAI/bge-reranker-v2-m3` (568M, multilingual, CPU-friendly).
-Lazy singleton load — first call is slow (~5-10 s on CPU cold start), every
-subsequent call reuses the in-memory model.
+Engine: FastEmbed's `TextCrossEncoder` (ONNX runtime — fast on CPU, and the
+`fastembed` library is already a dependency for the BM25 sparse vectors, so
+this adds nothing new).
 
-Set `RERANK_DISABLE=1` to bypass entirely. The flag is read from env vars
-FIRST, then falls back to .streamlit/secrets.toml (so Streamlit users can
-toggle it via secrets.toml without setting OS env vars).
-Streamlit-free — safe to import from FastAPI / scripts.
+Default model: `Xenova/ms-marco-MiniLM-L-12-v2` (~33M params, ~0.12 GB,
+Apache-2.0). Re-orders 25 candidates in well under a second on CPU. Override
+with the `RERANKER_MODEL` setting (e.g. `BAAI/bge-reranker-v2-m3` on a GPU host
+for top-tier multilingual accuracy).
+
+Config (`RERANK_DISABLE`, `RERANKER_MODEL`) is read from env vars FIRST, then
+falls back to `.streamlit/secrets.toml` so Streamlit users can toggle it
+without setting OS env vars. Streamlit-free — safe to import from FastAPI.
 """
 
 import os
@@ -21,12 +25,10 @@ from typing import List, Tuple
 
 
 # ── Config loader — env first, secrets.toml fallback ────────────────────────
-# (Mirrors the QDRANT_API_KEY / GEMINI_API_KEY pattern used elsewhere so a
-# user who edits .streamlit/secrets.toml gets the expected effect.)
 
 def _load_setting(key: str, default: str = "") -> str:
     v = os.environ.get(key)
-    if v is not None and v != "":
+    if v:
         return v
     try:
         sp = Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml"
@@ -34,7 +36,7 @@ def _load_setting(key: str, default: str = "") -> str:
             import tomllib
             with open(sp, "rb") as f:
                 data = tomllib.load(f)
-            if key in data and data[key] not in (None, ""):
+            if data.get(key):
                 return str(data[key])
     except Exception:
         pass
@@ -42,33 +44,30 @@ def _load_setting(key: str, default: str = "") -> str:
 
 
 _RERANKER_SINGLETON = None
-_RERANKER_MODEL_NAME = _load_setting("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+_RERANKER_MODEL_NAME = _load_setting("RERANKER_MODEL", "Xenova/ms-marco-MiniLM-L-12-v2")
 _DISABLED = _load_setting("RERANK_DISABLE", "0") == "1"
-_LOAD_FAILED = False   # Sticky flag — set true if first load attempt blew up
-                       # (e.g. OOM on Streamlit Cloud's 1 GB free tier).
+_LOAD_FAILED = False   # Sticky — set true if the first load attempt fails so
+                       # we don't retry a doomed load on every request.
 
 
 def is_disabled() -> bool:
-    """True if the reranker is unavailable for any reason — explicitly disabled
-    OR a previous load attempt failed. Callers should fall back to vector order."""
+    """True if the reranker is unavailable — explicitly disabled OR a previous
+    load attempt failed. Callers fall back to the vector-search order."""
     return _DISABLED or _LOAD_FAILED
 
 
 def get_reranker_pure():
-    """Process-wide CrossEncoder singleton. Returns None if disabled OR if
-    model loading failed (OOM, missing wheel, network, etc.) — the caller
-    will then skip the reranker stage. RAG must never break the request."""
+    """Process-wide TextCrossEncoder singleton. Returns None if disabled or if
+    the model fails to load — the caller then skips reranking. RAG must never
+    break the request."""
     global _RERANKER_SINGLETON, _LOAD_FAILED
     if _DISABLED or _LOAD_FAILED:
         return None
     if _RERANKER_SINGLETON is None:
         try:
-            from sentence_transformers import CrossEncoder
-            _RERANKER_SINGLETON = CrossEncoder(_RERANKER_MODEL_NAME, max_length=512)
+            from fastembed.rerank.cross_encoder import TextCrossEncoder
+            _RERANKER_SINGLETON = TextCrossEncoder(model_name=_RERANKER_MODEL_NAME)
         except Exception as e:
-            # Most likely Streamlit Cloud OOM (the 568 M-param model + the
-            # BGE-base embedder both fitting in 1 GB is tight). Log once and
-            # silently degrade to no-rerank mode for the rest of the process.
             print(f"[reranker] disabled — model load failed: "
                   f"{type(e).__name__}: {e}")
             _LOAD_FAILED = True
@@ -77,25 +76,18 @@ def get_reranker_pure():
 
 
 def rerank(query: str, docs: List[Tuple[str, dict]], top_k: int) -> List[Tuple[str, dict]]:
-    """
-    Re-order (text, meta) pairs by cross-encoder relevance to `query`.
-    Returns the top_k highest-scoring pairs in descending order.
-
-    Falls back to the original ordering (truncated to top_k) if the reranker
-    is disabled or fails — RAG must never break the request.
-    """
+    """Re-order (text, meta) pairs by cross-encoder relevance to `query` and
+    return the top_k. Falls back to the original order (truncated) if the
+    reranker is disabled or errors — RAG must never break the request."""
     if not docs:
         return []
-    if top_k >= len(docs) and _DISABLED:
-        return docs[:top_k]
 
     model = get_reranker_pure()
     if model is None:
         return docs[:top_k]
 
     try:
-        pairs = [(query, text) for text, _ in docs]
-        scores = model.predict(pairs, batch_size=8, show_progress_bar=False)
+        scores = list(model.rerank(query, [text for text, _ in docs]))
         ranked = sorted(zip(scores, docs), key=lambda x: float(x[0]), reverse=True)
         return [pair for _, pair in ranked[:top_k]]
     except Exception as e:
