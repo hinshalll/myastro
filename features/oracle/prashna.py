@@ -92,6 +92,6 @@ def show_prashna():
             prashna_prompt_with_ctx = build_prashna_prompt(
                 q_stored, st.session_state["prashna_dos"], knowledge_context=prashna_ctx,
             )
-            stream_ai_with_followup(prashna_prompt_with_ctx, "prashna_chat", "Answering your Prashna...")
+            stream_ai_with_followup(prashna_prompt_with_ctx, "prashna_chat", "Answering your Prashna...", hide_user_prompt=True)
         else:
-            stream_ai_with_followup(st.session_state.prashna_prompt, "prashna_chat", "Answering your Prashna...")
+            stream_ai_with_followup(st.session_state.prashna_prompt, "prashna_chat", "Answering your Prashna...", hide_user_prompt=True)

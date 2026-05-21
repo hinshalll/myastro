@@ -25,7 +25,9 @@ from shared.ai.reranker import rerank as _rerank, is_disabled as _rerank_disable
 _TOP_K_DEFAULT = 8
 _MAX_CHUNK_CHARS = 1200
 # Over-fetch from Qdrant so the reranker has enough candidates to re-order.
-_RERANK_OVERFETCH = int(os.environ.get("RERANK_OVERFETCH", "25"))
+# 20 = a full 2x headroom over the largest k any feature requests (k=10), which
+# preserves reranking quality while trimming the wasteful tail. Override via env.
+_RERANK_OVERFETCH = int(os.environ.get("RERANK_OVERFETCH", "20"))
 
 
 def rag_chunks(query: str, books: Iterable[str], k: int = _TOP_K_DEFAULT) -> List[Tuple[str, dict]]:

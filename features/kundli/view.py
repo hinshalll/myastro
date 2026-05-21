@@ -575,8 +575,8 @@ def _render_free_kundli(chart, chart_style: str):
             )
 
     # ── Manglik & Kaal Sarp dedicated cards (most important doshas) ────────
-    mangal = next((d for d in chart.doshas if "Mangal" in d.name), None)
-    kaal = next((d for d in chart.doshas if "Kaal Sarp" in d.name), None)
+    mangal = next((d for d in chart.doshas if "Mangal" in (d.name or "")), None)
+    kaal = next((d for d in chart.doshas if "Kaal Sarp" in (d.name or "")), None)
     if mangal:
         st.markdown("#### 🔴 Manglik (Mangal Dosha) Analysis")
         if mangal.present:

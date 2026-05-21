@@ -49,4 +49,5 @@ def show_gochara():
     if "transit_prompt" in st.session_state:
         stream_ai_with_followup(
             st.session_state.transit_prompt, "transit_chat", "Reading the stars...",
+            hide_user_prompt=True,
         )
