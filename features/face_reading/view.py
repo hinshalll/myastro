@@ -82,6 +82,52 @@ def _run_reading(analysis, use_kundli, dp):
     st.session_state.face_reading = result
 
 
+def _render_observations(phase_a):
+    """Render Phase A observations as friendly plain text (not raw JSON)."""
+    if not isinstance(phase_a, dict) or not phase_a:
+        st.caption("No structured observations available.")
+        return
+
+    fs = phase_a.get("face_shape", {}) or {}
+    if fs.get("observed"):
+        agree = {"yes": "matches the measurements", "partly": "partly matches the measurements",
+                 "no": "differs from the measurements"}.get(fs.get("agrees_with_measured", ""), "")
+        st.markdown(f"**Face shape:** {str(fs.get('observed','')).replace('_',' ').title()} "
+                    f"· element {str(fs.get('element','')).title()}" + (f" — {agree}" if agree else ""))
+
+    rows = []
+    _FEATURES = [("forehead", "Forehead"), ("eyebrows", "Eyebrows"), ("eyes", "Eyes"),
+                 ("nose", "Nose"), ("lips", "Lips"), ("chin_jaw", "Chin & jaw"),
+                 ("cheeks", "Cheeks"), ("ears", "Ears")]
+    for key, label in _FEATURES:
+        d = phase_a.get(key, {}) or {}
+        if not isinstance(d, dict):
+            continue
+        if d.get("not_assessable"):
+            continue
+        if key == "eyebrows":
+            parts = [v for v in (d.get("thickness"), d.get("shape")) if v and v != "not_assessable"]
+            text = ", ".join(parts)
+        else:
+            text = d.get("observation", "")
+        if text and text != "not_assessable":
+            rows.append(f"- **{label}:** {text}")
+    if rows:
+        st.markdown("\n".join(rows))
+
+    comp = phase_a.get("complexion", {}) or {}
+    if isinstance(comp, dict) and (comp.get("tone") or comp.get("glow")):
+        st.markdown(f"- **Complexion:** {comp.get('tone','')}"
+                    + (f" · {comp.get('glow','')} glow" if comp.get("glow") and comp.get("glow") != "not_assessable" else ""))
+
+    moles = phase_a.get("moles")
+    if moles and moles != "none_clearly_visible":
+        st.markdown(f"- **Distinctive marks:** {moles if isinstance(moles, str) else ', '.join(map(str, moles))}")
+
+    if phase_a.get("expression"):
+        st.markdown(f"- **Expression:** {phase_a.get('expression')}")
+
+
 def _render_reading(result):
     if result.get("error"):
         st.error(result["error"]); return
@@ -100,8 +146,8 @@ def _render_reading(result):
     st.markdown(phase_b)
 
     with st.expander("🔍 What the AI actually saw", expanded=False):
-        st.caption("Based only on what was clearly visible. Items marked not_assessable were skipped — that's honest, not a bug.")
-        st.json(phase_a)
+        st.caption("Based only on what was clearly visible. Anything unclear was skipped — that's honest, not a bug.")
+        _render_observations(phase_a)
 
     pdf = _face_pdf(phase_b)
     c1, c2 = st.columns(2)
