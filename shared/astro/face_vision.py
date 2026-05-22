@@ -121,9 +121,9 @@ def _pose_check(L):
         issues.append("Face looks turned to one side — please look straight at the camera.")
     if abs(roll) > 12:
         issues.append("Head looks tilted — please hold it level.")
-    if pitch < 0.35:
+    if pitch < 0.55:
         issues.append("Head looks tilted upward — please look straight at the camera.")
-    elif pitch > 0.60:
+    elif pitch > 0.95:
         issues.append("Head looks tilted downward — please look straight at the camera.")
         
     return issues, {"yaw": round(yaw, 3), "roll_deg": round(roll, 1), "pitch": round(pitch, 3)}
@@ -299,7 +299,7 @@ def analyze_face(image_bytes):
     Always returns the keys; missing data → empty/unknown rather than crashing.
     """
     img = PIL.ImageOps.exif_transpose(PIL.Image.open(io.BytesIO(image_bytes))).convert("RGB")
-    raw = _gray_world_balance(_resize_to_width(np.array(img), CFG["target_width"]))
+    raw = _resize_to_width(np.array(img), CFG["target_width"])
     quality_issues, quality_metrics = _assess_quality(raw)
 
     results = _get_face_mesh().process(raw)
@@ -309,7 +309,7 @@ def analyze_face(image_bytes):
         return {
             "face_found": False, "quality_issues": quality_issues,
             "quality_metrics": quality_metrics, "pose_issues": [], "pose_metrics": {},
-            "metrics": {}, "enhanced_face": enhance_for_vlm(raw),
+            "metrics": {}, "enhanced_face": raw,
             "region_crops": {}, "landmark_overlay": raw, "lm": None,
         }
 
@@ -326,7 +326,7 @@ def analyze_face(image_bytes):
         "lips_chin": _lips_chin(L),
         "symmetry": _symmetry(L),
     }
-    enhanced = enhance_for_vlm(raw)
+    enhanced = raw
     return {
         "face_found": True,
         "quality_issues": quality_issues,
