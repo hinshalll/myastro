@@ -248,6 +248,69 @@ For now, just leaving Streamlit running as-is is fine.
 
 ---
 
+## When you build the mobile app (React Native / Expo) — the tarot flow
+
+Future-you reading this: here's everything the mobile app needs. The backend is
+already built for this — you do NOT touch Python. You just make HTTP calls.
+
+### One-time setup
+1. Deploy the backend on Render (Steps 1-7 above). Make sure Step 5's env vars
+   are all set — **including `TAROT_DRAW_SECRET`** (any long random string).
+   This is the moment that secret actually starts to matter (see Step 5's "why").
+2. Your app calls the backend at its Render URL, e.g.
+   `https://astro-suite-api.onrender.com`.
+
+### The interactive tarot picker = exactly TWO calls
+**Call 1 — shuffle a hidden deck:**
+```
+POST /tarot/draw-session
+body: { "spread": "three", "include_reversed": false }
+       # spread is one of: "three" | "yes_no" | "celtic"
+returns: {
+  "token": "<opaque string>",   # keep this; send it back in call 2
+  "pick_count": 3,              # how many cards the user must tap (3 / 1 / 10)
+  "deck_size": 78,             # render this many face-down cards
+  "card_back_url": "https://.../tarotrear.png",  # the image for every card back
+  "expires_in": 1800           # token is valid for 30 minutes
+}
+```
+Now in the app: show `deck_size` face-down cards using `card_back_url`. Let the
+user swipe and tap `pick_count` of them. Remember the **positions** they tapped
+(0-based), in tap order. The app never needs to know what the cards are.
+
+**Call 2 — reveal the picked cards + get the reading:**
+```
+POST /tarot/reveal
+body: {
+  "token": "<the token from call 1>",
+  "picks": [4, 17, 40],         # the tapped positions, in tap order
+  "question": "What's ahead at work?",
+  "mode": "General Guidance"    # only used when spread == "three"
+}
+returns: {
+  "cards":      ["Six of Swords", "Four of Cups", "Queen of Cups"],
+  "states":     ["Upright", "Upright", "Reversed"],
+  "positions":  ["Situation / Past", "Challenge / Present", "Advice / Future"],
+  "image_urls": ["https://.../sixofswords.jpg", ...],  # the card front images
+  "reading":    "### Overall Summary ... (the full AI reading, markdown)"
+}
+```
+Now: flip the chosen cards to their `image_urls`, label them with `positions`,
+rotate any "Reversed" card 180°, and render the `reading` markdown.
+
+### Things to remember
+- **Build the swipe/fan animation natively in React Native.** The Streamlit
+  swipe picker (`features/tarot/picker/`) is only the web test-bed — the phone
+  gets a proper native gesture UI. The backend contract above stays identical.
+- The app only ever sends **tap positions**, never card names. The server is the
+  source of truth — this is what keeps it cheat-proof.
+- **Birth Card** is separate and unchanged: `POST /tarot/birth-card` with
+  `{ "dob": "1995-06-15" }`. No picker, no token — it's deterministic from DOB.
+- Explore every endpoint live at `https://your-app.onrender.com/docs` — you can
+  try these exact calls from the browser before writing any app code.
+
+---
+
 ## Local testing (you can do this anytime)
 
 Run the FastAPI backend on your laptop:
