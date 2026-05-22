@@ -107,7 +107,7 @@ def build_kundli_pdf(
         # Other vargas = minimal (planets only) — varga thumbnails are too small
         # to fit sign abbrs/house nums readably; AstroTalk-style clean look.
         is_d1 = (varga_n == 1)
-        chart_svgs[varga_n] = render(
+        chart_svgs[varga_n] = render_chart_svg(
             style=chart_style,
             lagna_sign_idx=varga.lagna_sign_index,
             planet_signs=varga.planet_signs,
