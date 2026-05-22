@@ -10,6 +10,7 @@ def build_phase_a_prompt(
     vitality: dict,
     quality_metrics: dict,
     n_mount_crops: int,
+    capture_roles: list[str] | None = None,
 ) -> str:
     hm  = hand_metrics or {}
     vit = vitality or {}
@@ -25,6 +26,18 @@ def build_phase_a_prompt(
         f"- Image quality: blur={qm.get('blur_score', '?')}, "
         f"exposure={qm.get('mean_v', '?')}, resolution={qm.get('resolution', '?')}\n"
     )
+    supplemental_roles = [role for role in (capture_roles or []) if role != "dominant_full"]
+    if supplemental_roles:
+        role_list = ", ".join(supplemental_roles)
+        supplemental_line = (
+            f"5. OPTIONAL CAPTURE VIEWS — role-labelled extra photos: {role_list}. "
+            "Use each only for features its role can reveal.\n"
+        )
+    else:
+        supplemental_line = (
+            "5. OPTIONAL CAPTURE VIEWS — none supplied. Keep side-edge and flex details "
+            "not_assessable unless FULL PALM itself genuinely shows them.\n"
+        )
 
     return f"""Be conservative. When uncertain between two readings, prefer the safer one and say so. NEVER fabricate or guess features — every claim must come from the measured geometry hints or what you observe directly in the photo.
 
@@ -35,6 +48,7 @@ You are an expert Vedic palmist trained in classical Samudrika Shastra. Analyze 
 2. {n_mount_crops} MOUNT CROPS — close-ups of Jupiter, Saturn, Sun, Mercury, Venus, Mars, Luna
 3. REFERENCE 1 (mounts/gunas) — dual hand showing mounts & Sattva/Rajas/Tamas distribution
 4. REFERENCE 2 (line structures) — grid of 25 boxes (A to Y) showing line shapes, chains, island loops, and break gaps
+{supplemental_line}
 
 ═══ MEASURED GEOMETRY HINTS ═══
 {math_signals}
@@ -49,6 +63,7 @@ CRITICAL CONSERVATIVE VEDIC SCAN ORDERS:
 4. LINE QUALITY & STENCILS: Cross-reference the user's hand lines against REFERENCE 2's grid of formations. In the line's "path" description, explicitly note any clear structural properties or defects identified (e.g. chained like box K, island loops like box L, overlapping break like box V, split branches like box D or O, wavy like box P, etc.).
 5. RELATIONSHIP LINES: Marriage/relationship lines sit on the side edge below Mercury. In a front-facing palm photo, mark them "not_assessable" unless that side edge is clearly visible and sharply focused.
 6. THUMB FLEXIBILITY: A neutral open-palm photo does not prove thumb flexibility. Mark "flexibility_estimate" as "not_assessable" unless the photo clearly shows the thumb being bent backward under pressure.
+7. CAPTURE GUIDANCE: Do not demand extra photos for a strong general reading if the major lines and whole-hand architecture are readable. Recommend an optional close-up or side view only when it would unlock a specific detail. Set "general_reading_ready" to false only when the supplied capture set cannot support a responsible overall reading.
 
 For each MOUNT CROP, judge only visible fullness and clear marks (cross, star, triangle, square, island, grille, fish). A single frontal photo cannot prove 3D elevation from lighting or shadows alone, so use "not_assessable" when fullness is uncertain. Use "no notable marks" if you don't see clear marks — don't report skin texture or shadows.
 
@@ -94,7 +109,14 @@ Output ONLY this JSON wrapped in ```json``` fences:
     "tip_shape": "conic|square|spatulate|not_assessable",
     "flexibility_estimate": "stiff|firm|flexible|not_assessable"
   }},
-  "vitality_visual_class": "Robust|Balanced|Subdued|Cool|not_assessable"
+  "vitality_visual_class": "Robust|Balanced|Subdued|Cool|not_assessable",
+  "capture_guidance": {{
+    "general_reading_ready": true,
+    "required_for_general": [],
+    "optional_for_detail": [
+      {{ "role": "dominant_line_closeup", "reason": "brief note", "unlocks": "brief detail" }}
+    ]
+  }}
 }}
 ```"""
 

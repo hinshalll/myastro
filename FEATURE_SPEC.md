@@ -14,7 +14,7 @@ features/                       ← ALL user-visible features. One folder each.
   kundli/                       (Free in-app chart + Premium PDF)
   numerology/                   (Western + Vedic + cross-validate)
   oracle/                       (6 sub-features: deep_analysis, matchmaking, marriage, gochara, compare, prashna)
-  palmistry/                    (Single-call VLM palm reading)
+  palmistry/                    (AI-first multi-capture VLM palm reading)
   face_reading/                 (Single-call VLM face reading; Face Mesh; optional kundli)
   tarot/                        (Three-Card, Yes/No, Celtic Cross, Birth Card)
   vault/                        (Saved profiles CRUD + import/export)
@@ -145,17 +145,18 @@ features/<feature>/
 
 ### 8. palmistry — `features/palmistry/`
 - Default profile OPTIONAL (cosmic Kundli alignment via checkbox in UI / optional in API). Premium Palm PDF generator (in `shared/pdf/palm_pdf.py`) has been updated to conditionally render cover subtitles ("A cosmic reading..." vs "A sacred reading...") and suppress planetary alignment notes when `used_kundli` is `False`.
-- Pipeline: EXIF orient → quality check → MediaPipe landmarks → 7 rotation-invariant mount crops (calculated via Euclidean distance) → vitality (HSV) → hand metrics.
+- Pipeline: dominant full-palm photo (plus optional role-labelled mobile detail captures) → EXIF orient → quality check → MediaPipe landmarks → 7 rotation-invariant mount crops (calculated via Euclidean distance) → palm tone (HSV) → hand metrics. Python remains a guardrail/crop layer; AI remains the visual palmist.
 - Two-Pass Visual VLM Pipeline with VLM Self-Correction & Calibration:
-  - Pass 1: Cheap visual scan to extract strict structured Phase A JSON observations of lines, mounts, and marks. Visual calibration is enhanced by passing two Supabase-hosted diagrams alongside the hand images: `book_image_18.jpg` as `REFERENCE 1` (mounts/gunas) and `reference_grid_3.jpg` as `REFERENCE 2` (a 25-box template grid detailing line defects like islands, breaks, and chains) to serve as a physical calibration stencil.
+  - Pass 1: Cheap visual scan to extract strict structured Phase A JSON observations of lines, mounts, marks, and `capture_guidance`. Visual calibration is enhanced by passing two Supabase-hosted diagrams alongside the hand images: `book_image_18.jpg` as `REFERENCE 1` (mounts/gunas) and `reference_grid_3.jpg` as `REFERENCE 2` (a 25-box template grid detailing line defects like islands, breaks, and chains) to serve as a physical calibration stencil.
   - VLM Visual Self-Correction: Integrates a 100% automated visual scan check at the end of Pass 1. The VLM evaluates finger proportions (`"index_vs_ring_length"`) and palm color tone (`"vitality_visual_class"`), dynamically overriding noisy MediaPipe physical landmark ratios and HSV skin color heuristics.
   - State & UI Synchronization: Write VLM-corrected hand metrics (e.g. ring finger taller, setting ruling planet to Sun) and vitality (e.g. Subdued) back into Streamlit's session state (`st.session_state.palm_analysis`) before the final rerun. This forces the UI signals list and ruling planet card to update instantly to match the visual scan and Phase B reading text.
   - Pass 2: Local & free context gathering (Vedic planets, nakshatras, skin dosha mapping from HSV vitality) + targeted Qdrant semantic search of the actual lines/marks confirmed by Phase A. Blind pre-scan retrieval is not used.
-  - Pass 3: Detailed Phase B markdown reading grounded in pre-confirmed visual findings (with calibration). Invalid Phase A JSON or a poor Phase A photo judgment skips Phase B to avoid a fluent but weakly grounded second AI call.
+  - Pass 3: Detailed Phase B markdown reading grounded in pre-confirmed visual findings (with calibration). Invalid Phase A JSON, a poor Phase A photo judgment, or `general_reading_ready = False` skips Phase B to avoid a fluent but weakly grounded second AI call.
 - Planet Dominance Refinement: Middle finger (Saturn) is physically always the longest finger in human hands. Excluded Saturn from dominant finger relative height comparisons, letting active personality/character traits (Jupiter/index, Sun/ring, Mercury/little) correctly dictate the ruling planet.
 - Conservative front-photo limits: Phase A must mark marriage/relationship lines `not_assessable` unless the Mercury side edge is clearly visible, must not infer thumb flexibility from a neutral open-palm pose, and must treat mount fullness conservatively because one flat image cannot prove 3D elevation from lighting alone.
 - Two knowledge sources stacked: `knowledge_lookup.py` (static JSON: planet/nakshatra/dosha) + `qdrant_search.py` (semantic palmistry.md).
 - AI cost: ~₹0.35 per reading (extremely cheap, well below the ₹1 target cap).
+- FastAPI mobile contract: `POST /palmistry/read` keeps legacy single `image_base64` support and also accepts `captures` with one `dominant_full` plus optional `dominant_line_closeup`, `mercury_edge`, `thumb_flex`, or `non_dominant_full`. `POST /palmistry/scan` returns the one-call visual observations and capture guidance only.
 
 
 ### 8b. face_reading — `features/face_reading/`
@@ -212,6 +213,7 @@ features/<feature>/
 | 25 | Supabase images not fully leveraged for VLM physical line calibration. | ✅ Fixed — fetched, cached, and passed `reference_grid_3.jpg` (REFERENCE 2) for visual calibration in Pass 1 VLM prompt. |
 | 26 | Noise in MediaPipe landmarks and HSV color space caused incorrect finger proportions, ruling planet calculation, and skin vitality, creating UI-reading mismatches. | ✅ Fixed — excluded Saturn from the dominant comparative check so active traits (Jupiter, Sun, Mercury) determine the ruling planet. Implemented a 100% automated VLM Visual Self-Correction override in Pass 1 to correct noisy MediaPipe index-vs-ring ratios and skin tone HSV metrics, and synchronized these corrections back to `st.session_state.palm_analysis` to instantly update UI widgets. |
 | 27 | Palmistry still accepted blind pre-scan retrieval and overconfident one-photo claims. | ✅ Fixed — all Vedic/Qdrant context retrieval now waits for valid Phase A observations; unusable visual scans skip the second AI call; Phase A no longer invents Kundli agreement, thumb flexibility, relationship-line counts, or mount fullness beyond what the photo supports. |
+| 28 | Smartphone backend contract only accepted one palm image and could not ask for material extra evidence smoothly. | ✅ Fixed — palmistry now accepts role-labelled optional captures, exposes a scan-only FastAPI route, and returns AI capture guidance in Phase A while preserving the old single-photo `/read` contract. |
 
 ---
 
@@ -226,7 +228,7 @@ features/<feature>/
   - `/consultation/*` (1)  ask
   - `/dashboard/*`    (2)  data, decide
   - `/kundli/*`       (3)  compute, free-reading, premium-pdf
-  - `/palmistry/*`    (1)  read
+  - `/palmistry/*`    (2)  scan, read
   - `/face_reading/*` (1)  read (photo; optional kundli cross-ref)
   - `/vault/*`        (4)  CRUD + default
   - `/oracle/*`       (6)  deep-analysis, matchmaking, marriage, gochara, compare, prashna

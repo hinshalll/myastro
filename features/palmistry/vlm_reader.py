@@ -214,6 +214,13 @@ def _phase_a_has_observations(phase_a: dict) -> bool:
 
 # Mount order for consistent input to the VLM
 _MOUNT_ORDER = ["Jupiter", "Saturn", "Sun", "Mercury", "Venus", "Mars", "Luna"]
+_CAPTURE_LABELS = {
+    "dominant_line_closeup": "CAP LINE CLOSEUP",
+    "mercury_edge": "CAP MERCURY EDGE",
+    "thumb_flex": "CAP THUMB FLEX",
+    "non_dominant_full": "CAP NON-DOM FULL",
+}
+_CAPTURE_ROLES = {"dominant_full", *_CAPTURE_LABELS.keys()}
 
 
 def _build_rich_palm_data(phase_a: dict, hand_metrics: dict, vitality: dict) -> tuple[dict, dict]:
@@ -326,85 +333,64 @@ def _build_rich_palm_data(phase_a: dict, hand_metrics: dict, vitality: dict) -> 
     return rich_palm, elevations
 
 
-def read_palm(
-    enhanced_palm,
-    mount_crops: dict,
-    hand_metrics: dict,
-    vitality: dict,
-    quality_metrics: dict,
-    dossier: str = "",
-    knowledge_context: str = "",
-    qdrant_context: str = "",
-) -> dict:
-    """
-    Main entry point. Performs a two-pass VLM orchestration.
-    1. Pass 1: Cheap visual-only VLM call to get Phase A JSON.
-    2. Local context lookup (RAG + static Vedic) using the verified Phase A observations.
-    3. Pass 3: Detailed VLM call combining image inputs with all computed contexts for a grounded reading.
-    """
-    # Refuse to call VLM if image is unusable — saves an API call
-    if not quality_metrics.get("is_usable", True):
-        return {
-            "phase_a": {"image_quality": "poor", "image_issues": ", ".join(quality_metrics.get("issues_list", []))},
-            "phase_b": "This photo isn't usable for a confident reading. Please re-take the photo with better lighting, focus, and the palm filling most of the frame.",
-            "raw": "",
-            "error": "",
-        }
+def _capture_guidance(phase_a: dict) -> dict:
+    """Return a stable capture-guidance block for API and mobile clients."""
+    raw = phase_a.get("capture_guidance") if isinstance(phase_a, dict) else None
+    if not isinstance(raw, dict):
+        raw = {}
+    ready = raw.get("general_reading_ready")
+    required = [
+        role for role in raw.get("required_for_general", [])
+        if role in _CAPTURE_ROLES
+    ] if isinstance(raw.get("required_for_general"), list) else []
+    optional = []
+    for item in raw.get("optional_for_detail", []):
+        if not isinstance(item, dict) or item.get("role") not in _CAPTURE_ROLES:
+            continue
+        optional.append({
+            "role": item["role"],
+            "reason": str(item.get("reason") or ""),
+            "unlocks": str(item.get("unlocks") or ""),
+        })
+    return {
+        "general_reading_ready": ready if isinstance(ready, bool) else True,
+        "required_for_general": required,
+        "optional_for_detail": optional,
+    }
 
-    # Build labelled image inputs
+
+def _build_image_inputs(enhanced_palm, mount_crops: dict, supplemental_captures=None):
+    """Build labelled VLM inputs; supplemental captures stay AI-owned evidence."""
     main_palm = _label_image(_arr_to_pil(enhanced_palm), "FULL PALM")
-
     mount_imgs = []
     for name in _MOUNT_ORDER:
         if name in mount_crops:
             mount_imgs.append(_label_image(_arr_to_pil(mount_crops[name]), f"MT {name}"))
 
+    capture_imgs = []
+    capture_roles = ["dominant_full"]
+    for capture in supplemental_captures or []:
+        if not isinstance(capture, dict):
+            continue
+        role = capture.get("role")
+        image = capture.get("image")
+        if role not in _CAPTURE_LABELS or image is None:
+            continue
+        capture_imgs.append(_label_image(_arr_to_pil(image), _CAPTURE_LABELS[role]))
+        capture_roles.append(role)
+
+    images = [main_palm] + mount_imgs + capture_imgs
     ref_mounts = _fetch_mounts_ref()
     ref_lines = _fetch_lines_ref()
-
-    images = [main_palm] + mount_imgs
     if ref_mounts is not None:
         images.append(ref_mounts)
     if ref_lines is not None:
         images.append(ref_lines)
+    return images, mount_imgs, capture_roles
 
-    # ── Pass 1: Visual Observation Detection ──
-    prompt_a = build_phase_a_prompt(
-        hand_metrics=hand_metrics,
-        vitality=vitality,
-        quality_metrics=quality_metrics,
-        n_mount_crops=len(mount_imgs),
-    )
 
-    try:
-        model = get_ai_model_by_name(MODEL_NAME)
-        response_a = model.generate_content(images + [prompt_a])
-        text_a = response_a.text or ""
-    except Exception as e:
-        return {
-            "phase_a": {},
-            "phase_b": "",
-            "raw":     "",
-            "error":   f"VLM Pass A call failed: {type(e).__name__}: {e}",
-        }
-
-    phase_a = _extract_json(text_a)
-    if not _phase_a_has_observations(phase_a):
-        return {
-            "phase_a": phase_a if isinstance(phase_a, dict) else {},
-            "phase_b": "",
-            "raw": text_a,
-            "error": "The visual palm scan did not return usable observations. Try the reading again with a clear full-palm photo.",
-        }
-    if phase_a.get("image_quality") == "poor":
-        return {
-            "phase_a": phase_a,
-            "phase_b": "This photo is not clear enough for a confident reading. Please retake it with the full palm in focus and evenly lit.",
-            "raw": text_a,
-            "error": "",
-        }
-
-    # ── VLM Visual Self-Correction ──
+def _apply_visual_self_correction(phase_a: dict, hand_metrics: dict, vitality: dict):
+    """Let visual judgments correct a few fragile one-photo math hints."""
     vlm_fingers = phase_a.get("fingers", {})
     if isinstance(vlm_fingers, dict):
         vlm_ratio = vlm_fingers.get("index_vs_ring_length")
@@ -433,6 +419,159 @@ def read_palm(
             vitality["note"] = "Even palm tone in this photo"
         elif vlm_vit == "Cool":
             vitality["note"] = "Cooler palm tone in this photo"
+
+
+def _scan_palm_internal(
+    enhanced_palm,
+    mount_crops: dict,
+    hand_metrics: dict,
+    vitality: dict,
+    quality_metrics: dict,
+    supplemental_captures=None,
+) -> dict:
+    """Run the AI visual scan and keep internals reusable for Phase B."""
+    if not quality_metrics.get("is_usable", True):
+        return {
+            "phase_a": {"image_quality": "poor", "image_issues": ", ".join(quality_metrics.get("issues_list", []))},
+            "capture_guidance": {
+                "general_reading_ready": False,
+                "required_for_general": ["dominant_full"],
+                "optional_for_detail": [],
+            },
+            "hand_metrics": hand_metrics,
+            "vitality": vitality,
+            "raw": "",
+            "error": "",
+        }
+
+    images, mount_imgs, capture_roles = _build_image_inputs(
+        enhanced_palm, mount_crops, supplemental_captures,
+    )
+    prompt_a = build_phase_a_prompt(
+        hand_metrics=hand_metrics,
+        vitality=vitality,
+        quality_metrics=quality_metrics,
+        n_mount_crops=len(mount_imgs),
+        capture_roles=capture_roles,
+    )
+
+    try:
+        model = get_ai_model_by_name(MODEL_NAME)
+        response_a = model.generate_content(images + [prompt_a])
+        text_a = response_a.text or ""
+    except Exception as e:
+        return {
+            "phase_a": {},
+            "capture_guidance": {
+                "general_reading_ready": False,
+                "required_for_general": [],
+                "optional_for_detail": [],
+            },
+            "hand_metrics": hand_metrics,
+            "vitality": vitality,
+            "raw":     "",
+            "error":   f"VLM Pass A call failed: {type(e).__name__}: {e}",
+        }
+
+    phase_a = _extract_json(text_a)
+    if not _phase_a_has_observations(phase_a):
+        return {
+            "phase_a": phase_a if isinstance(phase_a, dict) else {},
+            "capture_guidance": {
+                "general_reading_ready": False,
+                "required_for_general": [],
+                "optional_for_detail": [],
+            },
+            "hand_metrics": hand_metrics,
+            "vitality": vitality,
+            "raw": text_a,
+            "error": "The visual palm scan did not return usable observations. Try the reading again with a clear full-palm photo.",
+        }
+
+    _apply_visual_self_correction(phase_a, hand_metrics, vitality)
+    return {
+        "phase_a": phase_a,
+        "capture_guidance": _capture_guidance(phase_a),
+        "hand_metrics": hand_metrics,
+        "vitality": vitality,
+        "raw": text_a,
+        "error": "",
+        "_images": images,
+        "_model": model,
+    }
+
+
+def scan_palm(
+    enhanced_palm,
+    mount_crops: dict,
+    hand_metrics: dict,
+    vitality: dict,
+    quality_metrics: dict,
+    supplemental_captures=None,
+) -> dict:
+    """Public one-call AI visual scan for mobile capture guidance."""
+    scanned = _scan_palm_internal(
+        enhanced_palm=enhanced_palm,
+        mount_crops=mount_crops,
+        hand_metrics=hand_metrics,
+        vitality=vitality,
+        quality_metrics=quality_metrics,
+        supplemental_captures=supplemental_captures,
+    )
+    return {k: v for k, v in scanned.items() if not k.startswith("_")}
+
+
+def read_palm(
+    enhanced_palm,
+    mount_crops: dict,
+    hand_metrics: dict,
+    vitality: dict,
+    quality_metrics: dict,
+    dossier: str = "",
+    knowledge_context: str = "",
+    qdrant_context: str = "",
+    supplemental_captures=None,
+) -> dict:
+    """
+    Perform an AI-led visual scan, then spend Phase B only for a ready reading.
+    """
+    scanned = _scan_palm_internal(
+        enhanced_palm=enhanced_palm,
+        mount_crops=mount_crops,
+        hand_metrics=hand_metrics,
+        vitality=vitality,
+        quality_metrics=quality_metrics,
+        supplemental_captures=supplemental_captures,
+    )
+    if scanned.get("error"):
+        return {
+            "phase_a": scanned.get("phase_a") or {},
+            "phase_b": "",
+            "capture_guidance": scanned.get("capture_guidance") or {},
+            "raw": scanned.get("raw") or "",
+            "error": scanned["error"],
+        }
+
+    phase_a = scanned.get("phase_a") or {}
+    hand_metrics = scanned.get("hand_metrics") or hand_metrics
+    vitality = scanned.get("vitality") or vitality
+    capture_guidance = scanned.get("capture_guidance") or _capture_guidance(phase_a)
+    if phase_a.get("image_quality") == "poor":
+        return {
+            "phase_a": phase_a,
+            "phase_b": "This photo is not clear enough for a confident reading. Please retake it with the full palm in focus and evenly lit.",
+            "capture_guidance": capture_guidance,
+            "raw": scanned.get("raw") or "",
+            "error": "",
+        }
+    if capture_guidance.get("general_reading_ready") is False:
+        return {
+            "phase_a": phase_a,
+            "phase_b": "",
+            "capture_guidance": capture_guidance,
+            "raw": scanned.get("raw") or "",
+            "error": "The palm scan needs another clear view before a responsible general reading.",
+        }
 
     # ── Pass 2: Local & Free Context Gathering ──
     # Construct compatible palm data structures for local lookups
@@ -478,13 +617,14 @@ def read_palm(
     )
 
     try:
-        response_b = model.generate_content(images + [prompt_b])
+        response_b = scanned["_model"].generate_content(scanned["_images"] + [prompt_b])
         text_b = response_b.text or ""
     except Exception as e:
         return {
             "phase_a": phase_a,
             "phase_b": "",
-            "raw":     text_a,
+            "capture_guidance": capture_guidance,
+            "raw": scanned.get("raw") or "",
             "error":   f"VLM Pass B call failed: {type(e).__name__}: {e}",
         }
 
@@ -493,5 +633,6 @@ def read_palm(
     parsed["phase_a"] = phase_a
     parsed["hand_metrics"] = hand_metrics
     parsed["vitality"] = vitality
+    parsed["capture_guidance"] = capture_guidance
     parsed["error"] = ""
     return parsed

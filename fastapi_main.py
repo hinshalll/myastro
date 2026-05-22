@@ -41,6 +41,7 @@ URL map
     /kundli/compute              POST  features/kundli/api.py
     /kundli/free-reading         POST
     /kundli/premium-pdf          POST
+    /palmistry/scan              POST  features/palmistry/api.py
     /palmistry/read              POST  features/palmistry/api.py
     /face_reading/read           POST  features/face_reading/api.py
     /vault/{user_id}             GET/POST/PUT/DELETE  features/vault/api.py
@@ -143,7 +144,7 @@ _FEATURES = [
     ("consultation", "features.consultation.api"),
     ("dashboard",    "features.dashboard.api"),
     ("kundli",       "features.kundli.api"),
-    ("palmistry",    "features.palmistry.api"),
+    ("palmistry",    "features.palmistry.api"),     # /scan, /read (role-labelled palm captures)
     ("face_reading", "features.face_reading.api"),  # /read (photo; optional kundli cross-ref)
     ("vault",        "features.vault.api"),
     ("oracle",       "features.oracle.api"),   # /deep-analysis, /matchmaking, /marriage, /gochara, /compare, /prashna

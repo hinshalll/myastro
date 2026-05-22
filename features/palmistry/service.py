@@ -6,7 +6,7 @@ qdrant_search) live here in the feature folder.
 """
 
 from shared.astro.palm_vision import analyze_palm
-from features.palmistry.vlm_reader import read_palm
+from features.palmistry.vlm_reader import read_palm, scan_palm
 
 try:
     from features.palmistry.knowledge_lookup import get_palm_context
@@ -19,4 +19,4 @@ except Exception:
     query_palmistry = None  # type: ignore
 
 
-__all__ = ["analyze_palm", "read_palm", "get_palm_context", "query_palmistry"]
+__all__ = ["analyze_palm", "scan_palm", "read_palm", "get_palm_context", "query_palmistry"]

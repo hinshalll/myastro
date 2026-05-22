@@ -11,8 +11,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from features.palmistry.api import read as read_api
-from features.palmistry.schemas import PalmReadingRequest
+from features.palmistry.api import read as read_api, scan as scan_api
+from features.palmistry.schemas import PalmCapture, PalmReadingRequest, PalmScanRequest
 from features.palmistry import vlm_reader
 from features.palmistry.prompts import build_phase_a_prompt
 
@@ -36,6 +36,7 @@ def _smoke_phase_a_prompt_limits():
     assert "kundli_palm_agreement" not in prompt
     assert "Marriage/relationship lines sit on the side edge" in prompt
     assert "neutral open-palm photo does not prove thumb flexibility" in prompt
+    assert '"capture_guidance"' in prompt
 
 
 def _smoke_invalid_scan_stops_before_phase_b():
@@ -79,8 +80,25 @@ def _smoke_api_rejects_non_hand_before_ai():
     assert "No palm landmarks found" in result.error
 
 
+def _smoke_scan_accepts_role_labelled_captures():
+    image_bytes = io.BytesIO()
+    Image.new("RGB", (640, 640), color=(120, 120, 120)).save(image_bytes, format="JPEG")
+    encoded = base64.b64encode(image_bytes.getvalue()).decode("ascii")
+    request = PalmScanRequest(captures=[
+        PalmCapture(role="dominant_full", image_base64=encoded),
+        PalmCapture(role="dominant_line_closeup", image_base64=encoded),
+    ])
+
+    result = scan_api(request)
+
+    assert result.capture_guidance["general_reading_ready"] is False
+    assert result.capture_guidance["required_for_general"] == ["dominant_full"]
+    assert "No palm landmarks found" in result.error
+
+
 if __name__ == "__main__":
     _smoke_phase_a_prompt_limits()
     _smoke_invalid_scan_stops_before_phase_b()
     _smoke_api_rejects_non_hand_before_ai()
+    _smoke_scan_accepts_role_labelled_captures()
     print("palmistry accuracy smoke checks passed")
