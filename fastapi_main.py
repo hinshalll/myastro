@@ -25,7 +25,9 @@ Deploy on Render
 URL map
 -------
     /                            health check
-    /tarot/three-card            POST  features/tarot/api.py
+    /tarot/draw-session          POST  features/tarot/api.py  (picker step 1)
+    /tarot/reveal                POST                         (picker step 2)
+    /tarot/three-card            POST   (legacy auto-draw, kept for compat)
     /tarot/yes-no                POST
     /tarot/celtic-cross          POST
     /tarot/birth-card            POST

@@ -41,6 +41,8 @@ __init__.py / README.md / prompts.py / service.py / schemas.py / view.py / api.p
 
 To edit one feature → open its folder, edit those files. To add one → copy a folder.
 
+(A feature may add its own assets too — e.g. `features/tarot/picker/` holds the swipe-picker custom component.)
+
 ## Running locally
 
 ### Streamlit (the web app you can see)
@@ -50,7 +52,7 @@ pip install -r requirements.txt
 streamlit run ui_streamlit/app.py
 ```
 
-Needs `.streamlit/secrets.toml` with `GEMINI_API_KEY` (+ optional `QDRANT_URL` / `QDRANT_API_KEY`).
+Needs `.streamlit/secrets.toml` with `GEMINI_API_KEY` (+ optional `QDRANT_URL` / `QDRANT_API_KEY`, and optional `TAROT_DRAW_SECRET` to sign tarot draw tokens in production).
 
 ### FastAPI (the backend for the mobile app + new website)
 
