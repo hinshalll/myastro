@@ -72,9 +72,27 @@ features/<feature>/
 
 ### 1. tarot — `features/tarot/`
 - 4 modes: Three-Card / Yes-No / Celtic Cross (10) / Birth Card
-- Service: `draw_three`, `draw_one`, `draw_celtic_cross`, `get_birth_card`
-- Constants: `FULL_TAROT_DECK`, `CELTIC_CROSS_POSITIONS`, `TAROT_BASE`
-- RAG: `tguide.md`, k=6–10
+- **78-card reading deck.** Three-Card / Yes-No / Celtic Cross draw from the full
+  78-card deck (`FULL_78_DECK` = 22 Major + 56 Minor). Birth Card and the
+  Dashboard daily card stay on the 22-card `FULL_TAROT_DECK` (Major only).
+- **Interactive picker (the user picks their own cards).** Two-step, stateless,
+  React-Native-ready flow — the backend is the single source of truth:
+  1. `create_draw_session(spread, include_reversed)` → shuffles a hidden deck,
+     fixes each card's Upright/Reversed state, and returns an opaque **signed
+     token** (HMAC-SHA256, `TAROT_DRAW_SECRET` env/secrets, 30-min expiry) plus
+     `pick_count`, `deck_size` (78) and the card-back URL. No card identities
+     are exposed to the client.
+  2. `reveal_session(token, picks)` → maps the tapped hidden-deck positions
+     (in tap order = spread order) back to real cards + states. Validates pick
+     count, range, duplicates, spread match, signature and expiry.
+- Service: `create_draw_session`, `reveal_session`, `TarotDrawError` (new);
+  `draw_three`, `draw_one`, `draw_celtic_cross` (legacy auto-draw, now 78-card,
+  used by the compatibility API routes); `get_birth_card`
+- Constants: `FULL_TAROT_DECK` (22), `MINOR_ARCANA` (56), `FULL_78_DECK` (78),
+  `CELTIC_CROSS_POSITIONS`, `TAROT_BASE`, `card_image_url`, `card_back_url`
+- API: `POST /tarot/draw-session` + `POST /tarot/reveal` (recommended path for
+  mobile); legacy `/three-card`, `/yes-no`, `/celtic-cross`, `/birth-card` kept
+- RAG: `tguide.md`, k=6–10 (covers all 78 cards, Major + Minor)
 - AI cost: ~₹0.05 per reading
 - Cryptographic randomization via `secrets.SystemRandom`
 
@@ -169,8 +187,9 @@ features/<feature>/
 ## Future work (only the mobile/website builds remain)
 
 - Build the Flutter mobile app + Next.js website that consume `fastapi_main.py`.
-  Backend is ready — all 26 endpoints exposed across 9 features:
-  - `/tarot/*`        (4)  three-card, yes-no, celtic-cross, birth-card
+  Backend is ready — endpoints exposed across 9 features:
+  - `/tarot/*`        (6)  draw-session, reveal (interactive picker),
+                            three-card, yes-no, celtic-cross, birth-card
   - `/horoscopes/*`   (2)  western, vedic
   - `/numerology/*`   (2)  full-report, cycles
   - `/consultation/*` (1)  ask

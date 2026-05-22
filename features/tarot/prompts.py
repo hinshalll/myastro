@@ -23,6 +23,11 @@ _THREE_CARD_MODES = {
 }
 
 
+def three_card_roles(mode: str = "General Guidance") -> list[str]:
+    """The three position labels for a given sub-mode (e.g. 'Path A')."""
+    return _THREE_CARD_MODES.get(mode, _THREE_CARD_MODES["General Guidance"])["roles"]
+
+
 _CONSERVATIVE_PREFIX = (
     "Be conservative. When uncertain between two readings, prefer the safer one "
     "and say you're uncertain. Never fabricate card meanings — if the passages "

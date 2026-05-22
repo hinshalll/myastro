@@ -9,27 +9,42 @@ To wire up later, add this in fastapi_main.py:
     app.include_router(tarot_router, prefix="/tarot", tags=["tarot"])
 """
 
+from features.tarot.constants import CELTIC_CROSS_POSITIONS
 from features.tarot.service import (
     draw_three, draw_one, draw_celtic_cross, get_birth_card,
+    create_draw_session, reveal_session, TarotDrawError,
 )
 from features.tarot.prompts import (
     build_three_card_prompt, build_yes_no_prompt,
     build_celtic_cross_prompt, build_birth_card_prompt,
+    three_card_roles,
 )
 from features.tarot.schemas import (
     ThreeCardRequest, ThreeCardResponse,
     YesNoRequest, YesNoResponse,
     CelticCrossRequest, CelticCrossResponse,
     BirthCardRequest, BirthCardResponse,
+    DrawSessionRequest, DrawSessionResponse,
+    RevealRequest, RevealResponse,
 )
 
 
 try:
-    from fastapi import APIRouter
+    from fastapi import APIRouter, HTTPException
     router = APIRouter()
 except ImportError:
     # FastAPI not installed in Streamlit-only environments — skip route registration.
     router = None
+    HTTPException = None
+
+
+def _position_labels(spread: str, mode: str, n: int) -> list[str]:
+    """Human-readable label for each picked card, matching the spread."""
+    if spread == "three":
+        return three_card_roles(mode)
+    if spread == "celtic":
+        return CELTIC_CROSS_POSITIONS[:n]
+    return ["The Answer"]  # yes_no
 
 
 def _generate(prompt: str) -> str:
@@ -79,3 +94,41 @@ if router is not None:
         ctx = _rag(f"{card} birth card tarot soul archetype lifelong meaning", k=6)
         reading = _generate(build_birth_card_prompt(card, req.dob, knowledge_context=ctx))
         return BirthCardResponse(card=card, reading=reading)
+
+    # ── Interactive picker: shuffle a hidden deck, then reveal the user's picks ─
+    # The recommended path for the future React Native / Expo app.
+
+    @router.post("/draw-session", response_model=DrawSessionResponse)
+    def draw_session(req: DrawSessionRequest) -> DrawSessionResponse:
+        try:
+            return DrawSessionResponse(**create_draw_session(req.spread, req.include_reversed))
+        except TarotDrawError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @router.post("/reveal", response_model=RevealResponse)
+    def reveal(req: RevealRequest) -> RevealResponse:
+        try:
+            drawn = reveal_session(req.token, req.picks)
+        except TarotDrawError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        spread = drawn["spread"]
+        cards, states = drawn["cards"], drawn["states"]
+        labels = _position_labels(spread, req.mode, len(cards))
+
+        if spread == "three":
+            ctx = _rag(f"{req.question} {' '.join(cards)} {' '.join(states)} tarot meaning", k=8)
+            reading = _generate(build_three_card_prompt(
+                req.question, cards, states, mode=req.mode, knowledge_context=ctx))
+        elif spread == "celtic":
+            q = req.question or "General life overview"
+            ctx = _rag(f"{q} {' '.join(cards)} celtic cross tarot spread", k=10)
+            reading = _generate(build_celtic_cross_prompt(q, cards, states, knowledge_context=ctx))
+        else:  # yes_no
+            ctx = _rag(f"{req.question} {cards[0]} {states[0]} tarot meaning upright reversed", k=6)
+            reading = _generate(build_yes_no_prompt(req.question, cards[0], states[0], knowledge_context=ctx))
+
+        return RevealResponse(
+            spread=spread, cards=cards, states=states, positions=labels,
+            image_urls=drawn["image_urls"], reading=reading,
+        )
