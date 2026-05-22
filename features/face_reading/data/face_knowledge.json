@@ -1,0 +1,323 @@
+{
+  "meta": {
+    "title": "Vedic Face Reading (Mukha Samudrika) Knowledge Base",
+    "version": 1,
+    "sources": [
+      "Saral Samudrik Shastra (Hindi) — classical Samudrika Shastra face/body reading",
+      "Face Reading - Amazing Secrets, Dharmender Kumar Bansal 'Patwari' — kundli-based face mapping",
+      "Brihat Samhita physiognomy tradition + Pancha Bhoota element mappings (research)"
+    ],
+    "disclaimer": "Traditional Vedic self-reflection content. Not medical, psychological, hiring, or identity advice. Frame results as cultural insight, never as diagnosis or fact about a person.",
+    "modes": {
+      "photo": "Works for ANY face (self, friend, a photo). Uses face_shapes + three_zones + features + moles. No birth chart needed.",
+      "kundli_linked": "OPTIONAL toggle, only when reading your OWN face with a saved birth chart. Adds the kundli_layer (houses / face_nakshatras / planet appearance / combos) and the face-vs-chart cross-reference."
+    },
+    "scope_note": "Deliberately EXCLUDES line-based reading (the source's 7 'forehead lines' / planetary rekha system and gait/walk reading). Those faint lines cannot be detected reliably from a single photo — the same accuracy problem as palm lines — so including them would add noise and hallucination. This base keeps only signals that are geometrically measurable (shapes, proportions) or discretely observable (moles, complexion), plus the chart-derived kundli layer."
+  },
+
+  "elements": {
+    "earth": {"sanskrit": "Prithvi", "face_shape": "square", "qualities": "stable, practical, grounded, enduring", "dosha_affinity": "kapha", "keywords": ["reliability", "stamina", "materiality", "patience"]},
+    "water": {"sanskrit": "Jala", "face_shape": "round", "qualities": "emotional, adaptable, nurturing, imaginative", "dosha_affinity": "kapha", "keywords": ["feeling", "comfort", "empathy", "fluidity"]},
+    "fire": {"sanskrit": "Agni", "face_shape": "tapering", "qualities": "driven, courageous, commanding, intense", "dosha_affinity": "pitta", "keywords": ["leadership", "ambition", "will", "transformation"]},
+    "air": {"sanskrit": "Vayu", "face_shape": "oval", "qualities": "intellectual, communicative, curious, balanced", "dosha_affinity": "vata", "keywords": ["thought", "movement", "ideas", "sociability"]},
+    "ether": {"sanskrit": "Akasha", "face_shape": "inverted_pot", "qualities": "spiritual, idealistic, expansive, unusual", "dosha_affinity": "vata", "keywords": ["vision", "solitude", "transcendence", "originality"]}
+  },
+
+  "face_shapes": {
+    "square": {
+      "sanskrit": "Vargakar Mukhakriti",
+      "element": "earth",
+      "geometric_signature": "Face width ≈ jaw width ≈ forehead width; face height ≈ width (aspect ~1.0); strong angular jaw.",
+      "traits": "Practical, grounded and reliable. Strong-willed, hardworking and persevering with good physical stamina. Values stability, security and tangible results; materially driven and dependable.",
+      "traits_female": "Steady, dependable and capable; manages responsibilities with endurance.",
+      "shadow": "Can be stubborn, rigid or overly materialistic when the earth element is excessive."
+    },
+    "round": {
+      "sanskrit": "Vrittakar Mukhakriti",
+      "element": "water",
+      "geometric_signature": "Face fits within a circle; full/fleshy smooth cheeks; soft jawline; body tends stout.",
+      "traits": "Imaginative, emotional and sensitive. Cheerful, friendly, generous and self-respecting. Prefers comfort and ease over hard toil; warm and people-oriented.",
+      "traits_female": "Aesthetic, devoted, affectionate and generous; emotionally expressive, somewhat changeable in mood.",
+      "shadow": "When water is excessive: avoids struggle, turns pessimistic, prone to low energy or ill health."
+    },
+    "tapering": {
+      "sanskrit": "Suryakar Mukhakriti",
+      "element": "fire",
+      "geometric_signature": "Broad forehead narrowing toward a smaller chin (inverted-bucket / heart-ish); top-heavy.",
+      "traits": "Healthy, courageous and intelligent. Far-sighted thinker, clear-spoken, proud and natural leader. Argumentative and persistent — does not back down in debate. Holds both constructive and forceful drives.",
+      "traits_female": "Independent, assertive and talkative; thrives more in career/politics than in purely domestic roles.",
+      "shadow": "When fire is excessive: quick to anger, domineering, can turn harsh or aggressive."
+    },
+    "oval": {
+      "sanskrit": "Andakar Mukhakriti",
+      "element": "air",
+      "geometric_signature": "Broad forehead, gently curved cheeks, balanced length-to-width (egg-like); refined eyes.",
+      "traits": "Pure-natured, courageous and optimistic. Balanced, measured speaker; endlessly curious for knowledge; a seeker of peace, love and beauty who walks a progressive, self-restrained path.",
+      "traits_female": "Even-tempered and pleasant; with a little effort makes a harmonious, supportive partner.",
+      "shadow": "Narrow-egg forehead → less intellectual development, playful/willful; if lower face dominates → irritable, short-tempered, evasive."
+    },
+    "inverted_pot": {
+      "sanskrit": "Ulte Ghade ke Saman Mukhakriti",
+      "element": "ether",
+      "geometric_signature": "Looks like an inverted pot on the neck — fuller upper/mid face tapering down; striking eyes.",
+      "traits": "Radiant presence with sharp, luminous eyes. Kind-hearted yet ambitious, self-respecting, idealistic and solitude-loving. Brilliant, spiritual and of unusual, original nature; rises to high positions and is drawn to socially beneficial work.",
+      "traits_female": "Dignified, principled and visionary; values independence and meaningful work.",
+      "shadow": "Excess ether can bring detachment, eccentricity or impractical idealism."
+    }
+  },
+
+  "three_zones": {
+    "note": "Divide the face into three horizontal regions. The most developed (tall + broad) region shows the dominant dimension of the nature, and classically maps to a life phase.",
+    "upper_forehead": {
+      "sanskrit": "Lalat",
+      "governs": "Mental, intellectual and sattvic (refined/spiritual) strength.",
+      "life_phase": "Early life, ancestry, fortune (1st & 9th house themes).",
+      "dominant_meaning": "Strong intellect, reflection, ideals and good fortune; thinker more than doer."
+    },
+    "mid_nose": {
+      "sanskrit": "Nasika",
+      "governs": "Physical vigour, practical drive and political/worldly ambition.",
+      "life_phase": "Middle life, status, action (10th house themes).",
+      "dominant_meaning": "Assertive, practical, ambitious and willful; pursues power and results."
+    },
+    "lower_mouth": {
+      "sanskrit": "Mukh",
+      "governs": "Biological, instinctual and vital (sensual/appetite) tendencies.",
+      "life_phase": "Later life, relationships, appetites (7th house themes).",
+      "dominant_meaning": "Earthy, sensual, relationship-driven; strong appetites and survival instinct."
+    },
+    "dominance_rules": [
+      {"if": "forehead + nose tall and broad", "then": "Intelligent, gentle, thoughtful, practical, clever and successful."},
+      {"if": "mouth region broadest/dominant", "then": "Shrewd at reading situations but more self-interested; may accept unjust support to get ahead."},
+      {"if": "nose region more developed than mouth", "then": "Sensual, passionate and unrestrained; can be impulsive or forceful."},
+      {"if": "forehead/nose more developed than mouth", "then": "Quick, clear-spoken, willful, somewhat reserved, and a lover of justice."}
+    ]
+  },
+
+  "features": {
+    "forehead": {
+      "house": ["1", "9"],
+      "nakshatra": {"name": "Bharani", "lord": "venus"},
+      "variants": {
+        "broad_high": {"calc": "forehead width/height large relative to face", "meaning": "Intelligence, vision, leadership and good fortune (Jupiter-like)."},
+        "narrow_low": {"calc": "short or narrow forehead", "meaning": "Practical and present-focused; can be short-sighted or self-interested."},
+        "rounded": {"meaning": "Creative, diplomatic, imaginative."},
+        "straight_squared": {"meaning": "Logical, structured, methodical thinker."}
+      }
+    },
+    "space_between_eyebrows": {
+      "house": ["4"],
+      "note": "Bansal: the glabella (above the nose) reflects 4th-house themes — home, mother, inner contentment, property.",
+      "variants": {
+        "wide_clear": {"meaning": "Open-minded, tolerant, contented inner life."},
+        "narrow_furrowed": {"meaning": "Intense focus, perfectionism, inner tension."}
+      }
+    },
+    "eyebrows": {
+      "nakshatra": {"name": "Krittika", "lord": "sun"},
+      "variants": {
+        "thick": {"calc": "high brow-area to eye-height ratio", "meaning": "Confidence, assertiveness, vitality (Mars-like)."},
+        "thin": {"meaning": "Sensitivity, patience, refinement (Saturn-like)."},
+        "arched": {"meaning": "Creative, expressive, adaptable (Venus-like)."},
+        "straight": {"meaning": "Direct, logical, practical."},
+        "joined_unibrow": {"meaning": "Strong, continuous focus; intense, sometimes obsessive drive."},
+        "curved_hairy": {"meaning": "Bansal: Mercury-ascendant signature — youthful look, talkative."}
+      }
+    },
+    "eyes": {
+      "house": ["2", "12"],
+      "nakshatra": {"name": "Rohini", "lord": "moon"},
+      "note": "Eyes also signal income (2nd) and expenses/losses (12th) in the kundli layer.",
+      "variants": {
+        "large_bright": {"meaning": "Honesty, warmth, compassion, expressiveness."},
+        "small_narrow": {"meaning": "Reserved, observant, shrewd, private."},
+        "wide_set": {"calc": "inter-eye distance / eye width > 1.0", "meaning": "Open, adventurous, big-picture thinker."},
+        "close_set": {"calc": "inter-eye distance / eye width < 1.0", "meaning": "Focused, detail-oriented, strong-willed, can be stubborn."},
+        "upturned": {"calc": "outer canthus higher than inner", "meaning": "Optimistic, ambitious, opportunity-seizing."},
+        "downturned": {"calc": "outer canthus lower than inner", "meaning": "Cautious, modest, prone to over-thinking."},
+        "deep_set": {"meaning": "Introspective, intense, private (Saturn-like)."}
+      }
+    },
+    "cheeks": {
+      "house": ["10"],
+      "nakshatra": {"name": "Punarvasu", "lord": "jupiter"},
+      "note": "Bansal: cheeks reflect 10th-house (career, father) and, being 4th-from-7th, hint at the partner.",
+      "variants": {
+        "full": {"meaning": "Warmth, sociability, generosity."},
+        "high_prominent_bones": {"meaning": "Authority, drive, ambition."},
+        "flat_thin": {"meaning": "Restraint, reserve, frugality."},
+        "dimples": {"meaning": "Charm; classically hints at the partner's playful nature."}
+      }
+    },
+    "ears": {
+      "house": ["3", "11"],
+      "nakshatra": {"name": "Ardra", "lord": "rahu"},
+      "note": "Often hidden in a front photo — mark not_assessable if not clearly visible. Reflect working capacity & earnings (3rd & 11th).",
+      "variants": {
+        "large": {"meaning": "Boldness, risk tolerance, ambition."},
+        "small": {"meaning": "Caution, prudence, conservatism."},
+        "long_thick_lobes": {"meaning": "Wisdom, longevity, security in later life; long-term planner."},
+        "small_lobes": {"meaning": "Live-in-the-moment, spontaneous."}
+      }
+    },
+    "nose": {
+      "house": ["10"],
+      "nakshatra": {"name": "Mrigashira", "lord": "mars"},
+      "note": "Bansal: the nose-head ties to 10th house and is 'shaped by Jupiter's position'; reflects ego vs humility.",
+      "variants": {
+        "straight": {"meaning": "Balanced ambition, fairness, composure."},
+        "long": {"calc": "nose length / mid-face large", "meaning": "Strategic, capable, leadership-oriented."},
+        "short": {"meaning": "Spontaneous, hands-on, informal."},
+        "wide_fleshy": {"meaning": "Generous, resourceful, money-aware."},
+        "high_bridge": {"meaning": "Proud, independent, self-directed."},
+        "upturned_tip": {"meaning": "Optimistic, open, enthusiastic."},
+        "hooked_arched": {"meaning": "Sharp judgment, enterprising."}
+      }
+    },
+    "space_nose_to_lips": {
+      "note": "Bansal: the philtrum links Punarvasu (Jupiter, nose) and Pushya (Saturn, lips) — read the interplay of these two planets here.",
+      "variants": {
+        "long_deep": {"meaning": "Generative, expressive, vital."},
+        "short_flat": {"meaning": "Reserved, contained."}
+      }
+    },
+    "lips": {
+      "house": ["7"],
+      "nakshatra": {"name": "Pushya", "lord": "saturn"},
+      "note": "Bansal: upper lip = manner of speaking; lower lip = partner, marriage, affairs (7th house).",
+      "variants": {
+        "full": {"meaning": "Expressive, warm, generous, sensual."},
+        "thin": {"meaning": "Reserved, disciplined, precise in speech."},
+        "wide": {"meaning": "Sociable, communicative, persuasive."},
+        "small": {"meaning": "Modest, understated; classically, a more timid or cautious temperament."},
+        "long": {"meaning": "Classically (Samudrik): passionate and pleasure-loving."},
+        "rough_thin_pale": {"meaning": "Classically (Samudrik): a sign of hardship or discontent — read gently, never as a fixed fate."},
+        "downturned_corners": {"meaning": "Serious, critical, exacting."},
+        "upturned_corners": {"meaning": "Cheerful, approachable, optimistic."}
+      }
+    },
+    "chin_jaw": {
+      "nakshatra": {"name": "Ashlesha", "lord": "mercury"},
+      "note": "Bansal: chin is 'shaped by Mercury's position'.",
+      "variants": {
+        "round_protruding": {"meaning": "Determination, confidence, prudence; inspires trust."},
+        "broad_strong_jaw": {"calc": "jaw width large relative to face", "meaning": "Willpower, stamina, resilience, drive."},
+        "pointed": {"meaning": "Quick, expressive, idealistic."},
+        "weak_receding": {"meaning": "Sensitive, accommodating; avoids confrontation."},
+        "double_full": {"meaning": "Comfort-loving, generous, easygoing."}
+      }
+    },
+    "neckbones": {
+      "house": ["6", "8"],
+      "note": "Bansal: neck/collarbone region reflects 6th & 8th house themes (obstacles, health, transformation)."
+    }
+  },
+
+  "planets_appearance": {
+    "note": "Planet → facial signature, complexion and nature. Used both as Samudrik feature-archetypes (photo mode) and, in kundli mode, as the effect of a planet placed in the 1st house or as ascendant lord.",
+    "sun":     {"complexion": "wheatish / light shade", "features": "large round face, honey-coloured eyes, dull-but-dignified features", "nature": "royal, commanding, proud", "mole_colour": "golden", "governs": "father, vitality"},
+    "moon":    {"complexion": "fair, soft", "features": "soft, innocent, sharp features; can look worried", "nature": "gentle, emotional, changeable; low confidence if afflicted", "mole_colour": "—", "effect": "mind, mother; depression if afflicted"},
+    "mars":    {"complexion": "fair with a reddish tinge", "features": "hard, strong features; scars, red moles or pimples", "nature": "brave, forceful, can be harsh", "mole_colour": "red", "governs": "siblings, energy, taste (likes sweets)"},
+    "mercury": {"complexion": "greenish-fair", "features": "androgynous look (man softer, woman bolder), curved hairy eyebrows, youthful, average height", "nature": "talkative, clever, witty", "mole_colour": "skin marks/spots", "governs": "speech, skin"},
+    "jupiter": {"complexion": "golden/fair", "features": "intelligent, mature look; growth after youth; sometimes misshapen features", "nature": "wise, respected, teacher-like", "mole_colour": "—", "effect": "can enlarge/distort a feature; grandfather (M) / husband (F)"},
+    "venus":   {"complexion": "fair, lustrous", "features": "attractive, plump, round (sometimes pimpled) face, pleasing eyes, sweet smile, curly hair", "nature": "charming, loving, soft", "mole_colour": "white spots / scars", "governs": "eyes, chin, cheeks; spouse"},
+    "saturn":  {"complexion": "pale or dark", "features": "lean, bony, older-looking; deep-set eyes; fair & clear if well-placed", "nature": "serious, disciplined, hard", "mole_colour": "black", "effect": "black moles/freckles, abnormal facial/body hair"},
+    "rahu":    {"complexion": "smoky", "features": "unusual or shadowed features", "nature": "confused, fearful, unconventional; sudden gains/losses", "mole_colour": "depends on conjunct planet", "effect": "mole/birthmark when conjunct another planet"},
+    "ketu":    {"complexion": "smoky", "features": "marked or scarred features", "nature": "detached, intuitive; accident-prone", "mole_colour": "honey-coloured", "effect": "surgery scars, injuries; raises libido"}
+  },
+
+  "moles": {
+    "note": "Mole (til) reading: the VLM detects a mole's presence and approximate position from the image; meaning is looked up here. Colour hints at the causing planet (see colour_by_planet).",
+    "colour_by_planet": {"sun": "golden", "mars": "red", "saturn": "black", "venus": "white", "ketu": "honey", "mercury": "skin-coloured mark", "rahu": "varies (with conjunct planet)"},
+    "positions": [
+      {"location": "right cheek", "meaning": "Intelligent and progressive; rises through effort."},
+      {"location": "left side of the central facial line", "meaning": "Earns money through travel and journeys."},
+      {"location": "neck (black mole)", "meaning": "Intelligent; saves money through diligent effort."},
+      {"location": "under the right eye", "meaning": "Prosperous and happy life."},
+      {"location": "right side of the Mercury area", "meaning": "A successful businessperson."},
+      {"location": "left side of the nose", "meaning": "Succeeds after considerable effort."},
+      {"location": "near the left eye / left eyebrow", "meaning": "Solitary nature; tends toward an ordinary, self-contained life."},
+      {"location": "between the eyebrows (glabella)", "meaning": "Long-lived, religious, generous and noble."},
+      {"location": "right palm (red mole)", "meaning": "Tends toward wealth (body-reading extension)."},
+      {"location": "chin", "meaning": "Determined and resourceful; values security."}
+    ],
+    "principle": "Auspicious placements (right side for men, hidden/upper positions) generally indicate gain; the planet's nature colours the specific theme."
+  },
+
+  "kundli_layer": {
+    "note": "OPTIONAL — only when the user links their own birth chart (D-1 / Lagna kundali). Powers the 'does your face match your chart' cross-reference. Source: Bansal.",
+    "house_to_face_part": {
+      "1": "Forehead (ascendant); paired with 7th",
+      "2": "Right eye; paired with 8th — income",
+      "3": "Right ear & shoulder; paired with 9th",
+      "4": "Space between eyebrows above the nose; paired with 10th",
+      "5": "Eyelids; paired with 11th — education & children",
+      "6": "Right collarbone/neck; paired with 12th",
+      "7": "Lips; paired with 1st — partner & speech",
+      "8": "Left collarbone/neck; paired with 2nd",
+      "9": "Lower forehead; paired with 3rd",
+      "10": "Cheeks & nose-head; paired with 4th — career & father",
+      "11": "Left ear & shoulder; paired with 5th — earning capacity",
+      "12": "Left eye; paired with 6th — expenses"
+    },
+    "feature_to_house": {
+      "forehead": ["1", "9"], "space_between_eyebrows": ["4"], "eyelids": ["5"],
+      "eyes": ["2", "12"], "cheeks": ["10"], "ears": ["3", "11"], "nose_head": ["10"],
+      "upper_lip": ["7"], "lower_lip": ["7"], "neckbones": ["6", "8"]
+    },
+    "face_nakshatras": [
+      {"nakshatra": "Ashwini", "lord": "ketu", "part": "head"},
+      {"nakshatra": "Bharani", "lord": "venus", "part": "forehead"},
+      {"nakshatra": "Krittika", "lord": "sun", "part": "eyebrows"},
+      {"nakshatra": "Rohini", "lord": "moon", "part": "eyes"},
+      {"nakshatra": "Mrigashira", "lord": "mars", "part": "nose"},
+      {"nakshatra": "Ardra", "lord": "rahu", "part": "ears"},
+      {"nakshatra": "Punarvasu", "lord": "jupiter", "part": "cheeks"},
+      {"nakshatra": "Pushya", "lord": "saturn", "part": "lips"},
+      {"nakshatra": "Ashlesha", "lord": "mercury", "part": "chin"},
+      {"nakshatra": "Magha", "lord": "ketu", "part": "neck"}
+    ],
+    "ascendant_lord_appearance": {
+      "sun": "Large round face, honey-coloured eyes, light/wheatish hair and skin; dignified bearing.",
+      "moon": "Soft, sober look; gentle and sensitive; can appear low in confidence.",
+      "mars": "Fair complexion with a red tinge; scars/red moles or pimples; hard, intense look showing life's struggles.",
+      "mercury": "Androgynous look, curved hairy eyebrows, appears younger than age, average height, talkative.",
+      "jupiter": "Good growth after youth; intelligent, mature, respected; sometimes features look enlarged/misshapen.",
+      "venus": "Average height, plump build, round (sometimes pimpled) attractive face, pleasing eyes, sweet smile, curly hair.",
+      "saturn": "Looks older than age, thin and bony, pale or dark complexion, deep-set eyes; fair and clear-skinned if Saturn is well-placed."
+    },
+    "planet_in_first_house_combos": [
+      {"planets": ["jupiter", "sun"], "look": "Royal and intellectual."},
+      {"planets": ["jupiter", "moon"], "look": "Unpleasant or unsettled features."},
+      {"planets": ["jupiter", "venus"], "look": "Appears rich/wealthy though may actually lack money."},
+      {"planets": ["jupiter", "mars"], "look": "Cruel-seeming but intellectual."},
+      {"planets": ["jupiter", "mercury"], "look": "Saint-like, serene."},
+      {"planets": ["jupiter", "saturn"], "look": "More or less facial hair than normal."},
+      {"planets": ["jupiter", "rahu_ketu"], "look": "Mole or scar on the face."},
+      {"planets": ["sun", "venus"], "look": "Unpleasant features."},
+      {"planets": ["sun", "moon"], "look": "Mole and/or large lips."},
+      {"planets": ["sun", "mercury"], "look": "Royal but androgynous."},
+      {"planets": ["sun", "saturn"], "look": "Hard-seeming but intellectual."},
+      {"planets": ["sun", "rahu_ketu"], "look": "Mole, freckle or birthmark on the face."},
+      {"planets": ["moon", "venus"], "look": "Charming, or with light/white spots on the face."},
+      {"planets": ["moon", "mars"], "look": "Tense look; mole on the face."},
+      {"planets": ["moon", "mercury"], "look": "Androgynous; somewhat unconventional."},
+      {"planets": ["moon", "saturn"], "look": "Unsettled features; abnormal facial hair."},
+      {"planets": ["moon", "rahu_ketu"], "look": "Mentally restless look; mole or freckle."},
+      {"planets": ["venus", "mars"], "look": "Pleasant features, wheatish complexion."},
+      {"planets": ["venus", "mercury"], "look": "Androgynous look."},
+      {"planets": ["venus", "saturn"], "look": "Clever, calculating look."},
+      {"planets": ["venus", "rahu_ketu"], "look": "Mole; romantic disposition."},
+      {"planets": ["mars", "mercury"], "look": "Brave and intellectual."},
+      {"planets": ["mars", "saturn"], "look": "Hard, cruel-seeming; mole present."},
+      {"planets": ["mars", "rahu_ketu"], "look": "Scar or mole on the face."},
+      {"planets": ["mercury", "saturn"], "look": "Heavy/'drunken' look; moles or pimples."}
+    ]
+  },
+
+  "reading_procedure": [
+    "1. Forehead", "2. Space between eyebrows", "3. Eyelids", "4. Eyes", "5. Cheeks",
+    "6. Ears", "7. Nose-head", "8. Space between nose and lips", "9. Upper lip",
+    "10. Lower lip", "11. Chin", "12. Neckbones / collarbones"
+  ]
+}
