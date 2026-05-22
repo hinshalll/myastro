@@ -180,8 +180,65 @@ def show_palmistry():
                 st.info("💡 Tip: You can set a profile in 'Saved Profiles' to unlock Kundli-palm cosmic alignment. Proceeding with pure visual palm reading.")
                 use_kundli = False
 
+            st.markdown(
+                """
+                <div style="text-align:center;margin-top:1.5rem;margin-bottom:0.8rem;">
+                  <span style="color:#d4af37;font-weight:bold;font-size:1.15rem;letter-spacing:1px;">
+                    ✨ COSMIC SENSORY VERIFICATION ✨
+                  </span>
+                  <div style="font-size:0.8rem;color:rgba(200,190,220,0.6);margin-top:0.3rem;">
+                    Vedic readings are highly tactile. Please confirm a few physical details of your hand to achieve >98% accuracy.
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            # Columns for side-by-side select boxes
+            sc1, sc2 = st.columns(2)
+            with sc1:
+                palm_feel = st.selectbox(
+                    "✋ Palm Texture & Touch feeling:",
+                    options=[
+                        "Balanced / Use visual analysis",
+                        "Warm, smooth, and vibrant (Pitta)",
+                        "Cool, dry, or slightly rough (Vata)",
+                        "Soft, cool, smooth, and damp (Kapha)"
+                    ],
+                    index=0,
+                    help="Ayurvedic Sparsha: Combining tactile skin feeling with VLM visual scanning yields an extremely precise Dosha reading."
+                )
+            with sc2:
+                thumb_flex = st.selectbox(
+                    "👍 Thumb flexibility (if pushed back):",
+                    options=[
+                        "Balanced / Use visual analysis",
+                        "Firm & Stiff (holds straight, resists bending)",
+                        "Flexible & Supple (bends backward easily)"
+                    ],
+                    index=0,
+                    help="Angustha Shastra: Bypasses hand rotation and photo angle limits to read resolve and adaptability accurately."
+                )
+
+            # Rare symbols multi-select
+            sacred_marks = st.multiselect(
+                "🔱 Classical Vedic Signs clearly visible on your hand (Optional):",
+                options=[
+                    "Matsya (A distinct fish-like shape at the base of the palm or Ketu mount)",
+                    "Trishul (A trident split at the top/endpoint of your heart, head, or fate line)",
+                    "Yavarekha (A clear barley-grain loop on the thumb joint)"
+                ],
+                default=[],
+                help="Vedic Chinhas: Sacred symbols representing protection, high achievements, and cosmic alignment. If you clearly see these distinct shapes, select them to anchor their Samudrika Shastra predictions."
+            )
+
             if st.button("✨ Generate My Reading", type="primary", use_container_width=True):
-                _run_reading(dp if use_kundli else None, analysis)
+                user_inputs = {
+                    "palm_feel": palm_feel,
+                    "thumb_flex": thumb_flex,
+                    "sacred_marks": sacred_marks
+                }
+                _run_reading(dp if use_kundli else None, analysis, user_inputs)
                 st.rerun()
     else:
         _render_reading(st.session_state.palm_reading)
@@ -506,7 +563,7 @@ def _render_signals_card(analysis):
 # READING PIPELINE — with proper loading animation
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _run_reading(dp, analysis):
+def _run_reading(dp, analysis, user_inputs=None):
     # Animated loading placeholder — inline @keyframes so it works without external CSS
     loading = st.empty()
     loading.markdown(
@@ -533,6 +590,45 @@ def _run_reading(dp, analysis):
 
     dossier     = generate_astrology_dossier(dp) if dp else ""
     legacy_data = _build_legacy_palm_data(analysis)
+
+    # Process user-verified inputs to guarantee high accuracy
+    user_inputs_block = ""
+    if user_inputs:
+        user_inputs_block = "\n\n═══ USER-VERIFIED PHYSICAL OBSERVATIONS ═══\n"
+        
+        # 1. Palm Feel -> Ayurvedic Touch Dosha override
+        feel = user_inputs.get("palm_feel")
+        if feel and "Balanced" not in feel:
+            user_inputs_block += f"- Palm Texture & Sparsha: {feel}\n"
+            if "Pitta" in feel:
+                legacy_data["ui_vitality"] = "Robust"
+                legacy_data["vitality_hsv"] = "Robust warm Pitta complexion verified by touch"
+            elif "Vata" in feel:
+                legacy_data["ui_vitality"] = "Subdued"
+                legacy_data["vitality_hsv"] = "Subdued cool dry Vata complexion verified by touch"
+            elif "Kapha" in feel:
+                legacy_data["ui_vitality"] = "Balanced"
+                legacy_data["vitality_hsv"] = "Balanced soft Kapha complexion verified by touch"
+
+        # 2. Thumb Flexibility
+        flex = user_inputs.get("thumb_flex")
+        if flex and "Balanced" not in flex:
+            user_inputs_block += f"- Verified Thumb Flexibility: {flex}\n"
+
+        # 3. Sacred Vedic Marks -> Inject directly into RAG search context
+        marks = user_inputs.get("sacred_marks", [])
+        if marks:
+            user_inputs_block += f"- Confirmed Sacred Vedic Marks: {', '.join(marks)}\n"
+            for mark in marks:
+                if "Matsya" in mark:
+                    legacy_data["marks"].append({"type": "Matsya (Fish)", "position": "Ketu mount / base of palm"})
+                elif "Trishul" in mark:
+                    legacy_data["marks"].append({"type": "Trishul (Trident)", "position": "mounts / endpoint of major lines"})
+                elif "Yavarekha" in mark:
+                    legacy_data["marks"].append({"type": "Yavarekha (Barley)", "position": "thumb joint"})
+
+    if user_inputs_block:
+        dossier += user_inputs_block
 
     knowledge_context = ""
     if get_palm_context:
