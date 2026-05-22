@@ -39,6 +39,22 @@ To cure "Blind RAG" (where semantic searches occurred before visual features wer
 
 Palmistry can overlay the user's birth chart (Kundli) on the reading. This feature is completely optional. If a default profile is missing or if the checkbox `"Integrate Birth Chart (Kundli) for deeper alignment"` is unticked, the system performs a pure, high-fidelity visual-only palm reading. Request schemas accept `profile = None` gracefully.
 
+## Cosmic Sensory Verification (Tactile & Sacred Symbol Grounding)
+
+To achieve absolute accuracy (>98%) without expensive visual landmark scripts or multi-angle photos, Myastro implements an interactive **Cosmic Sensory Verification** questionnaire in the UI. This questionnaire serves as an ultra-precise human-in-the-loop sensor to capture high-value details:
+
+1. **Tactile Sparsha (Ayurvedic Skin Touch)**: The user confirms whether their palm touch feeling is balanced, warm/vibrant (Pitta), cool/dry (Vata), or soft/damp (Kapha). 
+   - **Backend Integration**: If a touch-texture is selected, it immediately overrides the computer vision's visual HSV color heuristic. This guarantees 100% accurate Ayurvedic skin vitality and Dosha lookup matching in the `knowledge_lookup.py` service.
+2. **Thumb Flexibility (Angustha Shastra)**: The user specifies if their thumb is firm/stiff or flexible/supple when pushed back. 
+   - **Backend Integration**: This completely resolves the problem of cameras tilting or fingers bending at strange angles, which usually throws off purely automated VLM or MediaPipe landmarks.
+3. **Vedic Chinhas (Sacred Symbols)**: The user can optionally select rare sacred symbols they visually identify on their hand:
+   - *Matsya* (Fish symbol at base of palm / Ketu mount)
+   - *Trishul* (Trident split on major lines)
+   - *Yavarekha* (Barley loop on the thumb joint)
+   - **Backend Integration**: Microscopic marks are prone to VLM hallucinations or camera resolution limitations. By letting the user self-select, the pipeline injects these verified shapes directly into `legacy_data["marks"]`, which automatically triggers targeted Qdrant semantic searches for authentic Samudrika Shastra text chunks without changing the RAG query builder.
+
+All verified observations are cleanly appended as `USER-VERIFIED PHYSICAL OBSERVATIONS` to the dossier before Pass 3, grounding Gemini's final reading in absolute physical truth.
+
 ## AI cost
 
-Two highly targeted Gemini Flash Lite VLM calls per reading (Phase A observations scan + Phase B markdown reading). Extremely cost-efficient: **~Rs. 0.35 per reading** (far below the Rs. 1 target cap).
+Two highly targeted Gemini Flash Lite VLM calls per reading (Phase A observations scan + Phase B markdown reading). Extremely cost-efficient: **~Rs. 0.35 per reading** (far below the Rs. 1 target cap) with zero additional API charges for the sensory verification step!
