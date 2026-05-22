@@ -150,7 +150,7 @@ features/<feature>/
   - Pass 1: Cheap visual scan to extract strict structured Phase A JSON observations of lines, mounts, and marks.
   - Pass 2: Local & free context matching (Vedic planets, nakshatras, skin dosha mapping from HSV vitality + user-validated touch textures) + targeted Qdrant semantic search of actual lines/marks (including confirmed sacred Vedic Chinhas: Matsya, Trishul, Yavarekha).
   - Pass 3: Detailed Phase B markdown reading grounded in both pre-confirmed visual findings and verified tactile/symbolic inputs.
-- Cosmic Sensory Verification: A premium questionnaire where users confirm palm touch feeling (for absolute Ayurvedic Sparsha accuracy), thumb flexibility (preventing camera tilt issues), and rare sacred Vedic signs, achieving >98% reading accuracy with zero extra API cost.
+- Cosmic Sensory Verification: An optional, collapsed fine-tuning expander in the UI that acts as a human-in-the-loop override for palm touch feeling (for absolute Ayurvedic Sparsha accuracy), thumb flexibility (bypassing camera tilt issues), and rare microscopic sacred signs. By default, the app is 100% automated (relying on vision metrics & HSV color vitality classification), leaving this panel strictly as a premium optional refinement with zero extra API cost.
 - Two knowledge sources stacked: `knowledge_lookup.py` (static JSON: planet/nakshatra/dosha) + `qdrant_search.py` (semantic palmistry.md).
 - AI cost: ~₹0.35 per reading (extremely cheap, well below the ₹1 target cap).
 
