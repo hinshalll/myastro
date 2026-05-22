@@ -146,11 +146,11 @@ features/<feature>/
 ### 8. palmistry — `features/palmistry/`
 - Default profile OPTIONAL (cosmic Kundli alignment via checkbox in UI / optional in API).
 - Pipeline: EXIF orient → quality check → MediaPipe landmarks → 7 rotation-invariant mount crops (calculated via Euclidean distance) → vitality (HSV) → hand metrics.
-- Two-Pass Visual VLM Pipeline with Cosmic Sensory Verification:
-  - Pass 1: Cheap visual scan to extract strict structured Phase A JSON observations of lines, mounts, and marks.
+- Two-Pass Visual VLM Pipeline with Cosmic Sensory Verification & Calibration:
+  - Pass 1: Cheap visual scan to extract strict structured Phase A JSON observations of lines, mounts, and marks. Visual calibration is enhanced by passing two Supabase-hosted diagrams alongside the hand images: `book_image_18.jpg` as `REFERENCE 1` (mounts/gunas) and `reference_grid_3.jpg` as `REFERENCE 2` (a 25-box template grid detailing line defects like islands, breaks, and chains) to serve as a physical calibration stencil.
   - Pass 2: Local & free context matching (Vedic planets, nakshatras, skin dosha mapping from HSV vitality + user-validated touch textures) + targeted Qdrant semantic search of actual lines/marks (including confirmed sacred Vedic Chinhas: Matsya, Trishul, Yavarekha).
-  - Pass 3: Detailed Phase B markdown reading grounded in both pre-confirmed visual findings and verified tactile/symbolic inputs.
-- Cosmic Sensory Verification: An optional, collapsed fine-tuning expander in the UI that acts as a human-in-the-loop override for palm touch feeling (for absolute Ayurvedic Sparsha accuracy), thumb flexibility (bypassing camera tilt issues), and rare microscopic sacred signs. By default, the app is 100% automated (relying on vision metrics & HSV color vitality classification), leaving this panel strictly as a premium optional refinement with zero extra API cost.
+  - Pass 3: Detailed Phase B markdown reading grounded in both pre-confirmed visual findings (with calibration) and verified tactile/symbolic inputs.
+- Cosmic Sensory Verification: An optional, collapsed fine-tuning expander in the UI that acts as a human-in-the-loop override for palm touch feeling (for absolute Ayurvedic Sparsha accuracy), thumb flexibility (bypassing camera tilt issues), and rare microscopic sacred signs. Includes an inline visual guide of the Vedic sacred marks grid (`book_image_20.jpg` detailing Matsya, Trishul, and Yavarekha) directly in the UI card to eliminate user guesswork. By default, the app is 100% automated (relying on vision metrics & HSV color vitality classification), leaving this panel strictly as a premium optional refinement with zero extra API cost.
 - Two knowledge sources stacked: `knowledge_lookup.py` (static JSON: planet/nakshatra/dosha) + `qdrant_search.py` (semantic palmistry.md).
 - AI cost: ~₹0.35 per reading (extremely cheap, well below the ₹1 target cap).
 
@@ -201,6 +201,7 @@ features/<feature>/
 | 21 | Ayurvedic Skin Dosha vitality lookup was empty or inaccurate. | ✅ Fixed — upgraded mapping of HSV vitality classes and blended classical default dosha profile contexts. |
 | 22 | Mount cropping did not account for tilted or rotated palms (used vertical delta). | ✅ Fixed — calculated crops using mathematical Euclidean distance metrics for full rotation-invariance. |
 | 23 | Palmistry VLM calls were expensive (~Rs. 2) and prone to hallucinations. | ✅ Fixed — optimized prompts and orchestration to cost ~Rs. 0.35 per call with extremely high accuracy. |
+| 24 | Supabase images not fully leveraged for VLM physical line calibration and visual UI cues. | ✅ Fixed — fetched, cached, and passed `reference_grid_3.jpg` (REFERENCE 2) for visual calibration in Pass 1 VLM prompt; rendered `book_image_20.jpg` in Streamlit collapsed expander as an inline visual key to eliminate user guesswork. |
 
 ---
 

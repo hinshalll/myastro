@@ -33,13 +33,16 @@ You are an expert Vedic palmist trained in classical Samudrika Shastra. Analyze 
 ═══ INPUT IMAGES ═══
 1. FULL PALM (labelled top-left) — the user's hand, CLAHE-enhanced for line visibility
 2. {n_mount_crops} MOUNT CROPS — close-ups of Jupiter, Saturn, Sun, Mercury, Venus, Mars, Luna
-3. REFERENCE — classical hand diagram
+3. REFERENCE 1 (mounts/gunas) — dual hand showing mounts & Sattva/Rajas/Tamas distribution
+4. REFERENCE 2 (line structures) — grid of 25 boxes (A to Y) showing line shapes, chains, island loops, and break gaps
 
 ═══ MATH-DERIVED FACTS (treat as absolute truth) ═══
 {math_signals}
 
 ═══ VISUAL IDENTIFICATION (JSON format only) ═══
 Look carefully. For each line, state what you observe. Use "not_assessable" generously — if a line is unclear, mark it "not_assessable". An honest "I can't see this clearly" is more valuable than a confident wrong answer.
+
+Cross-reference the user's hand lines against REFERENCE 2's grid of formations. In the line's "path" description, explicitly note any specific structural properties or defects identified (e.g. chained like box K, island loops like box L, overlapping break like box V, split branches like box D or O, wavy like box P, etc.). This ensures extremely accurate identification of classical hand line qualities.
 
 For each MOUNT CROP, judge fullness and look for visible marks (cross, star, triangle, square, island, grille, fish). Use "no notable marks" if you don't see clear marks — don't report skin texture or shadows.
 

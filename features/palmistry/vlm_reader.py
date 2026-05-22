@@ -42,20 +42,34 @@ from features.palmistry.prompts import build_palm_reading_prompt, build_phase_a_
 MODEL_NAME = "gemini-3.1-flash-lite-preview"
 
 
-# ── REFERENCE IMAGE (one only — keeps token budget tight for Flash Lite) ──────
-# book_image_18 is the most informative single reference: dual hand showing
-# all planet names + Sattva/Rajas/Tamas guna zone distribution.
-
-_REF_URL = (
+# ── REFERENCE IMAGES (Dual diagram comparative calibration) ────────────────────
+# _MOUNTS_REF_URL: Dual hand planet mounts + Sattva/Rajas/Tamas gunas
+_MOUNTS_REF_URL = (
     "https://hmspryhmyhegraqccnsh.supabase.co/storage/v1/object/public/palmistry-images/palmistry/book_image_18.jpg"
+)
+
+# _LINES_REF_URL: Grid of 25 boxes (A to Y) of line structures/defects (islands, breaks, chains)
+_LINES_REF_URL = (
+    "https://hmspryhmyhegraqccnsh.supabase.co/storage/v1/object/public/palmistry-images/palmistry/reference_grid_3.jpg"
 )
 
 
 @lru_cache(maxsize=2)
-def _fetch_reference_image():
-    """Cached reference image fetch. Returns PIL or None on failure."""
+def _fetch_mounts_ref():
+    """Cached fetch of the mounts and gunas reference image. Returns PIL or None."""
     try:
-        r = requests.get(_REF_URL, timeout=10)
+        r = requests.get(_MOUNTS_REF_URL, timeout=10)
+        r.raise_for_status()
+        return PIL.Image.open(io.BytesIO(r.content)).convert("RGB")
+    except Exception:
+        return None
+
+
+@lru_cache(maxsize=2)
+def _fetch_lines_ref():
+    """Cached fetch of the line structures grid reference image. Returns PIL or None."""
+    try:
+        r = requests.get(_LINES_REF_URL, timeout=10)
         r.raise_for_status()
         return PIL.Image.open(io.BytesIO(r.content)).convert("RGB")
     except Exception:
@@ -349,8 +363,14 @@ def read_palm(
         if name in mount_crops:
             mount_imgs.append(_label_image(_arr_to_pil(mount_crops[name]), f"MT {name}"))
 
-    ref = _fetch_reference_image()
-    images = [main_palm] + mount_imgs + ([ref] if ref is not None else [])
+    ref_mounts = _fetch_mounts_ref()
+    ref_lines = _fetch_lines_ref()
+
+    images = [main_palm] + mount_imgs
+    if ref_mounts is not None:
+        images.append(ref_mounts)
+    if ref_lines is not None:
+        images.append(ref_lines)
 
     # ── Pass 1: Visual Observation Detection ──
     prompt_a = build_phase_a_prompt(

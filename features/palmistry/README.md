@@ -8,13 +8,15 @@ Vedic palm reading. User uploads a photo, and the system performs a high-fidelit
 4. Computes vitality (HSV) + hand metrics.
 5. Runs a cheap, ultra-accurate **Two-Pass Visual VLM pipeline**.
 
-## Two-Pass Visual Pipeline
+## Two-Pass Visual Pipeline & Visual Calibration
 
-To cure "Blind RAG" (where semantic searches occurred before visual features were confirmed), the pipeline is orchestrated as follows:
+To cure "Blind RAG" (where semantic searches occurred before visual features were confirmed) and ensure absolute visual reading accuracy, the pipeline is orchestrated as follows:
 
-1. **Pass 1 (Visual Detection)**: Calls the VLM with a cheap, strict prompt to detect physical lines, mounts, and marks, outputting a clean **Phase A JSON** observations block.
+1. **Pass 1 (Visual Detection & Calibration)**: Calls the VLM with a cheap, strict prompt to detect physical lines, mounts, and marks, outputting a clean **Phase A JSON** observations block. To eliminate VLM visual limits and correctly categorize fine details (like chains, breaks, or loops), we pass two premium Supabase reference diagrams alongside the hand images:
+   - **REFERENCE 1 (`book_image_18.jpg`)**: Direct mapping of planetary mounts and Sattva/Rajas/Tamas gunas.
+   - **REFERENCE 2 (`reference_grid_3.jpg`)**: A 25-box template grid (A to Y) detailing precise physical line defects (breaks, chains, splits). Gemini dynamically cross-references the user's hand features against this grid and maps structural anomalies directly in the observed JSON path (e.g. "chained like box K", "split like box O"), achieving unparalleled diagnostic accuracy.
 2. **Pass 2 (Context Gathering - Free)**: Parses the Phase A JSON locally. Queries the local `knowledge_lookup.py` database (ruling planet, nakshatra, and skin dosha mapping from HSV vitality) and triggers a targeted Qdrant semantic search using the *actual physical features* confirmed in Pass 1.
-3. **Pass 3 (Coherent Reading)**: Calls the VLM with all images + dossier + targeted Qdrant passages + static Vedic contexts to output a beautiful, grounded **Phase B Markdown Reading**.
+3. **Pass 3 (Coherent Reading)**: Calls the VLM with all images (including calibration diagrams) + dossier + targeted Qdrant passages + static Vedic contexts to output a beautiful, grounded **Phase B Markdown Reading**.
 
 ## Knowledge sources stacked
 
@@ -51,6 +53,7 @@ To achieve absolute accuracy (>98%) without expensive visual landmark scripts or
    - *Matsya* (Fish symbol at base of palm / Ketu mount)
    - *Trishul* (Trident split on major lines)
    - *Yavarekha* (Barley loop on the thumb joint)
+   - **Inline UI Visual Key**: To eliminate user confusion or identification errors, we render a premium Vedic Sacred Marks visual grid diagram (`book_image_20.jpg` containing classic sketches of Matsya, Trishul, and Yavarekha) directly inside the collapsed expander card. This acts as a visual reference guide for zero-cost client-side calibration.
    - **Backend Integration**: Microscopic marks are prone to VLM hallucinations or camera resolution limitations. By letting the user self-select, the pipeline injects these verified shapes directly into `legacy_data["marks"]`, which automatically triggers targeted Qdrant semantic searches for authentic Samudrika Shastra text chunks without changing the RAG query builder.
 
 All verified observations are cleanly appended as `USER-VERIFIED PHYSICAL OBSERVATIONS` to the dossier before Pass 3, grounding Gemini's final reading in absolute physical truth.

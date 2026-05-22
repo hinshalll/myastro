@@ -200,6 +200,13 @@ def show_palmistry():
                     unsafe_allow_html=True
                 )
 
+                # Visual guide for Vedic symbols to eliminate user error
+                st.image(
+                    "https://hmspryhmyhegraqccnsh.supabase.co/storage/v1/object/public/palmistry-images/palmistry/book_image_20.jpg",
+                    caption="🔱 Vedic Sacred Marks Visual Key (A = Matsya/Fish, B = Trishul/Trident, C = Yavarekha/Barley)",
+                    use_container_width=True
+                )
+
                 # Columns for side-by-side select boxes
                 sc1, sc2 = st.columns(2)
                 with sc1:
