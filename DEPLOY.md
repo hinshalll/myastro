@@ -119,16 +119,27 @@ On the Render dashboard:
 ## Step 5 — Add environment variables (your secret keys)
 
 Scroll down to **Environment Variables**. Click **Add Environment Variable**
-and add these three:
+and add these. The first three are the same values in `.streamlit/secrets.toml`:
 
 | Key | Value |
 |---|---|
 | `GEMINI_API_KEY` | (your Gemini API key — same one in `.streamlit/secrets.toml`) |
+| `QDRANT_URL` | (your Qdrant Cloud URL — from `.streamlit/secrets.toml`) |
+| `QDRANT_API_KEY` | (your Qdrant Cloud API key — from `.streamlit/secrets.toml`) |
+| `TAROT_DRAW_SECRET` | any long random string (e.g. mash your keyboard) |
 | `PYTHON_VERSION` | `3.11` |
 | `WEB_CONCURRENCY` | `1` |
 
 **Why these:**
 - `GEMINI_API_KEY` is needed by the AI features. Without it, AI endpoints fail.
+- `QDRANT_URL` + `QDRANT_API_KEY` power the knowledge lookup (RAG) behind every
+  reading. On your laptop these come from `.streamlit/secrets.toml`, but Render
+  has no such file — so they MUST be set here, or readings come back thin/empty.
+- `TAROT_DRAW_SECRET` signs the tarot interactive-picker "draw tickets". On a
+  hosted backend this MUST be a fixed value: Render runs/restarts multiple
+  copies of your app, and they all need the same key to validate a ticket the
+  user got from a different copy. Set it once; never change it. (Locally it's
+  optional — the app invents a temporary one per run.)
 - `PYTHON_VERSION` forces Render to use 3.11 (the version your code is tested on).
 - `WEB_CONCURRENCY=1` limits to 1 worker process on the free tier — keeps memory under the 512 MB limit. (You can raise it on paid tiers.)
 
