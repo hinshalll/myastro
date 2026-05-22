@@ -92,25 +92,41 @@ def _d(p, q):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _pose_check(L):
-    """Estimate yaw (left/right turn) and roll (tilt) from landmarks.
+    """Estimate yaw (left/right turn), roll (tilt), and pitch (vertical nod) from landmarks.
 
     yaw: nose tip should sit midway between the two cheek edges. Off-centre → turned.
     roll: the eye line should be horizontal. Angled → tilted head.
+    pitch: relative vertical position of the nose tip between eye line and mouth line.
     Returns (issues_list, metrics).
     """
     nose = L["nose_tip"]; cl = L["cheek_l"]; cr = L["cheek_r"]
     face_w = abs(cr[0] - cl[0]) or 1
     # 0 = perfectly centred; +/- = turned toward one side
     yaw = (nose[0] - (cl[0] + cr[0]) / 2) / face_w
+    
     # eye-line angle in degrees
     el = L["eye_l_out"]; er = L["eye_r_out"]
     roll = float(np.degrees(np.arctan2(er[1] - el[1], er[0] - el[0])))
+    
+    # pitch estimation: relative nose tip y-position compared to eye and mouth y-positions
+    eye_y = (L["eye_l_out"][1] + L["eye_r_out"][1]) / 2.0
+    mouth_y = (L["mouth_l"][1] + L["mouth_r"][1]) / 2.0
+    nose_y = L["nose_tip"][1]
+    
+    denom = (mouth_y - eye_y) or 1.0
+    pitch = (nose_y - eye_y) / denom
+    
     issues = []
     if abs(yaw) > 0.16:
         issues.append("Face looks turned to one side — please look straight at the camera.")
     if abs(roll) > 12:
         issues.append("Head looks tilted — please hold it level.")
-    return issues, {"yaw": round(yaw, 3), "roll_deg": round(roll, 1)}
+    if pitch < 0.35:
+        issues.append("Head looks tilted upward — please look straight at the camera.")
+    elif pitch > 0.60:
+        issues.append("Head looks tilted downward — please look straight at the camera.")
+        
+    return issues, {"yaw": round(yaw, 3), "roll_deg": round(roll, 1), "pitch": round(pitch, 3)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

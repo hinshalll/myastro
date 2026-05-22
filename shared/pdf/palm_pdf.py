@@ -35,7 +35,7 @@ class PalmReadingPDF(AstroPDF):
 # _safe_text is an alias for the shared _safe imported from astro_pdf
 _safe_text = _safe
 
-def _draw_cover(pdf: PalmReadingPDF, palm_png_bytes: bytes, user_name: str, date_str: str):
+def _draw_cover(pdf: PalmReadingPDF, palm_png_bytes: bytes, user_name: str, date_str: str, used_kundli: bool = False):
     pdf._is_cover = True
     pdf.add_page()
 
@@ -68,7 +68,8 @@ def _draw_cover(pdf: PalmReadingPDF, palm_png_bytes: bytes, user_name: str, date
     pdf.set_font("Helvetica", "", 12)
     pdf.set_text_color(195, 185, 170)
     pdf.set_xy(0, 72)
-    pdf.cell(PAGE_W, 5, _safe_text("A kundli-aware reading of your hand"), align="C")
+    subtitle = "A cosmic reading of your hand" if used_kundli else "A sacred reading of your hand"
+    pdf.cell(PAGE_W, 5, _safe_text(subtitle), align="C")
 
     # Palm photo — centred, with soft gold border
     if palm_png_bytes:
@@ -423,6 +424,7 @@ def build_palm_pdf(
     signals: dict,
     palm_png_bytes: bytes = None,
     user_name: str = "",
+    used_kundli: bool = False,
 ) -> bytes:
     """
     Build the full PDF and return as bytes.
@@ -433,18 +435,19 @@ def build_palm_pdf(
         signals:         {"hand_type": str, "planet": str, "vitality": str}
         palm_png_bytes:  bytes of the isolated hand PNG (for cover image), or None
         user_name:       name to print on the cover
+        used_kundli:     whether birth chart integration was checked/used
     """
     pdf = PalmReadingPDF()
     date_str = datetime.datetime.now().strftime("%B %d, %Y")
 
     # Cover
-    _draw_cover(pdf, palm_png_bytes, user_name, date_str)
+    _draw_cover(pdf, palm_png_bytes, user_name, date_str, used_kundli=used_kundli)
     pdf._content_started = True   # all subsequent pages get header/footer
 
     # Observations
     agreement = (
-        (phase_a or {}).get("kundli_palm_agreement", ""),
-        (phase_a or {}).get("kundli_palm_agreement_note", ""),
+        (phase_a or {}).get("kundli_palm_agreement", "") if used_kundli else "",
+        (phase_a or {}).get("kundli_palm_agreement_note", "") if used_kundli else "",
     )
     _draw_observations(pdf, phase_a or {}, signals or {}, agreement)
 

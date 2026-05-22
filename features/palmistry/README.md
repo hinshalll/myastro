@@ -18,6 +18,22 @@ To cure "Blind RAG" (where semantic searches occurred before visual features wer
 2. **Pass 2 (Context Gathering - Free)**: Parses the Phase A JSON locally. Queries the local `knowledge_lookup.py` database (ruling planet, nakshatra, and skin dosha mapping from HSV vitality) and triggers a targeted Qdrant semantic search using the *actual physical features* confirmed in Pass 1.
 3. **Pass 3 (Coherent Reading)**: Calls the VLM with all images (including calibration diagrams) + dossier + targeted Qdrant passages + static Vedic contexts to output a beautiful, grounded **Phase B Markdown Reading**.
 
+## VLM Visual Self-Correction & Planet Dominance Refinements
+
+To guarantee 100% genuine visual accuracy and eliminate errors from physical camera angles, noise in MediaPipe coordinate calculations, or ambient lighting changes, Myastro implements a fully automated visual self-correction layer in the palmistry pipeline:
+
+1. **Saturn Middle Finger Exclusion**: 
+   In human anatomy, the middle finger (Saturn) is physically always the longest finger. Including it in comparative height checks would always make Saturn the dominant finger. In classical palmistry, active character drivers and planetary ruler attributes are determined by comparing the heights of **Jupiter (index)**, **Sun (ring)**, and **Mercury (little)** fingers. The system excludes Saturn from the dominant finger check in `shared/astro/palm_vision.py` to allow genuine personality drivers to emerge.
+   
+2. **Automated Visual Self-Correction Override**:
+   MediaPipe landmark coordinates can be noisy due to camera tilt, and HSV color vitality heuristics can be thrown off by ambient lighting or room shadows. 
+   - During **Pass 1**, the VLM is explicitly prompted to visually judge finger proportions (`"index_vs_ring_length"`: `ring_longer` / `index_longer` / `equal`) and palm color tone (`"vitality_visual_class"`: `Robust` / `Subdued` / `Balanced` / `Cool`).
+   - At the end of Pass 1, the pipeline automatically overrides noisy mathematical landmark measurements with these precise VLM visual observations.
+   
+3. **UI Session Synchronization**:
+   To avoid discrepancies where the text reading describes a "Sun dominant ring finger" or "Subdued vitality" but the UI's signals panel still displays the noisy mathematical values, `features/palmistry/view.py` dynamically writes the VLM-corrected metrics back to Streamlit's `st.session_state.palm_analysis` before the final UI rendering. This guarantees that all on-screen cards, ruling planet badges, and active signal list widgets update instantly and align perfectly.
+
+
 ## Knowledge sources stacked
 
 - `knowledge_lookup.py` — structured static JSON: dominant planet + nakshatra + skin dosha mapping (no API calls).

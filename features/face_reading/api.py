@@ -67,6 +67,6 @@ if router is not None:
         return FaceReadingResponse(
             phase_a=result.get("phase_a") or {},
             phase_b=result.get("phase_b") or "",
-            metrics=face.get("metrics") or {},
+            metrics=result.get("metrics") or face.get("metrics") or {},
             error=result.get("error") or "",
         )

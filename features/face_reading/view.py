@@ -79,6 +79,8 @@ def _run_reading(analysis, use_kundli, dp):
         use_kundli=use_kundli,
     )
     loading.empty()
+    if result.get("metrics"):
+        st.session_state.face_analysis["metrics"] = result["metrics"]
     st.session_state.face_reading = result
 
 

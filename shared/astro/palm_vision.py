@@ -225,17 +225,19 @@ def _compute_hand_metrics(lm_dict):
 
     # 2D:4D ratio (index to ring) — well-supported in research
     ratio_2d4d = round(float(index_len / max(ring_len, 1)), 3)
-    if ratio_2d4d < 0.95:
-        ratio_reading = "Lower than typical (associated with higher prenatal androgen exposure)"
-    elif ratio_2d4d > 1.00:
-        ratio_reading = "Higher than typical (associated with lower prenatal androgen exposure)"
+    if ratio_2d4d < 0.98:
+        ratio_reading = "Lower than typical (indicating a longer Ring finger, associated with active Surya energy, creativity, and drive)"
+    elif ratio_2d4d > 1.02:
+        ratio_reading = "Higher than typical (indicating a longer Index finger, associated with active Jupiter energy, leadership, and wisdom)"
     else:
-        ratio_reading = "Within typical range"
+        ratio_reading = "Within typical range (balanced Index and Ring finger heights)"
 
     # Dominant finger relative to palm length
+    # In palmistry, Saturn (middle) is always physically the longest finger.
+    # The dominant personality/expression drive is determined by the relative height of
+    # the Jupiter (index), Sun (ring), and Mercury (little) fingers.
     finger_ratios = {
         "Jupiter (index)":  index_len  / max(palm_l, 1),
-        "Saturn (middle)":  middle_len / max(palm_l, 1),
         "Sun (ring)":       ring_len   / max(palm_l, 1),
         "Mercury (little)": pinky_len  / max(palm_l, 1),
     }

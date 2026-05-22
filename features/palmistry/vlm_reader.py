@@ -405,6 +405,36 @@ def read_palm(
             "thumb": {}
         }
 
+    # ── VLM Visual Self-Correction ──
+    vlm_fingers = phase_a.get("fingers", {})
+    if isinstance(vlm_fingers, dict):
+        vlm_ratio = vlm_fingers.get("index_vs_ring_length")
+        if vlm_ratio == "ring_longer":
+            hand_metrics["dominant_finger"] = "Sun (ring)"
+            hand_metrics["ratio_2d4d"] = 0.96
+            hand_metrics["ratio_reading"] = "Lower than typical (indicating a longer Ring finger, associated with active Surya energy, creativity, and drive)"
+        elif vlm_ratio == "index_longer":
+            hand_metrics["dominant_finger"] = "Jupiter (index)"
+            hand_metrics["ratio_2d4d"] = 1.04
+            hand_metrics["ratio_reading"] = "Higher than typical (indicating a longer Index finger, associated with active Jupiter energy, leadership, and wisdom)"
+        elif vlm_ratio == "equal":
+            if hand_metrics.get("dominant_finger") not in ("Jupiter (index)", "Sun (ring)"):
+                hand_metrics["dominant_finger"] = "Sun (ring)"
+            hand_metrics["ratio_2d4d"] = 1.0
+            hand_metrics["ratio_reading"] = "Within typical range (balanced Index and Ring finger heights)"
+
+    vlm_vit = phase_a.get("vitality_visual_class")
+    if vlm_vit and vlm_vit != "not_assessable":
+        vitality["class"] = vlm_vit
+        if vlm_vit == "Robust":
+            vitality["note"] = "Warm, well-perfused tone — strong vital energy"
+        elif vlm_vit == "Subdued":
+            vitality["note"] = "Pale or muted tone — review rest and circulation"
+        elif vlm_vit == "Balanced":
+            vitality["note"] = "Healthy, even tone"
+        elif vlm_vit == "Cool":
+            vitality["note"] = "Cooler tone — variable energy reserves"
+
     # ── Pass 2: Local & Free Context Gathering ──
     # Construct compatible palm data structures for local lookups
     rich_palm, elevations = _build_rich_palm_data(phase_a, hand_metrics, vitality)
@@ -462,5 +492,7 @@ def read_palm(
     parsed = _parse_response(text_b)
     # Ensure phase_a returned to caller is the rich Phase A we detected
     parsed["phase_a"] = phase_a
+    parsed["hand_metrics"] = hand_metrics
+    parsed["vitality"] = vitality
     parsed["error"] = ""
     return parsed

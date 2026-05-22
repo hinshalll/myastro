@@ -180,78 +180,8 @@ def show_palmistry():
                 st.info("💡 Tip: You can set a profile in 'Saved Profiles' to unlock Kundli-palm cosmic alignment. Proceeding with pure visual palm reading.")
                 use_kundli = False
 
-            # Default sensory inputs
-            palm_feel = "Balanced / Use visual analysis"
-            thumb_flex = "Balanced / Use visual analysis"
-            sacred_marks = []
-
-            with st.expander("🔮 Fine-Tune Tactile & Sacred Marks (Optional)", expanded=False):
-                st.markdown(
-                    """
-                    <div style="text-align:center;margin-top:0.5rem;margin-bottom:0.8rem;">
-                      <span style="color:#d4af37;font-weight:bold;font-size:1.1rem;letter-spacing:1px;">
-                        ✨ COSMIC SENSORY OVERRIDES ✨
-                      </span>
-                      <div style="font-size:0.8rem;color:rgba(200,190,220,0.6);margin-top:0.3rem;">
-                        Vedic Samudrika Shastra is highly tactile. If computer vision estimates aren't 100% aligned due to lighting or camera angle, you can override them here.
-                      </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                # Visual guide for Vedic symbols to eliminate user error
-                st.image(
-                    "https://hmspryhmyhegraqccnsh.supabase.co/storage/v1/object/public/palmistry-images/palmistry/book_image_20.jpg",
-                    caption="🔱 Vedic Sacred Marks Visual Key (A = Matsya/Fish, B = Trishul/Trident, C = Yavarekha/Barley)",
-                    use_container_width=True
-                )
-
-                # Columns for side-by-side select boxes
-                sc1, sc2 = st.columns(2)
-                with sc1:
-                    palm_feel = st.selectbox(
-                        "✋ Palm Texture & Touch feeling:",
-                        options=[
-                            "Balanced / Use visual analysis",
-                            "Warm, smooth, and vibrant (Pitta)",
-                            "Cool, dry, or slightly rough (Vata)",
-                            "Soft, cool, smooth, and damp (Kapha)"
-                        ],
-                        index=0,
-                        help="Ayurvedic Sparsha: Overrides visual HSV skin tone calculation with direct physical texture ground truth."
-                    )
-                with sc2:
-                    thumb_flex = st.selectbox(
-                        "👍 Thumb flexibility (if pushed back):",
-                        options=[
-                            "Balanced / Use visual analysis",
-                            "Firm & Stiff (holds straight, resists bending)",
-                            "Flexible & Supple (bends backward easily)"
-                        ],
-                        index=0,
-                        help="Angustha Shastra: Overrides physical image rotation limit if VLM scanning of the thumb angle is blocked."
-                    )
-
-                # Rare symbols multi-select
-                sacred_marks = st.multiselect(
-                    "🔱 Classical Vedic Signs clearly visible on your hand (Optional):",
-                    options=[
-                        "Matsya (A distinct fish-like shape at the base of the palm or Ketu mount)",
-                        "Trishul (A trident split at the top/endpoint of your heart, head, or fate line)",
-                        "Yavarekha (A clear barley-grain loop on the thumb joint)"
-                    ],
-                    default=[],
-                    help="Vedic Chinhas: Rare, microscopic marks that might be too tiny for automatic visual scan detection."
-                )
-
             if st.button("✨ Generate My Reading", type="primary", use_container_width=True):
-                user_inputs = {
-                    "palm_feel": palm_feel,
-                    "thumb_flex": thumb_flex,
-                    "sacred_marks": sacred_marks
-                }
-                _run_reading(dp if use_kundli else None, analysis, user_inputs)
+                _run_reading(dp if use_kundli else None, analysis)
                 st.rerun()
     else:
         _render_reading(st.session_state.palm_reading)
@@ -576,7 +506,7 @@ def _render_signals_card(analysis):
 # READING PIPELINE — with proper loading animation
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _run_reading(dp, analysis, user_inputs=None):
+def _run_reading(dp, analysis):
     # Animated loading placeholder — inline @keyframes so it works without external CSS
     loading = st.empty()
     loading.markdown(
@@ -590,11 +520,11 @@ def _run_reading(dp, analysis, user_inputs=None):
                       animation:_spin 3s linear infinite">✨</div>
           <div style="font-size:1.05rem;margin-top:1rem;
                       animation:_fade 2s ease-in-out infinite">
-            Reading your palm…
+            Gently tracing the lines of your hand…
           </div>
           <div style="font-size:0.8rem;margin-top:.4rem;
                       color:rgba(200,190,220,0.5)">
-            Connecting your chart to your hand · 10–20 seconds
+            Blending the stars of your birth chart with your palm · 10–20 seconds
           </div>
         </div>
         """,
@@ -602,46 +532,8 @@ def _run_reading(dp, analysis, user_inputs=None):
     )
 
     dossier     = generate_astrology_dossier(dp) if dp else ""
+    st.session_state.palm_reading_used_kundli = (dp is not None)
     legacy_data = _build_legacy_palm_data(analysis)
-
-    # Process user-verified inputs to guarantee high accuracy
-    user_inputs_block = ""
-    if user_inputs:
-        user_inputs_block = "\n\n═══ USER-VERIFIED PHYSICAL OBSERVATIONS ═══\n"
-        
-        # 1. Palm Feel -> Ayurvedic Touch Dosha override
-        feel = user_inputs.get("palm_feel")
-        if feel and "Balanced" not in feel:
-            user_inputs_block += f"- Palm Texture & Sparsha: {feel}\n"
-            if "Pitta" in feel:
-                legacy_data["ui_vitality"] = "Robust"
-                legacy_data["vitality_hsv"] = "Robust warm Pitta complexion verified by touch"
-            elif "Vata" in feel:
-                legacy_data["ui_vitality"] = "Subdued"
-                legacy_data["vitality_hsv"] = "Subdued cool dry Vata complexion verified by touch"
-            elif "Kapha" in feel:
-                legacy_data["ui_vitality"] = "Balanced"
-                legacy_data["vitality_hsv"] = "Balanced soft Kapha complexion verified by touch"
-
-        # 2. Thumb Flexibility
-        flex = user_inputs.get("thumb_flex")
-        if flex and "Balanced" not in flex:
-            user_inputs_block += f"- Verified Thumb Flexibility: {flex}\n"
-
-        # 3. Sacred Vedic Marks -> Inject directly into RAG search context
-        marks = user_inputs.get("sacred_marks", [])
-        if marks:
-            user_inputs_block += f"- Confirmed Sacred Vedic Marks: {', '.join(marks)}\n"
-            for mark in marks:
-                if "Matsya" in mark:
-                    legacy_data["marks"].append({"type": "Matsya (Fish)", "position": "Ketu mount / base of palm"})
-                elif "Trishul" in mark:
-                    legacy_data["marks"].append({"type": "Trishul (Trident)", "position": "mounts / endpoint of major lines"})
-                elif "Yavarekha" in mark:
-                    legacy_data["marks"].append({"type": "Yavarekha (Barley)", "position": "thumb joint"})
-
-    if user_inputs_block:
-        dossier += user_inputs_block
 
     knowledge_context = ""
     if get_palm_context:
@@ -670,6 +562,13 @@ def _run_reading(dp, analysis, user_inputs=None):
         qdrant_context    = qdrant_context,
     )
 
+    if not result.get("error"):
+        # Write VLM-corrected metrics back into palm_analysis for UI synchronization
+        analysis["hand_metrics"] = result.get("hand_metrics", analysis["hand_metrics"])
+        analysis["vitality"] = result.get("vitality", analysis["vitality"])
+        st.session_state.palm_analysis = analysis
+
+    result["used_kundli"] = (dp is not None)
     loading.empty()
     st.session_state.palm_reading = result
 
@@ -697,16 +596,17 @@ def _render_reading(result):
 
     agreement      = phase_a.get("kundli_palm_agreement", "")
     agreement_note = phase_a.get("kundli_palm_agreement_note", "")
-    if agreement and agreement != "cannot_assess":
+    used_kundli    = result.get("used_kundli", False)
+    if agreement and agreement != "cannot_assess" and used_kundli:
         _render_agreement_badge(agreement, agreement_note)
 
     # Reading text — already markdown
     st.markdown(phase_b)
 
-    with st.expander("🔍 What the AI actually saw in your photo", expanded=False):
+    with st.expander("🔍 Physical lines & mounts observed on your palm", expanded=False):
         st.caption(
             "Your reading is based only on what was clearly visible. "
-            "Lines marked ❓ were too unclear to include — that's honest, not a bug."
+            "Lines marked ❓ were not clear enough in the photo to read confidently."
         )
         _render_phase_a(phase_a)
 
@@ -757,6 +657,7 @@ def _render_reading(result):
                 signals        = signals,
                 palm_png_bytes = cover_bytes,
                 user_name      = user_name,
+                used_kundli    = used_kundli,
             )
             st.download_button(
                 "⬇ Download PDF",
@@ -769,7 +670,7 @@ def _render_reading(result):
             # Fallback to markdown if PDF generation fails
             st.download_button(
                 "⬇ Download (.md)",
-                data=_build_markdown_export(phase_b, phase_a).encode("utf-8"),
+                data=_build_markdown_export(phase_b, phase_a, used_kundli=used_kundli).encode("utf-8"),
                 file_name="palm_reading.md",
                 mime="text/markdown",
                 use_container_width=True,
@@ -782,7 +683,7 @@ def _render_reading(result):
 def _render_start_fresh():
     if st.button("📷 Start Fresh", use_container_width=True):
         st.session_state.uploader_key = st.session_state.get("uploader_key", 0) + 1
-        for k in ("palm_reading", "palm_analysis", "palm_cache_key"):
+        for k in ("palm_reading", "palm_analysis", "palm_cache_key", "palm_reading_used_kundli"):
             st.session_state.pop(k, None)
         st.rerun()
 
@@ -945,17 +846,17 @@ def _render_phase_a(phase_a):
 # MARKDOWN EXPORT
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _build_markdown_export(phase_b, phase_a):
+def _build_markdown_export(phase_b, phase_a, used_kundli=False):
     out = ["# My Palm Reading", "", "*Generated by Astro Suite · Samudrika Shastra*",
            "", "---", "", phase_b.strip(), ""]
 
     if isinstance(phase_a, dict):
         agreement = phase_a.get("kundli_palm_agreement", "")
         note      = phase_a.get("kundli_palm_agreement_note", "")
-        if agreement and agreement != "cannot_assess":
+        if agreement and agreement != "cannot_assess" and used_kundli:
             out += ["---", "", f"**Chart & Palm Agreement:** {agreement.title()}", "", note or "", ""]
 
-        out += ["---", "", "## What the AI observed", ""]
+        out += ["---", "", "## Physical lines & mounts observed", ""]
 
         lines = phase_a.get("lines", {}) or {}
         if lines:

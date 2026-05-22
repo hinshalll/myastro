@@ -117,14 +117,44 @@ def read_face(enhanced_face, region_crops: dict, metrics: dict, quality_metrics:
         dossier=dossier, use_kundli=use_kundli,
     )
 
-    try:
-        model = get_ai_model_by_name(MODEL_NAME)
-        response = model.generate_content(images + [prompt])
-        text = response.text or ""
-    except Exception as e:
-        return {"phase_a": {}, "phase_b": "", "raw": "",
-                "error": f"VLM call failed: {type(e).__name__}: {e}"}
+    model_ladder = ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "gemini-1.5-flash"]
+    response = None
+    last_err = None
+    
+    for model_name in model_ladder:
+        try:
+            model = get_ai_model_by_name(model_name)
+            response = model.generate_content(images + [prompt])
+            if response and response.text:
+                break
+        except Exception as e:
+            last_err = e
+            continue
+            
+    if response is None or not response.text:
+        return {"phase_a": {}, "phase_b": "", "raw": "", "metrics": metrics,
+                "error": f"VLM call failed: {type(last_err).__name__}: {last_err}"}
 
-    parsed = _parse_response(text)
+    parsed = _parse_response(response.text)
     parsed["error"] = ""
+    
+    # ── VLM Visual Self-Correction Override ──────────────────────────────────
+    corrected_metrics = json.loads(json.dumps(metrics))  # deep copy
+    phase_a = parsed.get("phase_a") or {}
+    
+    # 1. Face Shape & Element override
+    fs_obs = phase_a.get("face_shape") or {}
+    observed_shape = fs_obs.get("observed")
+    observed_element = fs_obs.get("element")
+    if observed_shape and observed_shape in ("square", "round", "oval", "tapering", "inverted_pot"):
+        corrected_metrics["face_shape"]["primary"] = observed_shape
+        if observed_element:
+            corrected_metrics["face_shape"]["element"] = observed_element
+            
+    # 2. Dominant Zone override
+    observed_zone = phase_a.get("dominant_zone")
+    if observed_zone and observed_zone in ("upper_forehead", "mid_nose", "lower_mouth"):
+        corrected_metrics["zones"]["dominant"] = observed_zone
+        
+    parsed["metrics"] = corrected_metrics
     return parsed

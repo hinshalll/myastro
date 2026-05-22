@@ -144,21 +144,29 @@ features/<feature>/
 - `content.py` + `narrative.py` hold the two AI batches
 
 ### 8. palmistry — `features/palmistry/`
-- Default profile OPTIONAL (cosmic Kundli alignment via checkbox in UI / optional in API).
+- Default profile OPTIONAL (cosmic Kundli alignment via checkbox in UI / optional in API). Premium Palm PDF generator (in `shared/pdf/palm_pdf.py`) has been updated to conditionally render cover subtitles ("A cosmic reading..." vs "A sacred reading...") and suppress planetary alignment notes when `used_kundli` is `False`.
 - Pipeline: EXIF orient → quality check → MediaPipe landmarks → 7 rotation-invariant mount crops (calculated via Euclidean distance) → vitality (HSV) → hand metrics.
-- Two-Pass Visual VLM Pipeline with Cosmic Sensory Verification & Calibration:
+- Two-Pass Visual VLM Pipeline with Cosmic Sensory Verification, VLM Self-Correction & Calibration:
   - Pass 1: Cheap visual scan to extract strict structured Phase A JSON observations of lines, mounts, and marks. Visual calibration is enhanced by passing two Supabase-hosted diagrams alongside the hand images: `book_image_18.jpg` as `REFERENCE 1` (mounts/gunas) and `reference_grid_3.jpg` as `REFERENCE 2` (a 25-box template grid detailing line defects like islands, breaks, and chains) to serve as a physical calibration stencil.
-  - Pass 2: Local & free context matching (Vedic planets, nakshatras, skin dosha mapping from HSV vitality + user-validated touch textures) + targeted Qdrant semantic search of actual lines/marks (including confirmed sacred Vedic Chinhas: Matsya, Trishul, Yavarekha).
+  - VLM Visual Self-Correction: Integrates a 100% automated visual scan check at the end of Pass 1. The VLM evaluates finger proportions (`"index_vs_ring_length"`) and palm color tone (`"vitality_visual_class"`), dynamically overriding noisy MediaPipe physical landmark ratios and HSV skin color heuristics.
+  - State & UI Synchronization: Write VLM-corrected hand metrics (e.g. ring finger taller, setting ruling planet to Sun) and vitality (e.g. Subdued) back into Streamlit's session state (`st.session_state.palm_analysis`) before the final rerun. This forces the UI signals list and ruling planet card to update instantly to match the visual scan and Phase B reading text.
+  - Pass 2: Local & free context gathering (Vedic planets, nakshatras, skin dosha mapping from HSV vitality + user-validated touch textures) + targeted Qdrant semantic search of actual lines/marks (including confirmed sacred Vedic Chinhas: Matsya, Trishul, Yavarekha).
   - Pass 3: Detailed Phase B markdown reading grounded in both pre-confirmed visual findings (with calibration) and verified tactile/symbolic inputs.
+- Planet Dominance Refinement: Middle finger (Saturn) is physically always the longest finger in human hands. Excluded Saturn from dominant finger relative height comparisons, letting active personality/character traits (Jupiter/index, Sun/ring, Mercury/little) correctly dictate the ruling planet.
 - Cosmic Sensory Verification: An optional, collapsed fine-tuning expander in the UI that acts as a human-in-the-loop override for palm touch feeling (for absolute Ayurvedic Sparsha accuracy), thumb flexibility (bypassing camera tilt issues), and rare microscopic sacred signs. Includes an inline visual guide of the Vedic sacred marks grid (`book_image_20.jpg` detailing Matsya, Trishul, and Yavarekha) directly in the UI card to eliminate user guesswork. By default, the app is 100% automated (relying on vision metrics & HSV color vitality classification), leaving this panel strictly as a premium optional refinement with zero extra API cost.
 - Two knowledge sources stacked: `knowledge_lookup.py` (static JSON: planet/nakshatra/dosha) + `qdrant_search.py` (semantic palmistry.md).
 - AI cost: ~₹0.35 per reading (extremely cheap, well below the ₹1 target cap).
 
+
 ### 8b. face_reading — `features/face_reading/`
 - Vedic face reading (Mukha Samudrika). Upload a front-facing photo → reading. Works for **any** face; **optional** "Link my birth chart" toggle adds a face-vs-chart cross-reference.
 - Vision: `shared/astro/face_vision.py` — MediaPipe **Face Mesh** (478 pts), reuses palm engine's image prep. Computes face shape → Pancha Bhoota element, three-zone proportions, eye spacing/tilt, nose ratios, jaw, symmetry; frontal-pose gate; region crops.
-- Knowledge: `data/face_knowledge.json` (5 shapes→elements, three zones, feature meanings, moles, planet appearance, optional kundli layer). `knowledge_lookup.py` maps measured geometry → meanings. **No RAG / Qdrant** — JSON-only, lightweight.
-- AI: ONE Gemini Flash Lite VLM call (full face + 4 region crops + measured geometry + knowledge + optional dossier) → Phase A JSON + Phase B reading. ~under ₹1.
+  - **Pose Pitch Gating**: Added relative vertical pitch pose check: $\text{pitch} = \frac{\text{nose\_y} - \text{eye\_y}}{\text{mouth\_y} - \text{eye\_y}}$. Reject photos tilted upward (`pitch < 0.35`) or tilted downward (`pitch > 0.60`) to prevent 2D projection distortion from distorting zone measurements.
+- Knowledge: `data/face_knowledge.json` (5 shapes→elements, three zones, feature meanings, moles, planet appearance, optional kundli layer). `knowledge_lookup.py` maps measured geometry → meanings. **No RAG / Qdrant** — JSON-only, lightweight, grounded directly in classical samudrika shastra and Dharmender Kumar Bansal Patwari's D-1 Kundli mapping.
+- AI: ONE Gemini VLM call (full face + 4 region crops + measured geometry + knowledge + optional dossier) → Phase A JSON + Phase B reading.
+  - **VLM Visual Self-Correction**: VLM visually confirms face shape and dominant zone (`"dominant_zone"` added to Phase A JSON observations), dynamically overriding noisy landmark coordinates in `vlm_reader.py`.
+  - **High-Availability Fallbacks**: Implemented client model fallback ladder (`gemini-3.1-flash-lite-preview` -> `gemini-2.5-flash` -> `gemini-1.5-flash`) for robust availability under rate limits.
+- State & UI/API Sync: VLM-corrected metrics are synchronized back to Streamlit (`view.py`) and return payloads (`api.py`), ensuring visual cards in the UI instantly match the generated prose.
 - Deliberately **excludes line-based reading** (forehead rekha / gait) for accuracy. Respectful, non-diagnostic framing.
 - API: `POST /face_reading/read` (`image_base64`, `use_kundli`, optional `profile`).
 
@@ -195,13 +203,14 @@ features/<feature>/
 | 16 | Stale aiguide JSONs (palm_glossary, palm_miner_output — build artifacts) | ✅ Deleted (4.8 MB freed) |
 | 17 | Tarot was auto-draw only (22 Major Arcana); not how real readings work and not mobile-friendly | ✅ Reworked — full **78-card deck** + **interactive picker**: stateless signed-token `draw-session`→`reveal` flow (backend is source of truth), swipe-picker Streamlit component, new `/tarot/draw-session` + `/tarot/reveal` FastAPI routes (legacy routes kept). Birth Card + Dashboard daily card unchanged. Optional `TAROT_DRAW_SECRET` for token signing in prod. |
 | 18 | No face-reading feature | ✅ Added **face_reading** — Vedic Mukha Samudrika reader. MediaPipe Face Mesh → deterministic geometry (shape→element, zones, features) fed as ground truth to ONE Flash Lite VLM call; JSON knowledge base (no RAG, under ₹1). Works for any face; optional kundli cross-reference. Line-based reading excluded for accuracy. New `/face_reading/read` route + nav entry. |
-| 18 | `shared/pdf/builder.py` referenced undefined `render` instead of imported `render_chart_svg` causing NameError when compiling Premium Kundli PDF | ✅ Fixed — updated call to `render_chart_svg` |
-| 19 | Palmistry RAG was "blind" (Qdrant search executed before physical lines/marks were visually verified). | ✅ Fixed — re-architected into a Two-Pass visual pipeline (Pass 1: VLM scan to Phase A JSON observations, Pass 2: local/Qdrant lookup based on observed lines, Pass 3: Phase B grounded reading). |
-| 20 | Palmistry blocked users without a saved profile by requiring a default profile. | ✅ Fixed — made Birth Chart (Kundli) alignment completely optional via checkbox in Streamlit and optional field in FastAPI. |
-| 21 | Ayurvedic Skin Dosha vitality lookup was empty or inaccurate. | ✅ Fixed — upgraded mapping of HSV vitality classes and blended classical default dosha profile contexts. |
-| 22 | Mount cropping did not account for tilted or rotated palms (used vertical delta). | ✅ Fixed — calculated crops using mathematical Euclidean distance metrics for full rotation-invariance. |
-| 23 | Palmistry VLM calls were expensive (~Rs. 2) and prone to hallucinations. | ✅ Fixed — optimized prompts and orchestration to cost ~Rs. 0.35 per call with extremely high accuracy. |
-| 24 | Supabase images not fully leveraged for VLM physical line calibration and visual UI cues. | ✅ Fixed — fetched, cached, and passed `reference_grid_3.jpg` (REFERENCE 2) for visual calibration in Pass 1 VLM prompt; rendered `book_image_20.jpg` in Streamlit collapsed expander as an inline visual key to eliminate user guesswork. |
+| 19 | `shared/pdf/builder.py` referenced undefined `render` instead of imported `render_chart_svg` causing NameError when compiling Premium Kundli PDF | ✅ Fixed — updated call to `render_chart_svg` |
+| 20 | Palmistry RAG was "blind" (Qdrant search executed before physical lines/marks were visually verified). | ✅ Fixed — re-architected into a Two-Pass visual pipeline (Pass 1: VLM scan to Phase A JSON observations, Pass 2: local/Qdrant lookup based on observed lines, Pass 3: Phase B grounded reading). |
+| 21 | Palmistry blocked users without a saved profile by requiring a default profile. | ✅ Fixed — made Birth Chart (Kundli) alignment completely optional via checkbox in Streamlit and optional field in FastAPI. |
+| 22 | Ayurvedic Skin Dosha vitality lookup was empty or inaccurate. | ✅ Fixed — upgraded mapping of HSV vitality classes and blended classical default dosha profile contexts. |
+| 23 | Mount cropping did not account for tilted or rotated palms (used vertical delta). | ✅ Fixed — calculated crops using mathematical Euclidean distance metrics for full rotation-invariance. |
+| 24 | Palmistry VLM calls were expensive (~Rs. 2) and prone to hallucinations. | ✅ Fixed — optimized prompts and orchestration to cost ~Rs. 0.35 per call with extremely high accuracy. |
+| 25 | Supabase images not fully leveraged for VLM physical line calibration and visual UI cues. | ✅ Fixed — fetched, cached, and passed `reference_grid_3.jpg` (REFERENCE 2) for visual calibration in Pass 1 VLM prompt; rendered `book_image_20.jpg` in Streamlit collapsed expander as an inline visual key to eliminate user guesswork. |
+| 26 | Noise in MediaPipe landmarks and HSV color space caused incorrect finger proportions, ruling planet calculation, and skin vitality, creating UI-reading mismatches. | ✅ Fixed — excluded Saturn from the dominant comparative check so active traits (Jupiter, Sun, Mercury) determine the ruling planet. Implemented a 100% automated VLM Visual Self-Correction override in Pass 1 to correct noisy MediaPipe index-vs-ring ratios and skin tone HSV metrics, and synchronized these corrections back to `st.session_state.palm_analysis` to instantly update UI widgets. |
 
 ---
 

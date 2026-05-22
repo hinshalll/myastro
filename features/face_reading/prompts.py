@@ -67,13 +67,14 @@ You are an expert in Vedic face reading (Mukha Samudrika Shastra), reading a rea
 {knowledge_block}{kundli_block}
 ═══ PHASE A — VISUAL OBSERVATION (JSON first, in ```json``` fences) ═══
 
-Confirm or gently refine the measured shape from the actual image. Judge what geometry cannot: complexion/glow, moles or distinctive marks (give position + colour), eyebrow thickness, and expression. Use "not_assessable" generously — hair-covered forehead, hidden ears, glasses, etc. Report moles ONLY if clearly visible; otherwise "none_clearly_visible".
+Confirm or gently refine the measured face shape and zone proportions from the actual image. Noisy MediaPipe landmark detections can shift based on head nod/tilt or camera angle, so you MUST visually verify the true primary face shape, element, and dominant horizontal zone (upper forehead vs mid nose vs lower mouth) using your high-resolution vision. If they differ from the measured values, correct them. Judge what geometry cannot: complexion/glow, moles or distinctive marks (give position + colour), eyebrow thickness, and expression. Use "not_assessable" generously — hair-covered forehead, hidden ears, glasses, etc. Report moles ONLY if clearly visible; otherwise "none_clearly_visible".
 
 ```json
 {{
   "image_quality": "good|acceptable|poor",
   "image_issues": "brief note or empty string",
   "face_shape": {{ "observed": "square|round|oval|tapering|inverted_pot", "element": "earth|water|fire|air|ether", "agrees_with_measured": "yes|partly|no" }},
+  "dominant_zone": "upper_forehead|mid_nose|lower_mouth|not_assessable",
   "forehead": {{ "observation": "...", "not_assessable": false }},
   "eyebrows": {{ "thickness": "thick|medium|thin|not_assessable", "shape": "arched|straight|curved|not_assessable" }},
   "eyes": {{ "observation": "...", "not_assessable": false }},
