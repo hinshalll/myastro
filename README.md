@@ -14,7 +14,7 @@ Vedic-astrology + AI divination app. Two front-ends share one backend:
 ```
 features/        ← User-visible features, one folder each.
                    tarot / horoscopes / numerology / consultation /
-                   dashboard / kundli / palmistry / oracle / vault
+                   dashboard / kundli / palmistry / face_reading / oracle / vault
 
 shared/          ← Backend plumbing shared across features.
   astro/         ← Swiss Ephemeris + dasha + scoring + chart compute

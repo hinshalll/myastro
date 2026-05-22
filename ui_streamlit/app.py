@@ -38,6 +38,7 @@ from features.horoscopes.view          import show_horoscopes
 from features.numerology.view          import show_numerology
 from features.vault.view               import show_vault
 from features.palmistry.view           import show_palmistry
+from features.face_reading.view         import show_face_reading
 from features.kundli.view              import show_kundli
 
 # ── page config ───────────────────────────────────────────────────────────────
@@ -111,6 +112,7 @@ _ROUTES = {
     "Horoscopes":        show_horoscopes,
     "Numerology":        show_numerology,
     "Palm Reading":      show_palmistry,
+    "Face Reading":      show_face_reading,
     "Kundli":            show_kundli,
     "Saved Profiles":    show_vault,
 }

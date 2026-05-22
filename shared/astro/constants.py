@@ -103,7 +103,7 @@ PERSONAL_YEAR_MEANINGS = {1:"New beginnings, independence, leadership.",
 
 # CELTIC_CROSS_POSITIONS and TAROT_BASE moved to features/tarot/constants.py
 
-NAV_PAGES = ["Dashboard", "Consultation Room", "The Oracle", "Mystic Tarot", "Horoscopes", "Numerology", "Palm Reading", "Kundli", "Saved Profiles"]
+NAV_PAGES = ["Dashboard", "Consultation Room", "The Oracle", "Mystic Tarot", "Horoscopes", "Numerology", "Palm Reading", "Face Reading", "Kundli", "Saved Profiles"]
 
 PLANET_RE = r"(Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu)"
 
