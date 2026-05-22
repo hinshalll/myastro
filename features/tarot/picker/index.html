@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<!--
+  features/tarot/picker/index.html — Streamlit custom component (vanilla JS).
+
+  A swipeable, face-down tarot deck. The user swipes/scrolls through the deck
+  and taps cards to select them in order. When the required number are picked,
+  a "Reveal" button returns the chosen hidden-deck positions to Python via the
+  Streamlit component message protocol (setComponentValue).
+
+  No build step: this talks to the Streamlit host directly with postMessage.
+  It NEVER learns the card identities — it only deals in positions. Python maps
+  positions -> cards on the server (features/tarot/service.reveal_session).
+-->
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; font-family: "Space Grotesk", system-ui, sans-serif;
+    color: #f3eaff; background: transparent; overflow: hidden;
+  }
+  .wrap { padding: 4px 2px 14px; }
+  .hint {
+    text-align: center; font-size: .92rem; letter-spacing: .3px;
+    color: rgba(255,255,255,.82); margin: 2px 0 10px; min-height: 1.2em;
+  }
+  .hint b { color: #e9b75a; }
+  /* The swipeable strip: native horizontal scroll = swipe on touch devices. */
+  .strip {
+    display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity;
+    padding: 16px 12px 22px; scrollbar-width: thin;
+    scrollbar-color: rgba(205,140,80,.6) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .strip::-webkit-scrollbar { height: 7px; }
+  .strip::-webkit-scrollbar-thumb { background: rgba(205,140,80,.6); border-radius: 4px; }
+  .card {
+    position: relative; flex: 0 0 auto; width: 86px; aspect-ratio: 2/3;
+    border-radius: 9px; background-size: cover; background-position: center;
+    border: 2px solid rgba(205,140,80,.45); cursor: pointer; scroll-snap-align: center;
+    box-shadow: 0 5px 14px rgba(0,0,0,.55);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .card:hover { transform: translateY(-6px); }
+  .card.picked {
+    transform: translateY(-14px) scale(1.03);
+    border-color: #e9b75a;
+    box-shadow: 0 10px 26px rgba(233,183,90,.55);
+  }
+  .badge {
+    position: absolute; top: -10px; right: -10px; width: 26px; height: 26px;
+    border-radius: 50%; background: #e9b75a; color: #1a0f2e; font-weight: 700;
+    font-size: .9rem; display: none; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
+  .card.picked .badge { display: flex; }
+  .controls { display: flex; justify-content: center; gap: 10px; margin-top: 2px; }
+  button {
+    font-family: inherit; font-size: .95rem; font-weight: 600; cursor: pointer;
+    border-radius: 999px; padding: 9px 20px; border: 1px solid rgba(205,140,80,.6);
+    background: rgba(40,24,64,.7); color: #f3eaff; transition: all .15s ease;
+  }
+  button:hover:not(:disabled) { background: rgba(60,36,96,.9); }
+  button.reveal { background: linear-gradient(90deg,#c98a3a,#e9b75a); color: #1a0f2e; border: none; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .nav { background: rgba(40,24,64,.5); padding: 8px 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hint" id="hint"></div>
+  <div class="strip" id="strip"></div>
+  <div class="controls">
+    <button class="nav" id="prev" type="button">‹</button>
+    <button class="reset" id="reset" type="button">Clear</button>
+    <button class="reveal" id="reveal" type="button" disabled>Reveal</button>
+    <button class="nav" id="next" type="button">›</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ── Streamlit component protocol (vanilla, no React) ──────────────────────
+  function send(type, extra) {
+    window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, extra || {}), "*");
+  }
+  function setHeight() { send("streamlit:setFrameHeight", { height: document.body.scrollHeight }); }
+  function setValue(v) { send("streamlit:setComponentValue", { value: v, dataType: "json" }); }
+
+  var deckSize = 0, pickCount = 1, backUrl = "", sessionId = "";
+  var picks = [];          // hidden-deck positions, in tap order
+  var rendered = false;
+
+  var strip = document.getElementById("strip");
+  var hint = document.getElementById("hint");
+  var revealBtn = document.getElementById("reveal");
+
+  function updateHint() {
+    if (picks.length < pickCount) {
+      var left = pickCount - picks.length;
+      hint.innerHTML = "Swipe the deck, then tap <b>" + left + "</b> more card" +
+        (left === 1 ? "" : "s") + " &nbsp;(" + picks.length + " / " + pickCount + ")";
+    } else {
+      hint.innerHTML = "<b>" + pickCount + "</b> card" + (pickCount === 1 ? "" : "s") +
+        " chosen — tap <b>Reveal</b>.";
+    }
+    revealBtn.disabled = picks.length !== pickCount;
+  }
+
+  function refreshBadges() {
+    var cards = strip.children;
+    for (var i = 0; i < cards.length; i++) {
+      var pos = parseInt(cards[i].dataset.pos, 10);
+      var order = picks.indexOf(pos);
+      if (order === -1) {
+        cards[i].classList.remove("picked");
+      } else {
+        cards[i].classList.add("picked");
+        cards[i].querySelector(".badge").textContent = (order + 1);
+      }
+    }
+  }
+
+  function toggle(pos) {
+    var at = picks.indexOf(pos);
+    if (at !== -1) {
+      picks.splice(at, 1);                 // deselect
+    } else if (picks.length < pickCount) {
+      picks.push(pos);                     // select (in tap order)
+    }
+    refreshBadges();
+    updateHint();
+  }
+
+  function build() {
+    strip.innerHTML = "";
+    picks = [];
+    for (var i = 0; i < deckSize; i++) {
+      var c = document.createElement("div");
+      c.className = "card";
+      c.dataset.pos = i;
+      c.style.backgroundImage = "url('" + backUrl + "')";
+      var b = document.createElement("div");
+      b.className = "badge";
+      c.appendChild(b);
+      (function (pos, el) {
+        // Tap to select, but ignore taps that were actually swipes.
+        var sx = 0, sy = 0, moved = false;
+        el.addEventListener("pointerdown", function (e) { sx = e.clientX; sy = e.clientY; moved = false; });
+        el.addEventListener("pointermove", function (e) {
+          if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) moved = true;
+        });
+        el.addEventListener("pointerup", function () { if (!moved) toggle(pos); });
+      })(i, c);
+      strip.appendChild(c);
+    }
+    updateHint();
+    setHeight();
+  }
+
+  document.getElementById("reveal").addEventListener("click", function () {
+    if (picks.length === pickCount) setValue(picks.slice());
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    picks = []; refreshBadges(); updateHint();
+  });
+  document.getElementById("next").addEventListener("click", function () {
+    strip.scrollBy({ left: strip.clientWidth * 0.8, behavior: "smooth" });
+  });
+  document.getElementById("prev").addEventListener("click", function () {
+    strip.scrollBy({ left: -strip.clientWidth * 0.8, behavior: "smooth" });
+  });
+
+  // Streamlit sends args on every rerun via a "streamlit:render" message.
+  window.addEventListener("message", function (e) {
+    if (!e.data || e.data.type !== "streamlit:render") return;
+    var args = e.data.args || {};
+    var newSession = String(args.session_id || "");
+    // Only (re)build when the deck/session actually changes — avoids wiping the
+    // user's in-progress picks on unrelated Streamlit reruns.
+    if (!rendered || newSession !== sessionId ||
+        args.deck_size !== deckSize || args.pick_count !== pickCount) {
+      deckSize = args.deck_size || 0;
+      pickCount = args.pick_count || 1;
+      backUrl = args.card_back_url || "";
+      sessionId = newSession;
+      rendered = true;
+      build();
+    }
+    setHeight();
+  });
+
+  send("streamlit:componentReady", { apiVersion: 1 });
+  setHeight();
+})();
+</script>
+</body>
+</html>

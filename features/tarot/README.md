@@ -12,6 +12,7 @@ Mystic Tarot reading feature. Four modes + a permanent Birth Card.
 | `schemas.py`   | Pydantic models for the FastAPI request/response shapes |
 | `view.py`      | The Streamlit page — the UI the user sees on the web app |
 | `api.py`       | The FastAPI router — the endpoints the mobile app + website call |
+| `picker/index.html` | The swipe-picker custom component — a face-down, swipeable deck the user taps to choose cards. Vanilla JS, talks to Streamlit via the component message protocol; returns tapped positions only (never card names). The real swipe/fan UX is rebuilt natively in the future React Native app. |
 
 ## Modes
 
