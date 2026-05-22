@@ -115,9 +115,6 @@ def show_palmistry():
     st.caption("Samudrika Shastra · Kundli-aware reading")
 
     dp, _ = get_default_profile()
-    if not dp:
-        st.warning("Set a default profile in 'Saved Profiles' first — your kundli powers the reading.")
-        return
 
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
@@ -172,8 +169,19 @@ def show_palmistry():
     if st.session_state.palm_reading is None:
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
+            use_kundli = False
+            if dp:
+                use_kundli = st.checkbox(
+                    "Integrate Birth Chart (Kundli) for deeper alignment",
+                    value=True,
+                    help="Weaves planetary degrees, nakshatras, and ascendant features directly into your palm reading."
+                )
+            else:
+                st.info("💡 Tip: You can set a profile in 'Saved Profiles' to unlock Kundli-palm cosmic alignment. Proceeding with pure visual palm reading.")
+                use_kundli = False
+
             if st.button("✨ Generate My Reading", type="primary", use_container_width=True):
-                _run_reading(dp, analysis)
+                _run_reading(dp if use_kundli else None, analysis)
                 st.rerun()
     else:
         _render_reading(st.session_state.palm_reading)
@@ -523,7 +531,7 @@ def _run_reading(dp, analysis):
         unsafe_allow_html=True,
     )
 
-    dossier     = generate_astrology_dossier(dp) or ""
+    dossier     = generate_astrology_dossier(dp) if dp else ""
     legacy_data = _build_legacy_palm_data(analysis)
 
     knowledge_context = ""

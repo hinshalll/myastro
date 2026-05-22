@@ -31,7 +31,7 @@ import numpy as np
 from functools import lru_cache
 
 from shared.ai.gemini_client import get_ai_model_by_name
-from features.palmistry.prompts import build_palm_reading_prompt
+from features.palmistry.prompts import build_palm_reading_prompt, build_phase_a_prompt, build_phase_b_prompt
 
 
 # ── MODEL CONFIG ──────────────────────────────────────────────────────────────
@@ -206,6 +206,116 @@ def _parse_response(text):
 _MOUNT_ORDER = ["Jupiter", "Saturn", "Sun", "Mercury", "Venus", "Mars", "Luna"]
 
 
+def _build_rich_palm_data(phase_a: dict, hand_metrics: dict, vitality: dict) -> tuple[dict, dict]:
+    """
+    Build rich_palm and mount elevations dicts compatible with 
+    get_palm_context and query_palmistry from Phase A JSON results.
+    """
+    rich_palm = {}
+    
+    # 1. Traced lines
+    traced_lines = {}
+    phase_a_lines = phase_a.get("lines", {})
+    
+    # Heart line
+    heart = phase_a_lines.get("heart", {})
+    heart_vis = heart.get("visibility", "not_visible")
+    traced_lines["heart_line"] = {
+        "present": heart_vis in ["clear", "faint", "fragmented"],
+        "depth_label": heart_vis,
+        "curvature": heart.get("path", "not_assessable") + f" ending {heart.get('endpoint', '')}",
+        "length_pct": 75 if heart_vis == "clear" else (40 if heart_vis in ["faint", "fragmented"] else 0)
+    }
+    
+    # Head line
+    head = phase_a_lines.get("head", {})
+    head_vis = head.get("visibility", "not_visible")
+    traced_lines["head_line"] = {
+        "present": head_vis in ["clear", "faint", "fragmented"],
+        "depth_label": head_vis,
+        "curvature": f"slope {head.get('slope', '')}, joined to life: {head.get('joined_to_life', '')}",
+        "length_pct": 80 if head_vis == "clear" else (45 if head_vis in ["faint", "fragmented"] else 0)
+    }
+    
+    # Life line
+    life = phase_a_lines.get("life", {})
+    life_vis = life.get("visibility", "not_visible")
+    traced_lines["life_line"] = {
+        "present": life_vis in ["clear", "faint", "fragmented"],
+        "depth_label": life_vis,
+        "curvature": f"curve {life.get('curve', '')}",
+        "length_pct": 90 if life_vis == "clear" else (50 if life_vis in ["faint", "fragmented"] else 0)
+    }
+    
+    # Fate line
+    fate = phase_a_lines.get("fate", {})
+    fate_vis = fate.get("visibility", "not_visible")
+    traced_lines["fate_line"] = {
+        "present": fate_vis in ["clear", "faint", "fragmented"],
+        "depth_label": fate_vis,
+        "curvature": f"starts at {fate.get('starts_at', '')}",
+        "length_pct": 60 if fate_vis == "clear" else (20 if fate_vis in ["faint", "fragmented"] else 0)
+    }
+    
+    # Sun line
+    sun = phase_a_lines.get("sun", {})
+    sun_vis = sun.get("visibility", "not_visible")
+    traced_lines["sun_line"] = {
+        "present": sun_vis in ["clear", "faint", "fragmented"],
+        "depth_label": sun_vis,
+        "length_pct": 50 if sun_vis == "clear" else (15 if sun_vis in ["faint", "fragmented"] else 0)
+    }
+    
+    rich_palm["traced_lines"] = traced_lines
+
+    # 2. Mounts & Elevations
+    elevations = {}
+    phase_a_mounts = phase_a.get("mounts", {})
+    for mount, details in phase_a_mounts.items():
+        fullness = details.get("fullness", "moderate")
+        score = 60 if fullness == "prominent" else (40 if fullness == "moderate" else 20)
+        elevations[mount] = {"score": score}
+
+    # 3. Marks
+    marks = []
+    for mount, details in phase_a_mounts.items():
+        m_txt = details.get("marks", "no notable marks")
+        if m_txt and m_txt != "no notable marks" and m_txt != "not_assessable":
+            marks.append({"type": m_txt, "position": f"{mount} mount"})
+            
+    phase_a_special = phase_a.get("special_marks", {})
+    for sm, status in phase_a_special.items():
+        if status == "visible":
+            marks.append({"type": sm.replace("_", " "), "position": "palm"})
+            
+    rich_palm["marks"] = marks
+
+    # 4. Minor lines
+    minor_lines = {}
+    marr = phase_a_lines.get("marriage_lines", {})
+    if marr.get("count_visible") not in ["0", "not_assessable"]:
+        minor_lines["marriage_lines"] = marr.get("description", "visible")
+    rich_palm["minor_lines"] = minor_lines
+
+    # 5. Topology
+    simian = phase_a_lines.get("simian", {})
+    rich_palm["topology"] = {
+        "simian_line": simian.get("present", False)
+    }
+
+    # 6. Finger data & Hand Metrics
+    rich_palm["finger_data"] = {
+        "hand_type": hand_metrics.get("hand_type", "") or phase_a.get("fingers", {}).get("tip_shape_dominant", "")
+    }
+    
+    # Pass along vitality
+    rich_palm["vitality"] = vitality
+    rich_palm["ui_vitality"] = vitality.get("class", "")
+    rich_palm["vitality_hsv"] = vitality.get("note", "")
+
+    return rich_palm, elevations
+
+
 def read_palm(
     enhanced_palm,
     mount_crops: dict,
@@ -217,25 +327,10 @@ def read_palm(
     qdrant_context: str = "",
 ) -> dict:
     """
-    Main entry point. Performs the single VLM call and returns a parsed result.
-
-    Args:
-        enhanced_palm:     CLAHE-enhanced full palm RGB ndarray
-        mount_crops:       dict {mount_name: rgb_ndarray}
-        hand_metrics:      from analyze_palm()
-        vitality:          from analyze_palm()
-        quality_metrics:   from analyze_palm()
-        dossier:           kundli astrology dossier text
-        knowledge_context: structured Vedic knowledge text
-        qdrant_context:    classical text passages
-
-    Returns:
-        {
-            "phase_a":   dict — structured observations
-            "phase_b":   str  — markdown reading
-            "raw":       str  — full VLM response
-            "error":     str  — error message if call failed (empty otherwise)
-        }
+    Main entry point. Performs a two-pass VLM orchestration.
+    1. Pass 1: Cheap visual-only VLM call to get Phase A JSON.
+    2. Local context lookup (RAG + static Vedic) using the verified Phase A observations.
+    3. Pass 3: Detailed VLM call combining image inputs with all computed contexts for a grounded reading.
     """
     # Refuse to call VLM if image is unusable — saves an API call
     if not quality_metrics.get("is_usable", True):
@@ -257,30 +352,95 @@ def read_palm(
     ref = _fetch_reference_image()
     images = [main_palm] + mount_imgs + ([ref] if ref is not None else [])
 
-    # Build prompt
-    prompt = build_palm_reading_prompt(
+    # ── Pass 1: Visual Observation Detection ──
+    prompt_a = build_phase_a_prompt(
         hand_metrics=hand_metrics,
         vitality=vitality,
         quality_metrics=quality_metrics,
         n_mount_crops=len(mount_imgs),
-        dossier=dossier,
-        knowledge_context=knowledge_context,
-        qdrant_context=qdrant_context,
     )
 
-    # Single VLM call
     try:
         model = get_ai_model_by_name(MODEL_NAME)
-        response = model.generate_content(images + [prompt])
-        text = response.text or ""
+        response_a = model.generate_content(images + [prompt_a])
+        text_a = response_a.text or ""
     except Exception as e:
         return {
             "phase_a": {},
             "phase_b": "",
             "raw":     "",
-            "error":   f"VLM call failed: {type(e).__name__}: {e}",
+            "error":   f"VLM Pass A call failed: {type(e).__name__}: {e}",
         }
 
-    parsed = _parse_response(text)
+    phase_a = _extract_json(text_a)
+    if not phase_a:
+        # Fallback in case VLM failed to output valid JSON or parse failed
+        phase_a = {
+            "image_quality": "acceptable",
+            "image_issues": "",
+            "lines": {},
+            "mounts": {},
+            "special_marks": {},
+            "fingers": {},
+            "thumb": {}
+        }
+
+    # ── Pass 2: Local & Free Context Gathering ──
+    # Construct compatible palm data structures for local lookups
+    rich_palm, elevations = _build_rich_palm_data(phase_a, hand_metrics, vitality)
+
+    # Dynamic imports to avoid circular dependencies
+    try:
+        from features.palmistry.knowledge_lookup import get_palm_context
+    except ImportError:
+        get_palm_context = None
+
+    try:
+        from features.palmistry.qdrant_search import query_palmistry
+    except ImportError:
+        query_palmistry = None
+
+    # Retrieve context, letting dynamic Two-Pass flow override blind RAG contexts if they are empty
+    knowledge_ctx = knowledge_context
+    if not knowledge_ctx and get_palm_context:
+        try:
+            kctx = get_palm_context(rich_palm, elevations, dossier=dossier)
+            knowledge_ctx = kctx.get("formatted_block", "")
+        except Exception as e:
+            print(f"[vlm_reader] knowledge lookup failed: {e}")
+
+    qdrant_ctx = qdrant_context
+    if not qdrant_ctx and query_palmistry:
+        try:
+            qdrant_ctx = query_palmistry(rich_palm, elevations, k=6)
+        except Exception as e:
+            print(f"[vlm_reader] qdrant search failed: {e}")
+
+    # ── Pass 3: Coherent Reading Generation ──
+    phase_a_str = json.dumps(phase_a, indent=2)
+    prompt_b = build_phase_b_prompt(
+        hand_metrics=hand_metrics,
+        vitality=vitality,
+        quality_metrics=quality_metrics,
+        phase_a_json_str=phase_a_str,
+        dossier=dossier,
+        knowledge_context=knowledge_ctx,
+        qdrant_context=qdrant_ctx,
+    )
+
+    try:
+        response_b = model.generate_content(images + [prompt_b])
+        text_b = response_b.text or ""
+    except Exception as e:
+        return {
+            "phase_a": phase_a,
+            "phase_b": "",
+            "raw":     text_a,
+            "error":   f"VLM Pass B call failed: {type(e).__name__}: {e}",
+        }
+
+    parsed = _parse_response(text_b)
+    # Ensure phase_a returned to caller is the rich Phase A we detected
+    parsed["phase_a"] = phase_a
     parsed["error"] = ""
     return parsed

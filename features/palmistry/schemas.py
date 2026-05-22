@@ -7,8 +7,8 @@ except ImportError:
 
 
 class PalmReadingRequest(BaseModel):
-    profile: dict           # default profile (for kundli overlay)
-    image_base64: str       # JPEG/PNG, base64-encoded
+    profile: dict | None = None  # default profile (for kundli overlay)
+    image_base64: str            # JPEG/PNG, base64-encoded
 
 
 class PalmReadingResponse(BaseModel):

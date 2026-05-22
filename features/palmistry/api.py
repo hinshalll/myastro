@@ -31,7 +31,7 @@ if router is not None:
                 phase_a={}, phase_b="", error="palm-vision pipeline failed",
             )
 
-        dossier = generate_astrology_dossier(req.profile)
+        dossier = generate_astrology_dossier(req.profile) if req.profile else ""
         knowledge_ctx = ""
         if get_palm_context:
             try:

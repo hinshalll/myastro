@@ -603,7 +603,7 @@ def analyze_palm(image_bytes):
     overlay       = enhanced.copy()
     hand_isolated = None
     if landmarks_found:
-        palm_h_px     = abs(lm_dict[0][1] - lm_dict[9][1])
+        palm_h_px     = int(np.linalg.norm(np.array(lm_dict[0]) - np.array(lm_dict[9])))
         mount_crops   = extract_mount_crops(enhanced, lm_dict, palm_h_px)
         overlay       = _draw_landmarks(enhanced, lm_dict)
         # Use raw (natural-colour) image for the display isolation — CLAHE can

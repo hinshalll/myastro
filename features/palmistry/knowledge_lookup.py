@@ -40,6 +40,51 @@ VITALITY_TO_DOSHA = {
     "kapha": "kapha",
 }
 
+DEFAULT_DOSHA_DATA = {
+    "vata": {
+        "traits": ["Dry", "Cold", "Light", "Rough", "Mobile", "Subtle", "Clear"],
+        "body_type": "Lean, thin, prominent joints, dry skin, variable appetite",
+        "tendencies": ["Fast-moving", "Creative", "Energetic", "Prone to anxiety", "Cold extremities", "Variable digestion"],
+        "planets": ["Saturn", "Rahu", "Mercury"]
+    },
+    "pitta": {
+        "traits": ["Hot", "Sharp", "Light", "Liquid", "Sour", "Spreading"],
+        "body_type": "Medium build, warm skin, reddish complexion, high metabolism",
+        "tendencies": ["Highly focused", "Ambitious", "Passionate", "Prone to anger", "High thirst", "Strong digestion", "Heat intolerance"],
+        "planets": ["Sun", "Mars", "Ketu"]
+    },
+    "kapha": {
+        "traits": ["Heavy", "Cold", "Soft", "Oily", "Sweet", "Steady", "Slimy"],
+        "body_type": "Broad/large build, smooth, oily skin, strong joints, steady energy",
+        "tendencies": ["Calm", "Patient", "Loyal", "Slow-moving", "Strong immune system", "Prone to lethargy", "Slow digestion"],
+        "planets": ["Moon", "Venus", "Jupiter"]
+    }
+}
+
+
+def _get_dosha_from_vitality(vitality_str: str, ui_vitality: str = "") -> str | None:
+    """Map vitality reading string or UI class to dosha key."""
+    vl = (vitality_str or "").lower()
+    cl = (ui_vitality or "").lower()
+    
+    # Direct class check
+    if "robust" in cl or "robust" in vl:
+        return "pitta"
+    elif "subdued" in cl or "subdued" in vl:
+        return "vata"
+    elif "balanced" in cl or "balanced" in vl:
+        return "kapha"
+    elif "cool" in cl or "cool" in vl:
+        return "vata"
+        
+    # Content scanning fallback
+    for dosha, key in VITALITY_TO_DOSHA.items():
+        if dosha in vl or dosha in cl:
+            return key
+            
+    return None
+
+
 # Prominent mount → planet name in knowledge JSON
 MOUNT_TO_PLANET = {
     "Jupiter":    "jupiter",
@@ -132,15 +177,6 @@ def _extract_nakshatra_from_dossier(dossier: str) -> str | None:
     return None
 
 
-def _get_dosha_from_vitality(vitality_str: str) -> str | None:
-    """Map vitality reading string to dosha key."""
-    vl = vitality_str.lower()
-    for dosha, key in VITALITY_TO_DOSHA.items():
-        if dosha in vl:
-            return key
-    return None
-
-
 def _format_planet_context(planet_data: dict, planet_name: str) -> str:
     """Format planet data into a readable string for the prompt."""
     lines = [f"Planet: {planet_name.title()}"]
@@ -173,14 +209,39 @@ def _format_nakshatra_context(nk_data: dict, nk_name: str) -> str:
 
 def _format_dosha_context(dosha_data: dict, dosha_name: str) -> str:
     """Format dosha data into a readable string for the prompt."""
+    defaults = DEFAULT_DOSHA_DATA.get(dosha_name, {})
+    
+    # Blend defaults if JSON keys are absent or empty
+    traits = dosha_data.get("traits")
+    if not traits:
+        traits = defaults.get("traits", [])
+    elif isinstance(traits, str):
+        traits = [traits]
+        
+    body_type = dosha_data.get("body_type") or defaults.get("body_type", "")
+    
+    tendencies = dosha_data.get("tendencies")
+    if not tendencies:
+        tendencies = defaults.get("tendencies", [])
+    elif isinstance(tendencies, str):
+        tendencies = [tendencies]
+        
+    planets = dosha_data.get("planets")
+    if not planets:
+        planets = defaults.get("planets", [])
+    elif isinstance(planets, str):
+        planets = [planets]
+
     lines = [f"Dosha: {dosha_name.title()}"]
-    for field in ["traits", "body_type", "tendencies", "planets"]:
-        val = dosha_data.get(field)
-        if val:
-            if isinstance(val, list):
-                val = ", ".join(str(v) for v in val if v)
-            if val:
-                lines.append(f"  {field.title()}: {val}")
+    if traits:
+        lines.append(f"  Traits: {', '.join(traits)}")
+    if body_type:
+        lines.append(f"  Body Type: {body_type}")
+    if tendencies:
+        lines.append(f"  Tendencies: {', '.join(tendencies)}")
+    if planets:
+        lines.append(f"  Planets: {', '.join(planets)}")
+        
     return "\n".join(lines)
 
 
@@ -255,12 +316,19 @@ def get_palm_context(
             sections.append(result["nakshatra_context"])
 
     # ── 3. DOSHA (from vitality reading) ─────────────────────────────────────
+    ui_vitality = palm_data.get("ui_vitality", "")
+    if not ui_vitality and isinstance(palm_data.get("vitality"), dict):
+        ui_vitality = palm_data["vitality"].get("class", "")
+        
     vitality_str = palm_data.get("vitality_hsv", "")
-    dosha_name   = _get_dosha_from_vitality(vitality_str)
+    if not vitality_str and isinstance(palm_data.get("vitality"), dict):
+        vitality_str = palm_data["vitality"].get("note", "")
+        
+    dosha_name   = _get_dosha_from_vitality(vitality_str, ui_vitality)
     if dosha_name:
         dosha_summary = doshas.get("summary", doshas)
         dosha_data    = dosha_summary.get(dosha_name, {})
-        if dosha_data:
+        if dosha_data is not None:
             result["dosha_name"]    = dosha_name
             result["dosha_context"] = _format_dosha_context(dosha_data, dosha_name)
             sections.append(result["dosha_context"])
