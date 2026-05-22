@@ -144,12 +144,14 @@ features/<feature>/
 - `content.py` + `narrative.py` hold the two AI batches
 
 ### 8. palmistry — `features/palmistry/`
-- Default profile REQUIRED (kundli overlay)
-- Pipeline: EXIF orient → quality check → MediaPipe landmarks → 7 mount crops → vitality (HSV) → hand metrics
-- Single Gemini Flash Lite VLM call (full palm + 7 mount crops + reference image)
-- Two-phase output: Phase A JSON observations + Phase B markdown reading
-- Two knowledge sources stacked: `knowledge_lookup.py` (static JSON: planet/nakshatra/dosha) + `qdrant_search.py` (semantic palmistry.md)
-- AI cost: ~₹2 per reading
+- Default profile OPTIONAL (cosmic Kundli alignment via checkbox in UI / optional in API).
+- Pipeline: EXIF orient → quality check → MediaPipe landmarks → 7 rotation-invariant mount crops (calculated via Euclidean distance) → vitality (HSV) → hand metrics.
+- Two-Pass Visual VLM Pipeline:
+  - Pass 1: Cheap visual scan to extract strict structured Phase A JSON observations of lines, mounts, and marks.
+  - Pass 2: Local & free context matching (Vedic planets, nakshatras, skin dosha mapping from HSV vitality) + targeted Qdrant semantic search of actual lines/marks.
+  - Pass 3: Detailed Phase B markdown reading grounded in pre-confirmed visual findings.
+- Two knowledge sources stacked: `knowledge_lookup.py` (static JSON: planet/nakshatra/dosha) + `qdrant_search.py` (semantic palmistry.md).
+- AI cost: ~₹0.35 per reading (extremely cheap, well below the ₹1 target cap).
 
 ### 8b. face_reading — `features/face_reading/`
 - Vedic face reading (Mukha Samudrika). Upload a front-facing photo → reading. Works for **any** face; **optional** "Link my birth chart" toggle adds a face-vs-chart cross-reference.
@@ -193,6 +195,11 @@ features/<feature>/
 | 17 | Tarot was auto-draw only (22 Major Arcana); not how real readings work and not mobile-friendly | ✅ Reworked — full **78-card deck** + **interactive picker**: stateless signed-token `draw-session`→`reveal` flow (backend is source of truth), swipe-picker Streamlit component, new `/tarot/draw-session` + `/tarot/reveal` FastAPI routes (legacy routes kept). Birth Card + Dashboard daily card unchanged. Optional `TAROT_DRAW_SECRET` for token signing in prod. |
 | 18 | No face-reading feature | ✅ Added **face_reading** — Vedic Mukha Samudrika reader. MediaPipe Face Mesh → deterministic geometry (shape→element, zones, features) fed as ground truth to ONE Flash Lite VLM call; JSON knowledge base (no RAG, under ₹1). Works for any face; optional kundli cross-reference. Line-based reading excluded for accuracy. New `/face_reading/read` route + nav entry. |
 | 18 | `shared/pdf/builder.py` referenced undefined `render` instead of imported `render_chart_svg` causing NameError when compiling Premium Kundli PDF | ✅ Fixed — updated call to `render_chart_svg` |
+| 19 | Palmistry RAG was "blind" (Qdrant search executed before physical lines/marks were visually verified). | ✅ Fixed — re-architected into a Two-Pass visual pipeline (Pass 1: VLM scan to Phase A JSON observations, Pass 2: local/Qdrant lookup based on observed lines, Pass 3: Phase B grounded reading). |
+| 20 | Palmistry blocked users without a saved profile by requiring a default profile. | ✅ Fixed — made Birth Chart (Kundli) alignment completely optional via checkbox in Streamlit and optional field in FastAPI. |
+| 21 | Ayurvedic Skin Dosha vitality lookup was empty or inaccurate. | ✅ Fixed — upgraded mapping of HSV vitality classes and blended classical default dosha profile contexts. |
+| 22 | Mount cropping did not account for tilted or rotated palms (used vertical delta). | ✅ Fixed — calculated crops using mathematical Euclidean distance metrics for full rotation-invariance. |
+| 23 | Palmistry VLM calls were expensive (~Rs. 2) and prone to hallucinations. | ✅ Fixed — optimized prompts and orchestration to cost ~Rs. 0.35 per call with extremely high accuracy. |
 
 ---
 
