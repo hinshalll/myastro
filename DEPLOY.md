@@ -311,6 +311,41 @@ rotate any "Reversed" card 180°, and render the `reading` markdown.
 
 ---
 
+## When you build the mobile app — the face reading flow
+
+Even simpler than tarot: **one** call, **one** AI call behind it.
+
+```
+POST /face_reading/read
+body: {
+  "image_base64": "<the face photo, base64-encoded>",
+  "use_kundli": false,            # true ONLY when reading the user's OWN face
+  "profile": null                 # required only if use_kundli is true (the saved chart)
+}
+returns: {
+  "metrics":  { "face_shape": {...}, "zones": {...}, "eyes": {...}, ... },  # measured geometry
+  "phase_a":  { ...structured observations the AI confirmed... },
+  "phase_b":  "## First Impression ... (the full reading, markdown)",
+  "error":    ""
+}
+```
+
+In the app: let the user pick/take a front-facing photo, base64-encode it, POST
+it. Render `phase_b` (markdown). Optionally show the `metrics` as a little
+"detected features" card. If `error` is non-empty (e.g. no face detected), show
+it and ask for a clearer photo.
+
+### Things to remember
+- **`use_kundli` is opt-in.** Default `false` = a pure face reading that works
+  for ANYONE's face. Set `true` + pass the saved `profile` only when the user is
+  reading their own face and wants the face-vs-chart cross-reference.
+- It's **lightweight**: no RAG/Qdrant, one Flash Lite call (~under ₹1). Same
+  `GEMINI_API_KEY` (+ `QDRANT_*` for other features) from Step 5 — no new secret.
+- Photo guidance for the UI: front-facing, even light, neutral expression, hair
+  off the forehead, no glasses, face fills the frame.
+
+---
+
 ## Local testing (you can do this anytime)
 
 Run the FastAPI backend on your laptop:
