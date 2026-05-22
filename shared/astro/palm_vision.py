@@ -279,13 +279,13 @@ def _vitality_class(rgb, lm_dict):
     val = float(np.mean(hsv[:, :, 2][region]))
 
     if sat > 75 and val > 130 and 0 <= hue <= 22:
-        cls, note = "Robust",   "Warm, well-perfused tone — strong vital energy"
+        cls, note = "Robust",   "Warm palm tone in this photo"
     elif sat < 38 or val < 100:
-        cls, note = "Subdued",  "Pale or muted tone — review rest and circulation"
+        cls, note = "Subdued",  "Pale or muted palm tone in this photo"
     elif 5 <= hue <= 22 and 45 < sat < 95:
-        cls, note = "Balanced", "Healthy, even tone"
+        cls, note = "Balanced", "Even palm tone in this photo"
     else:
-        cls, note = "Cool",     "Cooler tone — variable energy reserves"
+        cls, note = "Cool",     "Cooler palm tone in this photo"
 
     return {
         "class": cls,

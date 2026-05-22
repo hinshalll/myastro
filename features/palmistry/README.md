@@ -6,21 +6,21 @@ Vedic palm reading. User uploads a photo, and the system performs a high-fidelit
 2. MediaPipe identifies palm landmarks.
 3. Generates 7 rotation-invariant mount crops (Jupiter, Saturn, Sun, Mercury, Venus, Mars, Luna) using mathematical Euclidean distance metrics to handle tilted hands perfectly.
 4. Computes vitality (HSV) + hand metrics.
-5. Runs a cheap, ultra-accurate **Two-Pass Visual VLM pipeline**.
+5. Runs a cheap, conservative **Two-Pass Visual VLM pipeline**.
 
 ## Two-Pass Visual Pipeline & Visual Calibration
 
-To cure "Blind RAG" (where semantic searches occurred before visual features were confirmed) and ensure absolute visual reading accuracy, the pipeline is orchestrated as follows:
+To cure "Blind RAG" (where semantic searches occurred before visual features were confirmed), the pipeline is orchestrated as follows:
 
 1. **Pass 1 (Visual Detection & Calibration)**: Calls the VLM with a cheap, strict prompt to detect physical lines, mounts, and marks, outputting a clean **Phase A JSON** observations block. To eliminate VLM visual limits and correctly categorize fine details (like chains, breaks, or loops), we pass two premium Supabase reference diagrams alongside the hand images:
    - **REFERENCE 1 (`book_image_18.jpg`)**: Direct mapping of planetary mounts and Sattva/Rajas/Tamas gunas.
-   - **REFERENCE 2 (`reference_grid_3.jpg`)**: A 25-box template grid (A to Y) detailing precise physical line defects (breaks, chains, splits). Gemini dynamically cross-references the user's hand features against this grid and maps structural anomalies directly in the observed JSON path (e.g. "chained like box K", "split like box O"), achieving unparalleled diagnostic accuracy.
-2. **Pass 2 (Context Gathering - Free)**: Parses the Phase A JSON locally. Queries the local `knowledge_lookup.py` database (ruling planet, nakshatra, and skin dosha mapping from HSV vitality) and triggers a targeted Qdrant semantic search using the *actual physical features* confirmed in Pass 1.
-3. **Pass 3 (Coherent Reading)**: Calls the VLM with all images (including calibration diagrams) + dossier + targeted Qdrant passages + static Vedic contexts to output a beautiful, grounded **Phase B Markdown Reading**.
+   - **REFERENCE 2 (`reference_grid_3.jpg`)**: A 25-box template grid (A to Y) detailing physical line defects (breaks, chains, splits). Gemini cross-references clear user-hand features against this grid and records comparable line structures in the observed JSON path (e.g. "chained like box K", "split like box O").
+2. **Pass 2 (Context Gathering - Free)**: Only after valid Phase A observations exist, parses that JSON locally. Queries the local `knowledge_lookup.py` database (ruling planet, nakshatra, and skin dosha mapping from HSV vitality) and triggers a targeted Qdrant semantic search using the *actual physical features* confirmed in Pass 1.
+3. **Pass 3 (Coherent Reading)**: Calls the VLM with all images (including calibration diagrams) + dossier + targeted Qdrant passages + static Vedic contexts to output a grounded **Phase B Markdown Reading**. If the visual scan is invalid or the photo is poor, Phase B is skipped so the app does not spend a second AI call on weak observations.
 
 ## VLM Visual Self-Correction & Planet Dominance Refinements
 
-To guarantee 100% genuine visual accuracy and eliminate errors from physical camera angles, noise in MediaPipe coordinate calculations, or ambient lighting changes, Myastro implements a fully automated visual self-correction layer in the palmistry pipeline:
+To reduce errors from physical camera angles, noisy MediaPipe coordinate calculations, or ambient lighting changes, Myastro implements a visual self-correction layer in the palmistry pipeline:
 
 1. **Saturn Middle Finger Exclusion**: 
    In human anatomy, the middle finger (Saturn) is physically always the longest finger. Including it in comparative height checks would always make Saturn the dominant finger. In classical palmistry, active character drivers and planetary ruler attributes are determined by comparing the heights of **Jupiter (index)**, **Sun (ring)**, and **Mercury (little)** fingers. The system excludes Saturn from the dominant finger check in `shared/astro/palm_vision.py` to allow genuine personality drivers to emerge.
@@ -57,22 +57,18 @@ To guarantee 100% genuine visual accuracy and eliminate errors from physical cam
 
 Palmistry can overlay the user's birth chart (Kundli) on the reading. This feature is completely optional. If a default profile is missing or if the checkbox `"Integrate Birth Chart (Kundli) for deeper alignment"` is unticked, the system performs a pure, high-fidelity visual-only palm reading. Request schemas accept `profile = None` gracefully.
 
-## Cosmic Sensory Verification (Tactile & Sacred Symbol Grounding)
+## Conservative Limits
 
-To achieve absolute accuracy (>98%) without expensive visual landmark scripts or multi-angle photos, Myastro implements an interactive **Cosmic Sensory Verification** questionnaire in the UI. This questionnaire serves as an ultra-precise human-in-the-loop sensor to capture high-value details:
+The current flow reads one front-facing palm photo. It deliberately marks details as
+`not_assessable` when that photo cannot support them:
 
-1. **Tactile Sparsha (Ayurvedic Skin Touch)**: The user confirms whether their palm touch feeling is balanced, warm/vibrant (Pitta), cool/dry (Vata), or soft/damp (Kapha). 
-   - **Backend Integration**: If a touch-texture is selected, it immediately overrides the computer vision's visual HSV color heuristic. This guarantees 100% accurate Ayurvedic skin vitality and Dosha lookup matching in the `knowledge_lookup.py` service.
-2. **Thumb Flexibility (Angustha Shastra)**: The user specifies if their thumb is firm/stiff or flexible/supple when pushed back. 
-   - **Backend Integration**: This completely resolves the problem of cameras tilting or fingers bending at strange angles, which usually throws off purely automated VLM or MediaPipe landmarks.
-3. **Vedic Chinhas (Sacred Symbols)**: The user can optionally select rare sacred symbols they visually identify on their hand:
-   - *Matsya* (Fish symbol at base of palm / Ketu mount)
-   - *Trishul* (Trident split on major lines)
-   - *Yavarekha* (Barley loop on the thumb joint)
-   - **Inline UI Visual Key**: To eliminate user confusion or identification errors, we render a premium Vedic Sacred Marks visual grid diagram (`book_image_20.jpg` containing classic sketches of Matsya, Trishul, and Yavarekha) directly inside the collapsed expander card. This acts as a visual reference guide for zero-cost client-side calibration.
-   - **Backend Integration**: Microscopic marks are prone to VLM hallucinations or camera resolution limitations. By letting the user self-select, the pipeline injects these verified shapes directly into `legacy_data["marks"]`, which automatically triggers targeted Qdrant semantic searches for authentic Samudrika Shastra text chunks without changing the RAG query builder.
-
-All verified observations are cleanly appended as `USER-VERIFIED PHYSICAL OBSERVATIONS` to the dossier before Pass 3, grounding Gemini's final reading in absolute physical truth.
+- Marriage / relationship lines live on the side edge below Mercury. A front palm
+  photo should not confidently count them unless that edge is clearly visible.
+- Thumb flexibility is an Angustha Shastra detail that requires a flexed thumb or
+  a user-confirmed touch check. A neutral open-palm photo should not label it
+  stiff or flexible.
+- Mount crops help visual inspection, but one flat photo cannot prove 3D mount
+  elevation from highlights and shadows alone.
 
 ## AI cost
 

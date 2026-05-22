@@ -1,25 +1,8 @@
-"""
-shared.ai/palm_vision_ai.py
-============================
-Single-call VLM palm reader.
+"""Two-pass VLM palm reader for the palmistry feature.
 
-Replaces the previous 4-call orchestration (symbol scan x2, finger analysis,
-final report) with one focused call to Gemini 3 Flash Lite Preview that
-gets the full palm + 7 mount crops + math signals + dossier + Qdrant
-context, and produces a two-phase response (JSON observations + markdown
-reading).
-
-Why a single call:
-  - Faster (one network round trip instead of four)
-  - Cheaper (no duplicated context across calls)
-  - More coherent (one model owns the visual judgment end-to-end)
-  - More honest (the model can say 'not_assessable' instead of being forced
-    to fill structured fields the previous pipeline assumed)
-
-Why mount crops as additional images (not just the full palm):
-  - Smaller models like Flash Lite get more pixels per mount this way
-  - Mark detection accuracy improves substantially with focused crops
-  - The cost is ~7 extra small image tokens, well within budget
+Pass A records conservative visual observations from the full palm and mount
+crops. Only after that succeeds do local Vedic lookup and Qdrant retrieval use
+the observed palm facts for the final Phase B reading.
 """
 
 import io
@@ -31,7 +14,7 @@ import numpy as np
 from functools import lru_cache
 
 from shared.ai.gemini_client import get_ai_model_by_name
-from features.palmistry.prompts import build_palm_reading_prompt, build_phase_a_prompt, build_phase_b_prompt
+from features.palmistry.prompts import build_phase_a_prompt, build_phase_b_prompt
 
 
 # ── MODEL CONFIG ──────────────────────────────────────────────────────────────
@@ -214,6 +197,19 @@ def _parse_response(text):
     return {"phase_a": phase_a, "phase_b": phase_b, "raw": text}
 
 
+def _phase_a_has_observations(phase_a: dict) -> bool:
+    """Require the visual scan skeleton before generating narrative prose."""
+    if not isinstance(phase_a, dict):
+        return False
+    lines = phase_a.get("lines")
+    mounts = phase_a.get("mounts")
+    if not isinstance(lines, dict) or not isinstance(mounts, dict):
+        return False
+    has_major_line = any(name in lines for name in ("heart", "head", "life", "fate"))
+    has_mount = any(name in mounts for name in _MOUNT_ORDER)
+    return has_major_line and has_mount
+
+
 # ── PUBLIC API ─────────────────────────────────────────────────────────────────
 
 # Mount order for consistent input to the VLM
@@ -393,16 +389,19 @@ def read_palm(
         }
 
     phase_a = _extract_json(text_a)
-    if not phase_a:
-        # Fallback in case VLM failed to output valid JSON or parse failed
-        phase_a = {
-            "image_quality": "acceptable",
-            "image_issues": "",
-            "lines": {},
-            "mounts": {},
-            "special_marks": {},
-            "fingers": {},
-            "thumb": {}
+    if not _phase_a_has_observations(phase_a):
+        return {
+            "phase_a": phase_a if isinstance(phase_a, dict) else {},
+            "phase_b": "",
+            "raw": text_a,
+            "error": "The visual palm scan did not return usable observations. Try the reading again with a clear full-palm photo.",
+        }
+    if phase_a.get("image_quality") == "poor":
+        return {
+            "phase_a": phase_a,
+            "phase_b": "This photo is not clear enough for a confident reading. Please retake it with the full palm in focus and evenly lit.",
+            "raw": text_a,
+            "error": "",
         }
 
     # ── VLM Visual Self-Correction ──
@@ -427,13 +426,13 @@ def read_palm(
     if vlm_vit and vlm_vit != "not_assessable":
         vitality["class"] = vlm_vit
         if vlm_vit == "Robust":
-            vitality["note"] = "Warm, well-perfused tone — strong vital energy"
+            vitality["note"] = "Warm palm tone in this photo"
         elif vlm_vit == "Subdued":
-            vitality["note"] = "Pale or muted tone — review rest and circulation"
+            vitality["note"] = "Pale or muted palm tone in this photo"
         elif vlm_vit == "Balanced":
-            vitality["note"] = "Healthy, even tone"
+            vitality["note"] = "Even palm tone in this photo"
         elif vlm_vit == "Cool":
-            vitality["note"] = "Cooler tone — variable energy reserves"
+            vitality["note"] = "Cooler palm tone in this photo"
 
     # ── Pass 2: Local & Free Context Gathering ──
     # Construct compatible palm data structures for local lookups
@@ -450,7 +449,7 @@ def read_palm(
     except ImportError:
         query_palmistry = None
 
-    # Retrieve context, letting dynamic Two-Pass flow override blind RAG contexts if they are empty
+    # Default flow retrieves context here, after the visual scan is usable.
     knowledge_ctx = knowledge_context
     if not knowledge_ctx and get_palm_context:
         try:

@@ -25,16 +25,6 @@ from shared.astro.dossier_builder import generate_astrology_dossier
 from features.palmistry.vlm_reader import read_palm
 from ui_streamlit.state import get_default_profile
 
-try:
-    from features.palmistry.knowledge_lookup import get_palm_context
-except Exception:
-    get_palm_context = None
-
-try:
-    from features.palmistry.qdrant_search import query_palmistry
-except Exception:
-    query_palmistry = None
-
 
 # ── Planet traits (plain language) ───────────────────────────────────────────
 _PLANET_TRAITS = {
@@ -45,10 +35,10 @@ _PLANET_TRAITS = {
 }
 
 _VITALITY_LABEL = {
-    "Robust":   ("High Energy ⚡",    "Strong and well-energised right now"),
-    "Balanced": ("Steady & Even 🌿",  "Good, consistent energy levels"),
-    "Subdued":  ("Needs Rest 🌙",      "Energy is lower — prioritise sleep and calm"),
-    "Cool":     ("Variable Energy 🌊", "Energy fluctuates — listen to your body"),
+    "Robust":   ("Warm Tone ⚡",   "Palm tone appears warm in this photo"),
+    "Balanced": ("Even Tone 🌿",   "Palm tone appears even in this photo"),
+    "Subdued":  ("Muted Tone 🌙",  "Palm tone appears muted in this photo"),
+    "Cool":     ("Cool Tone 🌊",   "Palm tone appears cooler in this photo"),
     "unknown":  ("—",                  ""),
 }
 
@@ -82,26 +72,6 @@ def _arr_to_b64_png(arr):
         bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
         _, buf = cv2.imencode('.png', bgr)
     return base64.b64encode(buf.tobytes()).decode()
-
-
-def _build_legacy_palm_data(analysis):
-    hm  = analysis.get("hand_metrics", {})
-    vit = analysis.get("vitality", {})
-    return {
-        "finger_data": {
-            "hand_type":       hm.get("hand_type", ""),
-            "hand_type_vedic": hm.get("hand_type_vedic", ""),
-            "ratio_2d4d":      hm.get("ratio_2d4d", 0),
-            "ratio_reading":   hm.get("ratio_reading", ""),
-            "dominant_finger": hm.get("dominant_finger", ""),
-        },
-        "vitality_hsv": vit.get("note", ""),
-        "ui_vitality":  vit.get("class", ""),
-        "traced_lines": {},
-        "marks":        [],
-        "minor_lines":  {},
-        "fingerprints": {},
-    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -496,7 +466,7 @@ def _render_signals_card(analysis):
 
     vit_class = vit.get("class", "unknown")
     vit_label, vit_caption = _VITALITY_LABEL.get(vit_class, (vit_class, vit.get("note", "")))
-    st.markdown("**Life Energy Right Now**")
+    st.markdown("**Palm Tone Signal**")
     st.markdown(f"### {vit_label}")
     if vit_caption:
         st.caption(vit_caption)
@@ -533,23 +503,6 @@ def _run_reading(dp, analysis):
 
     dossier     = generate_astrology_dossier(dp) if dp else ""
     st.session_state.palm_reading_used_kundli = (dp is not None)
-    legacy_data = _build_legacy_palm_data(analysis)
-
-    knowledge_context = ""
-    if get_palm_context:
-        try:
-            ctx = get_palm_context(legacy_data, {}, dossier)
-            if ctx and isinstance(ctx, dict):
-                knowledge_context = ctx.get("formatted_block", "") or ""
-        except Exception:
-            knowledge_context = ""
-
-    qdrant_context = ""
-    if query_palmistry:
-        try:
-            qdrant_context = query_palmistry(legacy_data, {}) or ""
-        except Exception:
-            qdrant_context = ""
 
     result = read_palm(
         enhanced_palm     = analysis["enhanced_palm"],
@@ -558,8 +511,6 @@ def _run_reading(dp, analysis):
         vitality          = analysis["vitality"],
         quality_metrics   = analysis["quality_metrics"],
         dossier           = dossier,
-        knowledge_context = knowledge_context,
-        qdrant_context    = qdrant_context,
     )
 
     if not result.get("error"):
@@ -594,11 +545,7 @@ def _render_reading(result):
         _render_start_fresh()
         return
 
-    agreement      = phase_a.get("kundli_palm_agreement", "")
-    agreement_note = phase_a.get("kundli_palm_agreement_note", "")
     used_kundli    = result.get("used_kundli", False)
-    if agreement and agreement != "cannot_assess" and used_kundli:
-        _render_agreement_badge(agreement, agreement_note)
 
     # Reading text — already markdown
     st.markdown(phase_b)
@@ -686,20 +633,6 @@ def _render_start_fresh():
         for k in ("palm_reading", "palm_analysis", "palm_cache_key", "palm_reading_used_kundli"):
             st.session_state.pop(k, None)
         st.rerun()
-
-
-def _render_agreement_badge(level, note):
-    level_l = (level or "").lower()
-    friendly = {
-        "strong":   "Your birth chart and your palm are saying the same thing — strong convergence.",
-        "moderate": "Your chart and palm broadly agree, with some interesting differences.",
-        "weak":     "Your chart and palm point in different directions — worth exploring why.",
-    }
-    body_note = friendly.get(level_l, note or "")
-    if note and note.strip() not in body_note:
-        body_note += f" {note}"
-    body = f"**Chart & Palm: {level.title()} Agreement**\n\n{body_note}"
-    {"strong": st.success, "moderate": st.info, "weak": st.warning}.get(level_l, st.info)(body)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -851,11 +784,6 @@ def _build_markdown_export(phase_b, phase_a, used_kundli=False):
            "", "---", "", phase_b.strip(), ""]
 
     if isinstance(phase_a, dict):
-        agreement = phase_a.get("kundli_palm_agreement", "")
-        note      = phase_a.get("kundli_palm_agreement_note", "")
-        if agreement and agreement != "cannot_assess" and used_kundli:
-            out += ["---", "", f"**Chart & Palm Agreement:** {agreement.title()}", "", note or "", ""]
-
         out += ["---", "", "## Physical lines & mounts observed", ""]
 
         lines = phase_a.get("lines", {}) or {}

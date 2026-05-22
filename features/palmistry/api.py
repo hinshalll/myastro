@@ -15,9 +15,7 @@ if router is not None:
 
     @router.post("/read", response_model=PalmReadingResponse)
     def read(req: PalmReadingRequest) -> PalmReadingResponse:
-        from features.palmistry.service import (
-            analyze_palm, read_palm, get_palm_context, query_palmistry,
-        )
+        from features.palmistry.service import analyze_palm, read_palm
         from shared.astro.dossier_builder import generate_astrology_dossier
 
         try:
@@ -30,21 +28,14 @@ if router is not None:
             return PalmReadingResponse(
                 phase_a={}, phase_b="", error="palm-vision pipeline failed",
             )
+        if not palm.get("landmarks_found"):
+            return PalmReadingResponse(
+                phase_a={},
+                phase_b="",
+                error="No palm landmarks found. Use a clear photo of the full open palm.",
+            )
 
         dossier = generate_astrology_dossier(req.profile) if req.profile else ""
-        knowledge_ctx = ""
-        if get_palm_context:
-            try:
-                kctx = get_palm_context(palm, palm.get("mount_elevations") or {}, dossier=dossier)
-                knowledge_ctx = kctx.get("formatted_block", "")
-            except Exception:
-                pass
-        qctx = ""
-        if query_palmistry:
-            try:
-                qctx = query_palmistry(palm, palm.get("mount_elevations") or {}, k=6)
-            except Exception:
-                pass
 
         result = read_palm(
             enhanced_palm=palm["enhanced_palm"],
@@ -53,8 +44,6 @@ if router is not None:
             vitality=palm.get("vitality") or {},
             quality_metrics=palm.get("quality_metrics") or {},
             dossier=dossier,
-            knowledge_context=knowledge_ctx,
-            qdrant_context=qctx,
         )
         return PalmReadingResponse(
             phase_a=result.get("phase_a") or {},
