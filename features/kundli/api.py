@@ -21,17 +21,34 @@ except ImportError:
 
 
 def _profile_to_birthdata(p: dict):
+    from datetime import time as _time
     from shared.astro.kundli import BirthData
+
+    # Birth-time tier: no time supplied → "unknown", fall back to a noon placeholder
+    # so the chart still computes (Moon-based parts usable; time-sensitive parts flagged).
+    time_known = bool(p.get("birth_time_known", True))
+    raw_t = p.get("time")
+    if raw_t in (None, ""):
+        time_known = False
+    if not time_known:
+        t = _time(12, 0)
+    elif isinstance(raw_t, str):
+        parts = raw_t.split(":")
+        t = _time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
+    else:
+        t = raw_t
+
     return BirthData(
         name=p["name"],
         date=date.fromisoformat(p["date"]) if isinstance(p["date"], str) else p["date"],
-        time=datetime.strptime(p["time"], "%H:%M").time() if isinstance(p["time"], str) else p["time"],
+        time=t,
         place=p.get("place", ""),
         lat=float(p["lat"]),
         lon=float(p["lon"]),
         tz=p["tz"],
         gender=p.get("gender", "M"),
         exact_time=bool(p.get("exact_time", False)),
+        birth_time_known=time_known,
     )
 
 
@@ -42,7 +59,16 @@ if router is not None:
         from features.kundli.service import compute_chart
         chart = compute_chart(_profile_to_birthdata(req.profile))
         # The chart dataclass is large; let the caller serialize as needed.
-        return {"ok": True, "ascendant_sign": chart.lagna.sign}
+        # time_precision tells the mobile app what to trust: 'exact' / 'approximate'
+        # / 'unknown' (see shared/astro/kundli.py BirthData.time_precision).
+        bd = chart.birth_data
+        return {
+            "ok": True,
+            "ascendant_sign": chart.lagna.sign,
+            "time_precision": bd.time_precision,
+            "houses_reliable": bd.houses_reliable,
+            "divisionals_reliable": bd.divisionals_reliable,
+        }
 
     @router.post("/free-reading")
     def free_reading(req: FreeReadingRequest) -> dict:

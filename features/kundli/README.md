@@ -32,6 +32,22 @@ The flagship feature — full Vedic birth chart with two tabs.
 | `view.py`       | Streamlit page (904 lines — both tabs) |
 | `api.py`        | FastAPI router (compute + free + premium) |
 
+## Birth-time precision (3 tiers)
+
+`BirthData.time_precision` (in `shared/astro/kundli.py`) reports how much of the chart to
+trust, from the `birth_time_known` + `exact_time` flags:
+
+- **`exact`** (Exact Time Known checkbox) — everything reliable, incl. divisional charts.
+- **`approximate`** — time given but unconfirmed; Ascendant/houses usually OK, but
+  divisionals (D9/D60) are NOT reliable (`divisionals_reliable` is False).
+- **`unknown`** — no birth time; chart is computed with a **noon placeholder** so it never
+  crashes, but Ascendant/houses/divisionals are flagged unreliable (`houses_reliable` False).
+  Only Moon-based output (Moon sign, dasha, transits) should be shown.
+
+Helper flags: `houses_reliable` (needs any time), `divisionals_reliable` (needs *exact*
+time). `/kundli/compute` returns `time_precision` + both flags so the mobile app can
+hide/lock the right sections. Adding/confirming a time later → recompute once.
+
 ## Engines used (shared)
 
 - `math_engine.kundli` — `BirthData`, `compute_chart`, `yoga_audit`, `sade_sati_timeline` (will be renamed to `shared/astro/kundli` in Phase 3)

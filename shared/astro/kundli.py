@@ -83,25 +83,62 @@ class BirthData:
     tz: str
     gender: Gender = "M"
     exact_time: bool = False
+    # birth_time_known=False → user has NO birth time. The chart is still computed
+    # (noon placeholder) so nothing downstream breaks, but Ascendant/houses/divisional
+    # charts are NOT reliable and consumers should hide/lock them. See time_precision.
+    birth_time_known: bool = True
     ayanamsha: str = "lahiri"
     rectified_offset_minutes: float = 0.0
 
     @property
     def needs_rectification(self) -> bool:
-        return not self.exact_time and self.rectified_offset_minutes == 0.0
+        return self.birth_time_known and not self.exact_time and self.rectified_offset_minutes == 0.0
+
+    @property
+    def time_precision(self) -> str:
+        """How much to trust time-sensitive parts of the chart:
+        'unknown'     → no birth time; only Moon-based outputs are usable
+        'approximate' → time given but unconfirmed; Lagna sign usually OK, vargas shaky
+        'exact'       → everything reliable (incl. D9/D60 divisional charts)
+        """
+        if not self.birth_time_known:
+            return "unknown"
+        return "exact" if self.exact_time else "approximate"
+
+    @property
+    def houses_reliable(self) -> bool:
+        """Ascendant + houses need a known time at all."""
+        return self.birth_time_known
+
+    @property
+    def divisionals_reliable(self) -> bool:
+        """Divisional charts (D9 Navamsa, D60, etc.) need an EXACT time."""
+        return self.birth_time_known and self.exact_time
 
     @classmethod
     def from_profile(cls, profile: dict) -> "BirthData":
         d = profile["date"]
-        t = profile["time"]
         if isinstance(d, str):
             d = date.fromisoformat(d)
-        if isinstance(t, str):
-            parts = t.split(":")
+
+        # Birth-time tier: if no time was supplied, the time is "unknown" and we
+        # fall back to a noon placeholder so the chart still computes (Moon-based
+        # parts stay usable; time-sensitive parts get flagged via time_precision).
+        time_known = bool(profile.get("birth_time_known", True))
+        raw_t = profile.get("time")
+        if raw_t in (None, ""):
+            time_known = False
+        if not time_known:
+            t = time(12, 0)
+        elif isinstance(raw_t, str):
+            parts = raw_t.split(":")
             if len(parts) == 2:
                 t = time(int(parts[0]), int(parts[1]))
             else:
                 t = time(int(parts[0]), int(parts[1]), int(parts[2]))
+        else:
+            t = raw_t
+
         g = profile.get("gender", "M")
         if g not in ("M", "F"):
             g = "M"
@@ -114,6 +151,7 @@ class BirthData:
             tz=profile["tz"],
             gender=g,
             exact_time=bool(profile.get("exact_time", False)),
+            birth_time_known=time_known,
             ayanamsha=profile.get("ayanamsha", "lahiri"),
             rectified_offset_minutes=float(profile.get("rectified_offset_minutes", 0.0)),
         )

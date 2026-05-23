@@ -259,30 +259,36 @@ the Vedic equivalent. Specifically, the "Void-of-Course Moon" idea is represente
 **Chandra Sandhi** (Moon in the last/first degrees of a sign = weak/unstable), translated in
 plain English as "a low/reflective window," not as a Western term.
 
-**Progressive chart precision (birth-time-known vs not).** There is **one chart per person**,
-computed at the best precision the available data allows. Every feature reads that one chart,
-so the moment birth time is added, *all* features sharpen automatically — no per-feature
-rewiring.
+**Progressive chart precision — THREE tiers (already built in the backend).** There is
+**one chart per person**, computed at the best precision the available data allows. Every
+feature reads that one chart, so the moment birth time is added (or confirmed exact), *all*
+features sharpen automatically — no per-feature rewiring. The three tiers (exposed by
+`BirthData.time_precision` in `shared/astro/kundli.py`):
 
-- **No birth time** → Moon-based chart (Chandra Lagna). Most of the app still works, because
-  traditional Vedic daily prediction is Moon-sign based anyway.
-- **Birth time present** → full chart with Ascendant + houses; everything gets more accurate
-  and the house-dependent features unlock.
+| Tier | Input | What's reliable |
+|---|---|---|
+| **`exact`** | time known & confirmed exact (the "Exact Time Known" checkbox) | Everything, incl. divisional charts (D9 Navamsa, D60 — these need to-the-minute time) |
+| **`approximate`** | time given but unconfirmed | Ascendant + houses usually OK; **divisionals NOT reliable** (flagged) |
+| **`unknown`** | no birth time at all | Moon chart only — no Ascendant/houses/divisionals. Most of the app still works (Vedic daily prediction is Moon-based). |
 
-Each feature declares one of three behaviors:
+Each feature declares one of three behaviors based on the tier:
 
 | Behavior | Meaning | Examples |
 |---|---|---|
-| **Works** | Runs on the Moon chart; gets sharper if time is added | Daily forecast, Today's Signal, **check-in + Pattern Engine**, good/avoid times, eclipse, numerology, tarot, relationship weather, Ashta-Koota match |
-| **Degrades** | Moon-based version + a soft "approximate without birth time" caveat | Life Chapters (Dasha) — works, but exact transition *dates* firm up with time; personalized Muhurta |
-| **Locked** | Shows "Add your birth time to unlock" nudge | Your Chart (houses), Dharma Compass, Full Life Reading, Navamsa, Manglik, palm/face kundli alignment |
+| **Works** | Runs at any tier; sharpens as precision improves | Daily forecast, Today's Signal, **check-in + Pattern Engine**, good/avoid times, eclipse, numerology, tarot, relationship weather, Ashta-Koota match |
+| **Degrades** | Works but flagged approximate at lower tiers | Life Chapters (Dasha) — works, exact transition *dates* firm up with time; personalized Muhurta |
+| **Locked** | "Add your birth time to unlock" (unknown), or "confirm exact time" (approximate) | Your Chart houses, Dharma Compass, Full Life Reading **at `unknown`**; Navamsa/D60-dependent depth **needs `exact`**; palm/face kundli alignment |
 
-**Implementation notes:**
-- `profiles.birth_time_known` (boolean) drives all of the above.
-- Adding birth time later → **recompute the chart once, refresh that profile's cached
-  results** (cache key includes precision level). Then locked features unlock and the rest
-  sharpen.
-- This costs little to build now and is painful to retrofit later — so it's a v1 decision.
+**Implementation (done):**
+- `BirthData` carries `birth_time_known` + `exact_time` → derived `time_precision`, plus
+  helper flags `houses_reliable` (needs a time) and `divisionals_reliable` (needs *exact* time).
+- When time is **unknown**, the engine computes with a **noon placeholder** so nothing
+  downstream crashes; consumers gate via the precision flags.
+- The FastAPI `/kundli/compute` response returns `time_precision`, `houses_reliable`,
+  `divisionals_reliable` so the mobile app can hide/lock the right things.
+- Adding/confirming time later → recompute the chart once, refresh cached results (cache key
+  includes precision level). Then locked features unlock and the rest sharpen.
+- Fully backward compatible: profiles without the new flag default to today's behavior.
 
 ---
 
@@ -418,6 +424,9 @@ eclipse alerts, compatibility, family. Same product, different screenshots.
 - **Geofenced micro-remedies** (privacy)
 - **Planetary Soundscapes** (nice-to-have)
 - **Calendar sync** (permissions/trust)
+- **Birth Time Rectification (BTR)** — narrowing an `approximate` time to `exact` using past
+  life events. A whole astrological subdiscipline; substantial + error-prone. Premium/v2.
+  (The engine already has a `rectified_offset_minutes` hook to build on.)
 - **Self-hosted AI model** (only when monthly AI bill > ~₹1 lakh; ~50k+ DAU)
 
 ---
