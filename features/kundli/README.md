@@ -44,6 +44,8 @@ The flagship feature — full Vedic birth chart with two tabs.
 
 Free-tier rate-limit toggle lives at top of `content.py`: `RESPECT_FREE_TIER_LIMITS = True`. Flip to False after paid-API switch.
 
+The personalised-prose model defaults to the `json` task in `shared/ai/config.py` (provider auto-detected from the name). The premium narrative call uses the default model ladder.
+
 ## Editing tips
 
 - Add a new free-tier topic → append to `FREE_TOPICS` in `content.py`, add render block in `view.py`.

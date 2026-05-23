@@ -9,7 +9,7 @@ Open-chat conversational reading. Uses the user's default profile.
 3. Build system prompt = `SYSTEM_PROMPT` + per-intent framework overlay.
 4. RAG retrieval from per-intent book set (`INTENT_RAG_BOOKS`).
 5. Append last 4 conversation turns + turn-style hint (first vs follow-up).
-6. Stream from Gemini Flash Lite with conversational temperature 0.5.
+6. Stream from the `chat` model in `shared/ai/config.py` (defaults to Gemini Flash Lite) with conversational temperature 0.5. Falls back along the ladder if the primary is busy.
 
 ## What's in this folder
 
@@ -27,7 +27,7 @@ Open-chat conversational reading. Uses the user's default profile.
 
 ## AI cost
 
-~1 streaming Gemini Flash Lite call per user message. Conversational temperature 0.5.
+~1 streaming call per user message. Conversational temperature 0.5. Model = the `chat` task in `shared/ai/config.py` (defaults to Gemini Flash Lite; switch to DeepSeek by typing its name there).
 
 ## Editing tips
 

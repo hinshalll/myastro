@@ -28,6 +28,9 @@ its own screen.
   add it to the `_DISPATCH` map in `__init__.py`. Done.
 - Each `show_*()` is a self-contained entry point — to embed in a different
   layout, just call it directly without going through `show_oracle()`.
+- The Full Life Reading's 3 parallel agents use the `agent` model from
+  `shared/ai/config.py`; the other tools use the `default` model. Change either
+  there (provider auto-detected from the name) — no edits needed here.
 - The prompts each sub-feature uses still live in `ai_engine/prompts.py`
   for now (they're cross-cutting Parashari/Timing/KP/synthesizer/matchmaking/
   destiny/comparison/prashna/transit prompts). When the prompts are

@@ -9,7 +9,7 @@ Vedic face reading (**Mukha Samudrika Shastra**). Upload a front-facing photo an
 3. `knowledge_lookup.py` maps those measurements → meanings in `data/face_knowledge.json` (no API, no Qdrant).
 4. **One** Gemini VLM call (`vlm_reader.py`) gets the full face + 4 region crops + the measured geometry + the knowledge block + (optionally) the kundli dossier → Phase A JSON observations + Phase B markdown reading.
 5. **VLM Visual Self-Correction Override**: Phase A includes visual-pixel verification of the face shape, element, and dominant zone. If MediaPipe coordinates are shifted due to camera tilt, the VLM's high-resolution visual scan dynamically overrides them, ensuring 100% accurate structural categorization with zero user friction.
-6. **High-Availability Model Fallbacks**: The VLM reader automatically falls back along a robust model ladder (`gemini-3.1-flash-lite-preview` -> `gemini-2.5-flash` -> `gemini-1.5-flash`) to guarantee service resilience under any API rate limits or outages.
+6. **High-Availability Model Fallbacks**: The VLM reader's primary model is the `vision` task in `shared/ai/config.py`; it then falls back along a robust ladder (`config vision model` -> `gemini-2.5-flash` -> `gemini-1.5-flash`) to guarantee service resilience under any API rate limits or outages.
 7. **Perfect UI & API Synchronization**: The final self-corrected metrics are instantly written back to `st.session_state` (updating Streamlit cards in real-time) and returned in the FastAPI payload, eliminating any discrepancy between visual metrics and the text reading.
 
 The measured geometry serves as a grounded baseline, while the VLM visually cross-verifies proportions and judges features that coordinates cannot (complexion, moles, expression) to compile a warm, cohesive reading.
@@ -43,7 +43,7 @@ The vision pipeline lives in `shared/astro/face_vision.py` (reuses the palm engi
 
 ## AI cost
 
-One Gemini Flash Lite VLM call per reading — full face + 4 small region crops + a short prompt. **Under ₹1 per reading.** No RAG / Qdrant.
+One VLM call per reading — full face + 4 small region crops + a short prompt. **Under ₹1 per reading** on Gemini Flash Lite. No RAG / Qdrant. The model is the `vision` task in `shared/ai/config.py` (defaults to Gemini Flash Lite; provider auto-detected from the name).
 
 ## Editing tips
 

@@ -89,6 +89,8 @@ as `not_assessable` when the available capture set cannot support them:
 
 ## AI cost
 
-Normal completed readings use two targeted Gemini Flash Lite VLM calls (Phase A
-observations scan + Phase B markdown reading). Scan-only capture guidance costs
-one call, and not-ready scans skip Phase B.
+Normal completed readings use two targeted VLM calls (Phase A observations scan
++ Phase B markdown reading). Scan-only capture guidance costs one call, and
+not-ready scans skip Phase B. The model is the `vision` task in
+`shared/ai/config.py` (defaults to Gemini Flash Lite; provider auto-detected
+from the name — vision currently expects Gemini image format).
