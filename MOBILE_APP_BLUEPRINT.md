@@ -1,4 +1,4 @@
-# Myastro — Mobile App Blueprint (v1)
+# Myastro — Mobile App Blueprint (v1 — finalized)
 
 > **Single source of truth for the Myastro mobile app.** Hand this file to any AI
 > coding tool (Claude Code, Codex, Gemini) or designer. It is self-contained.
@@ -125,7 +125,7 @@ Legend — **cost/access tags:**
 
 | Feature | What it does (plain English) | Tag | Powered by |
 |---|---|---|---|
-| **Daily Forecast** ("Cosmic Weather") | One word + vibe color + mood, one opportunity, one caution, one action tip | `[FREE]` | math + cache |
+| **Daily Forecast** ("Cosmic Weather") | One word + vibe indicator + mood, one opportunity, one caution, one action tip | `[FREE]` | math + cache |
 | **Today's Signal** (notification) | One witty, personal morning push (do/don't), grounded in real transits | `[FREE]` | math + cache |
 | **3-tap Check-in** | Log mood/energy in 3 taps; feeds the Pattern Engine; builds a streak | `[FREE]` | math |
 | **Good / Avoid Times** strip | Simplified Choghadiya/Rahu-Kaal ("best time to act today"); tap → full timing | `[FREE]` | math |
@@ -137,11 +137,26 @@ Legend — **cost/access tags:**
 
 | Feature | What it does | Tag | Powered by |
 |---|---|---|---|
-| **Add people / friend requests** | Save partner, family, friends, colleagues; invite via shareable card | `[FREE]` | — |
+| **Add people** (two paths — see below) | Friend request (preferred) OR manual chart | `[FREE]` | — |
 | **Daily relationship weather** | Per-person daily guidance ("with Dad today: practical talk, not emotional") | `[FREE]` for 1–2 people, `[PAID]` unlimited | math + cache |
 | **Family grid** | Household "vibe" overview to keep peace under one roof | `[PAID]` | math |
 | **Couple space** | Shared pulse + tension forecast for romantic partners | `[PAID]` | math |
-| **Compatibility & Marriage Match** | Merge of backend `matchmaking` + `marriage`; one-time deep report | `[LIMITED]` quick check, `[PAID]` full | math + AI |
+| **Compatibility & Marriage Match** | Merge of backend `matchmaking` + `marriage`; one-time deep report (works on a manual chart too) | `[LIMITED]` quick check, `[PAID]` full | math + AI |
+
+**Two ways to add a person (hybrid model — important):**
+
+| Path | What you get | Why |
+|---|---|---|
+| **Friend request** *(preferred, pushed in UI)* | **Live two-way** features: daily relationship weather, couple space, family grid — the other person is a real, consenting app user | **This is the growth engine** — every invite = a potential new user. The good live features live here, so people are motivated to invite. |
+| **Manual chart** *(for non-users)* | A **static** chart for compatibility/matchmaking/family vault — no live two-way features | Preserves the biggest Indian use cases: matchmaking with a prospective bride/groom not on the app, and storing charts of children / elders / relatives. Natural upsell: *"Add them as a friend for live daily updates."* |
+
+**Privacy tiers (Cosmic Privacy — applies to friend connections):** when you connect with someone, you choose what they can see. Non-negotiable: **your mood logs and journal are NEVER shareable with anyone, on any tier.**
+
+| Tier | Shares | For |
+|---|---|---|
+| **Acquaintance** | General daily compatibility + basic elements only | friends, colleagues, your boss |
+| **Close** | + relationship weather & transit guidance | partner, family |
+| *(never)* | Mood logs / journal history | **strictly private, eyes-only** |
 
 ### TAB 3 — Explore  *(divination playground + acquisition hooks)*
 
@@ -171,27 +186,40 @@ Legend — **cost/access tags:**
 | Feature | What it does | Tag | Powered by |
 |---|---|---|---|
 | **"Ask" button** | The single place to ask anything. Conversational AI astrologer (backend `consultation`), reachable from any tab. A beginner just types "should I text my ex?" — it routes to the right engine. **Absorbs all other question-asking surfaces** so there's no duplication: Decision Mode / Astro-Decide ("should I take this job?" → "proceed quietly / wait 3 days / favorable window at 2pm") and Prashna/horary (in-the-moment yes/no questions, backend `oracle/prashna`). **Crown jewel; biggest AI cost.** | `[LIMITED]` 3 msgs/day free, `[PAID]` unlimited | heavy AI |
-| **Home/lock-screen widget** | Daily vibe word + color + Today's Signal without opening the app. Major retention lever (Expo supports this). | `[FREE]` | cache |
+| **Home/lock-screen widget** | Daily vibe word + indicator + Today's Signal without opening the app. Major retention lever (Expo supports this). | `[FREE]` | cache |
 
 ---
 
 ## 6. Cross-cutting systems
 
 ### 6.1 Onboarding (the "magic" first session)
-- Conversationally collect **birth date / time / place** (not a dry form).
-- Immediately show a **stunning, personal "here's who you are" reveal**. The user
-  must feel wowed before learning any astrology. Activation = first reveal.
+- Conversationally collect **birth date / place** (not a dry form).
+- **Birth time — three choices, NO hard requirement** (this is a critical conversion fix;
+  30%+ of users don't know their exact time and will quit if forced):
+  - **"I know it"** → full chart immediately.
+  - **"I'll add it later"** → app works now on the Moon chart; gentle reminder nudges later.
+  - **"I don't know it"** → app works now on the Moon chart; no nagging, editable in Settings.
+- Either way, **immediately show a personal "here's who you are" reveal**. The user must
+  feel wowed before learning any astrology. Activation = first reveal.
+- When birth time is added later, the chart upgrades automatically — see **§6.6**.
 
 ### 6.2 Notifications
 - **One** "Today's Signal" per morning. Witty, personal, restrained. Never spammy —
   the restraint is what feels premium.
-- Optional: nakshatra-change / eclipse / inauspicious-window ("bad next 3 hours to send
-  that email") / "this happened before" alerts (some free, some paid).
+- Optional: nakshatra-change / eclipse / weak-Moon-window (**Chandra Sandhi** — the Vedic
+  equivalent of "Void-of-Course Moon"; see §6.6) / "this happened before" alerts
+  (some free, some paid).
+- **Birth-time reminder** (only if user chose "I'll add it later"): a gentle nudge or two
+  to add their time and unlock the full chart. Never sent to "I don't know it" users.
 - Tech: **Expo Push Notifications** (free).
 
 ### 6.3 Rituals hub  *(not a tab; reached from Today's "Ritual" card)*
 - **Remedy journeys** (21/40-day, gamified) — backend Graha-Shanti style guidance.
 - **Streak tracker**, **virtual mala** (tap-to-count with haptics), **daily ritual**.
+- **Frame remedies as energy-tuning, not superstition.** The "why?" toggle explains the
+  planetary resonance in plain, natural-law terms (e.g. *"Mercury rules green, plants, and
+  communication — watering a plant grounds your mental energy today"*). This wins over
+  modern, secular, skeptical users.
 - All `[FREE]` and cheap (math + cached content).
 
 ### 6.4 Rewards — **reward, never gate**
@@ -213,9 +241,48 @@ Legend — **cost/access tags:**
   (group & compare). Plain statistics, **not ML**. Insight sentence = template fill-in.
 - **Phase 3 — ML/forecasting:** intentionally skipped.
 - **Framing:** "patterns we've noticed about you," never "scientific prediction."
-- **Cold start:** show progress ("12 of 30 check-ins") until there's enough data; a
-  wrong pattern on day 3 destroys trust.
+- **Day-1 micro-insights (activation fix):** don't make users wait 30 days for value. From
+  the *first* check-in, mirror their state against today's transit — e.g. *"You logged
+  'anxious' — the Moon is crossing your 8th house of deep emotions today. You're feeling the
+  shift."* This is cheap (math + template), teaches them WHY to keep logging, and stays
+  reflective ("mirroring you"), never predictive.
+- **Cold start (for the big multi-day patterns):** show progress ("12 of 30 check-ins")
+  until there's enough data; a wrong long-term pattern on day 3 destroys trust.
 - **Privacy:** per-user rows only (DB row-level security); provide delete-my-data.
+
+### 6.6 Astrology engine & chart precision
+
+**Single source of truth: Sidereal / Lahiri Ayanamsa.** The backend already runs this
+(`swe.set_sid_mode(swe.SIDM_LAHIRI)`). Everything in the app is computed in this one frame
+to avoid contradictions. Do NOT import Western tropical techniques that would conflict — use
+the Vedic equivalent. Specifically, the "Void-of-Course Moon" idea is represented by
+**Chandra Sandhi** (Moon in the last/first degrees of a sign = weak/unstable), translated in
+plain English as "a low/reflective window," not as a Western term.
+
+**Progressive chart precision (birth-time-known vs not).** There is **one chart per person**,
+computed at the best precision the available data allows. Every feature reads that one chart,
+so the moment birth time is added, *all* features sharpen automatically — no per-feature
+rewiring.
+
+- **No birth time** → Moon-based chart (Chandra Lagna). Most of the app still works, because
+  traditional Vedic daily prediction is Moon-sign based anyway.
+- **Birth time present** → full chart with Ascendant + houses; everything gets more accurate
+  and the house-dependent features unlock.
+
+Each feature declares one of three behaviors:
+
+| Behavior | Meaning | Examples |
+|---|---|---|
+| **Works** | Runs on the Moon chart; gets sharper if time is added | Daily forecast, Today's Signal, **check-in + Pattern Engine**, good/avoid times, eclipse, numerology, tarot, relationship weather, Ashta-Koota match |
+| **Degrades** | Moon-based version + a soft "approximate without birth time" caveat | Life Chapters (Dasha) — works, but exact transition *dates* firm up with time; personalized Muhurta |
+| **Locked** | Shows "Add your birth time to unlock" nudge | Your Chart (houses), Dharma Compass, Full Life Reading, Navamsa, Manglik, palm/face kundli alignment |
+
+**Implementation notes:**
+- `profiles.birth_time_known` (boolean) drives all of the above.
+- Adding birth time later → **recompute the chart once, refresh that profile's cached
+  results** (cache key includes precision level). Then locked features unlock and the rest
+  sharpen.
+- This costs little to build now and is painful to retrofit later — so it's a v1 decision.
 
 ---
 
@@ -240,6 +307,12 @@ relationship weather for 1–2 people, 3 AI "Ask" messages/day, 1 reading/day,
 - Deep palm/face report, event Muhurta **₹49–99**
 
 Soft caps (not hard walls) bound free-user AI cost to pennies/month.
+
+**Market positioning (App Store / landing pages, not app structure):** the *same app*
+serves two emotional needs — lead with different features per market. **West** (Co-Star /
+The Pattern audience → psychology, self-knowledge): highlight Your Purpose, Patterns, mood
+tracking. **India** (reassurance, timing, remediation, family): highlight good/avoid times,
+eclipse alerts, compatibility, family. Same product, different screenshots.
 
 ---
 
@@ -274,15 +347,21 @@ Soft caps (not hard walls) bound free-user AI cost to pennies/month.
    math (which house?) + lookup (meaning). ~0 live AI.
 3. **Generate shared daily content once/day** (a cron job), not per-user. Users in the
    same astro-state read the same cached line.
-4. **Cache anything tied to a chart** (chart never changes): kundli interpretation,
-   dharma compass, dasha timeline — compute once per user, store forever.
+4. **Cache anything tied to a chart:** kundli interpretation, dharma compass, dasha
+   timeline — compute once per user, store. Cache key includes the chart's precision level
+   (§6.6), so adding birth time later triggers a one-time recompute, then it's cached again.
 5. **Live AI only for 1:1 unpredictable input:** Ask chat, free-text journal analysis,
    prashna, palm/face. These are paid or soft-capped.
 
 ### 8.4 Data model sketch (Supabase / Postgres)
 - `users` (id, auth, settings, language, push_token)
-- `profiles` (id, user_id, name, birth_date, birth_time, birth_place, relation_tag) —
-  the user AND their saved people (feeds People tab)
+- `profiles` (id, user_id, name, birth_date, **birth_time** (nullable),
+  **birth_time_known** (bool), birth_place, relation_tag, **source** = `self` / `friend` /
+  `manual`) — the user AND their saved people (feeds People tab). `birth_time_known` drives
+  chart precision (§6.6); `source` distinguishes a live friend from a static manual chart.
+- `connections` (id, owner_user_id, target_user_id, status = `pending`/`accepted`,
+  **share_tier** = `acquaintance`/`close`) — friend requests + the privacy tier (§Tab 2).
+  Manual (non-user) charts have no row here.
 - `checkins` (id, user_id, date, mood, energy, clarity, astro_state_json)
 - `patterns` (id, user_id, pattern_text, evidence_json, unlocked_at)
 - `journal_entries` (id, user_id, date, text, astro_state_json) — optional free-text
@@ -314,14 +393,18 @@ Soft caps (not hard walls) bound free-user AI cost to pennies/month.
 
 ## 9. Build roadmap (priority order for a solo dev)
 
-1. **Foundation:** Expo app shell, 4-tab nav, Supabase auth, magic onboarding +
-   first-reveal, connect to FastAPI.
-2. **The hook trio:** Today (forecast + Today's Signal push + 3-tap check-in + streak).
-   *This alone is a complete, addictive app.*
+0. **Backend prerequisite:** add **Moon-chart mode** to the astro engine (compute a usable
+   chart without exact birth time; flag house-dependent outputs) + the `birth_time_known`
+   precision flag and recompute-on-upgrade (§6.6). Do this first — everything else assumes it.
+1. **Foundation:** Expo app shell, 4-tab nav, Supabase auth, magic onboarding with the
+   know/later/don't-know birth-time flow + first-reveal, connect to FastAPI.
+2. **The hook trio:** Today (forecast + Today's Signal push + 3-tap check-in + streak)
+   with Day-1 micro-insights. *This alone is a complete, addictive app.*
 3. **Pattern Engine Phase 1–2** (collect → reveal patterns) in **You**.
-4. **People** (add friends, daily relationship weather, shareable invite).
+4. **People** (friend requests + privacy tiers + manual charts, daily relationship weather,
+   shareable invite). Friend-request flow = the growth loop.
 5. **Rituals hub** + streak rewards.
-6. **Explore** (port tarot, palm, face, numerology, prashna).
+6. **Explore** (port tarot, palm, face, numerology; prashna powers the Ask button).
 7. **Depth/paid:** Full Life Reading, Dharma Compass, Life Chapters, Cosmic Wrapped,
    Muhurta planner, subscription + one-time purchases.
 8. **Widget** + polish.
