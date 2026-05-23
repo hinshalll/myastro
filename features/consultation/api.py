@@ -17,7 +17,11 @@ if router is not None:
     def ask(req: ConsultationRequest) -> ConsultationResponse:
         from shared.astro.dossier_builder import generate_astrology_dossier, get_gochara_overlay
         from shared.ai.gemini_client import FREE_MODELS, get_ai_model_by_name
+        from shared.ai import config
         from shared.ai.knowledge import rag_context
+
+        _chat = config.model_for("chat")
+        chat_models = [_chat] + [m for m in FREE_MODELS if m != _chat]
 
         dossier = generate_astrology_dossier(req.profile)
         transits = get_gochara_overlay(req.profile)
@@ -55,7 +59,7 @@ if router is not None:
 
         # Try the model ladder
         last_error = None
-        for m_id in FREE_MODELS:
+        for m_id in chat_models:
             try:
                 model = get_ai_model_by_name(m_id, custom_system_rules=system_prompt)
                 text = model.generate_content(content_parts).text or ""

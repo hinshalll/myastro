@@ -57,12 +57,18 @@ except Exception:
     pass
 swe.set_sid_mode(swe.SIDM_LAHIRI)
 
-# ── Gemini — configured ONCE here, used everywhere via gemini_client ──────────
+# ── AI keys — configured ONCE here, used everywhere via shared.ai ─────────────
 api_key = st.secrets.get("GEMINI_API_KEY")
 if not api_key:
     st.error("Missing GEMINI_API_KEY in .streamlit/secrets.toml")
     st.stop()
 init_gemini(api_key)
+
+# DeepSeek is optional — only needed if a model in config.py points at it.
+deepseek_key = st.secrets.get("DEEPSEEK_API_KEY")
+if deepseek_key:
+    from shared.ai.deepseek_client import init_deepseek
+    init_deepseek(deepseek_key)
 
 # ── LocalStorage ─────────────────────────────────────────────────────────────
 localS = LocalStorage()

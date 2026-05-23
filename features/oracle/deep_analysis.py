@@ -17,6 +17,7 @@ import time as time_module
 
 import streamlit as st
 
+from shared.ai import config
 from features.oracle._shared import (
     collapse_sidebar_on_mobile,
     generate_astrology_dossier,
@@ -86,15 +87,16 @@ def _run_deep_analysis(prof, d60):
 
     # Run 3 AI agents concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        _agent = config.model_for("agent")
         f_p = executor.submit(agent_worker,
             build_agent_parashari_prompt(dossier, knowledge_context=ctx_p),
-            [], FREE_MODELS[0], expert_rules)
+            [], _agent, expert_rules)
         f_t = executor.submit(agent_worker,
             build_agent_timing_prompt(dossier, knowledge_context=ctx_t),
-            [], FREE_MODELS[0], expert_rules)
+            [], _agent, expert_rules)
         f_k = executor.submit(agent_worker,
             build_agent_kp_prompt(dossier, knowledge_context=ctx_k),
-            [], FREE_MODELS[1], expert_rules)
+            [], _agent, expert_rules)
         p_notes, t_notes, k_notes = f_p.result(), f_t.result(), f_k.result()
 
     final = build_master_synthesizer_prompt(dossier, p_notes, t_notes, k_notes)

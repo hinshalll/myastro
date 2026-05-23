@@ -14,15 +14,15 @@ import numpy as np
 from functools import lru_cache
 
 from shared.ai.gemini_client import get_ai_model_by_name
+from shared.ai import config
 from features.palmistry.prompts import build_phase_a_prompt, build_phase_b_prompt
 
 
 # ── MODEL CONFIG ──────────────────────────────────────────────────────────────
 
-# Adjust this string to match the exact model identifier in your gemini_client.
-# Gemini model names follow patterns like 'gemini-3-flash-lite-preview'
-# or 'gemini-3.1-flash-lite-preview-MM-DD'. Check your gemini_client wrapper.
-MODEL_NAME = "gemini-3.1-flash-lite-preview"
+# The vision model is set in shared/ai/config.py (the "vision" task). Change it
+# there to experiment — this just reads whatever is configured.
+MODEL_NAME = config.model_for("vision")
 
 
 # ── REFERENCE IMAGES (Dual diagram comparative calibration) ────────────────────

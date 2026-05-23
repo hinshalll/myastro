@@ -52,7 +52,9 @@ pip install -r requirements.txt
 streamlit run ui_streamlit/app.py
 ```
 
-Needs `.streamlit/secrets.toml` with `GEMINI_API_KEY` (+ optional `QDRANT_URL` / `QDRANT_API_KEY`, and optional `TAROT_DRAW_SECRET` to sign tarot draw tokens in production).
+Needs `.streamlit/secrets.toml` with `GEMINI_API_KEY` (+ optional `DEEPSEEK_API_KEY` if any model in `shared/ai/config.py` points at DeepSeek, optional `QDRANT_URL` / `QDRANT_API_KEY`, and optional `TAROT_DRAW_SECRET` to sign tarot draw tokens in production).
+
+**Switching AI models:** edit `shared/ai/config.py` only. Each task type (default / chat / json / agent / vision) has its own model name — just change the string (e.g. `"gemini-3.1-flash-lite-preview"` → `"deepseek-v4-flash"`). The provider is auto-detected from the name, so a new model just needs its name typed in.
 
 ### FastAPI (the backend for the mobile app + new website)
 
@@ -61,7 +63,7 @@ pip install -r requirements.txt
 uvicorn fastapi_main:app --reload
 ```
 
-Reads `GEMINI_API_KEY` from env first, falls back to `.streamlit/secrets.toml`.
+Reads `GEMINI_API_KEY` (and optional `DEEPSEEK_API_KEY`) from env first, falls back to `.streamlit/secrets.toml`.
 
 Once running, visit `http://localhost:8000/docs` for interactive API documentation.
 

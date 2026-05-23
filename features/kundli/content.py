@@ -44,6 +44,7 @@ import time
 from typing import Literal
 
 from shared.ai.gemini_client import init_gemini, get_ai_model_for_json
+from shared.ai import config
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -314,7 +315,7 @@ def generate_kundli_content(
     *,
     tier: Literal["free", "premium"] = "free",
     language: str = "en",
-    model_name: str = "gemini-3.1-flash-lite-preview",
+    model_name: str = config.model_for("json"),
 ) -> dict:
     """Multi-call orchestrator with focused per-class accuracy.
 

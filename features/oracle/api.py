@@ -64,7 +64,8 @@ if router is not None:
     @router.post("/deep-analysis", response_model=DeepAnalysisResponse)
     def deep_analysis(req: DeepAnalysisRequest) -> DeepAnalysisResponse:
         from shared.astro.dossier_builder import generate_astrology_dossier
-        from shared.ai.gemini_client import FREE_MODELS, agent_worker, generate_content_with_fallback
+        from shared.ai.gemini_client import agent_worker, generate_content_with_fallback
+        from shared.ai import config
         from shared.ai.prompts import (
             build_agent_parashari_prompt, build_agent_timing_prompt,
             build_agent_kp_prompt, build_master_synthesizer_prompt,
@@ -75,13 +76,14 @@ if router is not None:
         expert_rules = "You are an expert agent providing concise observations."
 
         # Three parallel agents
+        _agent = config.model_for("agent")
         with ThreadPoolExecutor(max_workers=3) as ex:
             f_p = ex.submit(agent_worker, build_agent_parashari_prompt(dossier),
-                            [], FREE_MODELS[0], expert_rules)
+                            [], _agent, expert_rules)
             f_t = ex.submit(agent_worker, build_agent_timing_prompt(dossier),
-                            [], FREE_MODELS[0], expert_rules)
+                            [], _agent, expert_rules)
             f_k = ex.submit(agent_worker, build_agent_kp_prompt(dossier),
-                            [], FREE_MODELS[1], expert_rules)
+                            [], _agent, expert_rules)
             p_notes, t_notes, k_notes = f_p.result(), f_t.result(), f_k.result()
 
         synth_prompt = build_master_synthesizer_prompt(dossier, p_notes, t_notes, k_notes)

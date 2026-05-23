@@ -28,8 +28,14 @@ shared/                         ← Backend plumbing shared by every feature.
     kundli_text.py              Text labels (planet glyphs, etc.)
     palm_vision.py              MediaPipe + OpenCV pipeline
     scoring.py                  Ashta Koota, Manglik, Destiny Matrix, Compare scoring
-  ai/                           Gemini client + RAG + cross-cutting prompts
-    gemini_client.py            FREE_MODELS + retry/fallback wrappers
+  ai/                           Provider-agnostic AI layer + RAG + cross-cutting prompts
+    config.py                   THE ONE FILE to change models — per-task model names
+                                (default/chat/json/agent/vision) + fallback ladder.
+                                Provider (Gemini/DeepSeek) auto-detected from the
+                                model-name prefix; type a new model name to switch.
+    __init__.py                 Front door — import AI helpers from `shared.ai`
+    gemini_client.py            Gemini adapter + retry/fallback router (FREE_MODELS)
+    deepseek_client.py          DeepSeek adapter (OpenAI-compatible, same interface)
     knowledge.py                rag_context (Qdrant retrieval)
     prompts.py                  Oracle prompts + GUARDRAILS (only cross-cutting bits)
   pdf/                          WeasyPrint + premium themes + PDF helpers

@@ -27,6 +27,7 @@ import streamlit.components.v1 as components
 
 from shared.astro.dossier_builder import generate_astrology_dossier, get_gochara_overlay
 from shared.ai.gemini_client import FREE_MODELS, get_ai_model_by_name
+from shared.ai import config
 
 from features.consultation.prompts import classify_intent, build_prompt
 from features.consultation.service import INTENT_RAG_BOOKS
@@ -127,7 +128,8 @@ def show_consultation_room():
                 # 6. Model call with fallback ladder.
                 full_txt = ""
                 success  = False
-                for m_id in FREE_MODELS:
+                _chat = config.model_for("chat")
+                for m_id in [_chat] + [m for m in FREE_MODELS if m != _chat]:
                     if success: break
                     for attempt in range(3):
                         try:

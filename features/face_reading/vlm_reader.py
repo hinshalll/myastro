@@ -16,6 +16,7 @@ import PIL.Image
 import numpy as np
 
 from shared.ai.gemini_client import get_ai_model_by_name
+from shared.ai import config
 from features.face_reading.prompts import build_face_reading_prompt
 
 MODEL_NAME = "gemini-3.1-flash-lite-preview"
@@ -117,7 +118,7 @@ def read_face(enhanced_face, region_crops: dict, metrics: dict, quality_metrics:
         dossier=dossier, use_kundli=use_kundli,
     )
 
-    model_ladder = ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "gemini-1.5-flash"]
+    model_ladder = [config.model_for("vision"), "gemini-2.5-flash", "gemini-1.5-flash"]
     response = None
     last_err = None
     

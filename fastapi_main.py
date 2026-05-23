@@ -89,6 +89,12 @@ def _init_backend() -> None:
         from shared.ai.gemini_client import init_gemini
         init_gemini(gemini_key)
 
+    # DeepSeek — optional, only needed if a model in config.py points at it
+    deepseek_key = _load_secret("DEEPSEEK_API_KEY")
+    if deepseek_key:
+        from shared.ai.deepseek_client import init_deepseek
+        init_deepseek(deepseek_key)
+
     # Swiss Ephemeris path
     try:
         import swisseph as swe

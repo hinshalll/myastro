@@ -19,18 +19,11 @@ import time as time_module
 from google import genai
 from google.genai import types
 
+from shared.ai import config
 
-LIGHT_MODELS = [
-    "gemini-3.1-flash-lite-preview",  # 500 RPD, 250K TPM, 1M context — PRIMARY
-    "gemini-2.5-flash",               #  20 RPD, 250K TPM, 1M context — fallback
-]
-
-HEAVY_MODELS = [
-    "gemma-4-31b-it",       # 1500 RPD, Unlimited TPM, 262K context — last resort
-    "gemma-4-26b-a4b-it",   # 1500 RPD, Unlimited TPM, 262K context — final fallback
-]
-
-FREE_MODELS = LIGHT_MODELS + HEAVY_MODELS
+# The model ladder now lives in shared/ai/config.py (the one file you edit).
+# FREE_MODELS is kept as the public name callers already import.
+FREE_MODELS = list(config.FALLBACK_CHAIN)
 
 
 _client: genai.Client | None = None
@@ -40,6 +33,7 @@ def init_gemini(api_key: str) -> None:
     """Call ONCE at app startup. Streamlit's app.py and fastapi_main.py both do this."""
     global _client
     _client = genai.Client(api_key=api_key)
+    config.set_api_key("gemini", api_key)
 
 
 def _get_client() -> genai.Client:
@@ -125,18 +119,27 @@ class _Model:
         )
 
 
-def get_ai_model_by_name(model_name: str, custom_system_rules: str | None = None) -> _Model:
-    """Build a model wrapper. `custom_system_rules` containing the word
-    'conversational' lifts temperature to 0.5 (matches old behaviour)."""
+def get_ai_model_by_name(model_name: str, custom_system_rules: str | None = None):
+    """Build a model wrapper for the given model. Provider (Gemini / DeepSeek)
+    is auto-detected from the model name. `custom_system_rules` containing the
+    word 'conversational' lifts temperature to 0.5 (matches old behaviour)."""
     system_rules = custom_system_rules or _DEFAULT_SYSTEM_RULES
     is_chat = bool(custom_system_rules) and "conversational" in custom_system_rules.lower()
     temperature = 0.5 if is_chat else 0.1
+    if config.detect_provider(model_name) == "deepseek":
+        from shared.ai.deepseek_client import DeepSeekModel
+        return DeepSeekModel(model_name, system_rules, temperature)
     return _Model(model_name, system_rules, temperature)
 
 
 def get_ai_model_for_json(model_name: str, system_instruction: str,
-                          temperature: float = 0.7) -> _Model:
-    """Build a model wrapper that forces a JSON response. Used by kundli content prose."""
+                          temperature: float = 0.7):
+    """Build a model wrapper that forces a JSON response. Used by kundli content
+    prose. Provider auto-detected from the model name."""
+    if config.detect_provider(model_name) == "deepseek":
+        from shared.ai.deepseek_client import DeepSeekModel
+        return DeepSeekModel(model_name, system_instruction, temperature,
+                             response_mime_type="application/json")
     return _Model(model_name, system_instruction, temperature,
                   response_mime_type="application/json")
 
@@ -173,11 +176,8 @@ def generate_content_with_fallback(prompt, knowledge_files=None, preferred_model
     first (1M context). Cascades through HEAVY_MODELS on failure."""
     content_to_send = (knowledge_files + [prompt]) if knowledge_files else [prompt]
 
-    if preferred_model and preferred_model in FREE_MODELS:
-        others = [m for m in FREE_MODELS if m != preferred_model]
-        models_to_try = [preferred_model] + others
-    else:
-        models_to_try = FREE_MODELS
+    primary = preferred_model or config.model_for("default")
+    models_to_try = [primary] + [m for m in FREE_MODELS if m != primary]
 
     last_error = None
     for m_name in models_to_try:
