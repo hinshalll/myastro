@@ -1,0 +1,24 @@
+# Keep the API image small + the build fast. Exclude everything the FastAPI
+# backend doesn't need at runtime. (Do NOT exclude ephe/ — Swiss Ephemeris
+# data files are required by the chart engine.)
+
+.git
+.github
+.devcontainer
+.claude
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.log
+
+# Frontend + old prototypes (not used by the API)
+mobile
+web
+ui_streamlit
+design_import
+node_modules
+
+# Local secrets — env vars are set in the Render dashboard instead
+.streamlit/secrets.toml

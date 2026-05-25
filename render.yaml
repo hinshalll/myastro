@@ -1,0 +1,25 @@
+# Render Blueprint — one-click deploy of the Myastro backend.
+# In Render: New + → Blueprint → pick this repo. Render reads this file and
+# creates the service. Secrets (sync:false) are entered in the dashboard, never
+# committed to git.
+
+services:
+  - type: web
+    name: myastro-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true            # redeploy automatically on every push to the branch
+    envVars:
+      # Secrets — Render will prompt for these in the dashboard at deploy time.
+      # The backend starts fine without them (AI/RAG init is guarded); add them
+      # to switch on the AI + knowledge features.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
