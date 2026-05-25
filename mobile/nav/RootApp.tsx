@@ -11,6 +11,7 @@ import { Placeholder } from '@/screens/Placeholder';
 import {
   TodayScreen, TimingScreen, RitualsHub, RitualDetail, MalaScreen, SignalPreviewScreen,
 } from '@/screens/today';
+import { ChartScreen, YouScreen } from '@/screens/chart';
 
 // Which tab each screen belongs to (for the active highlight)
 const TAB_GROUPS: Record<TabId, ScreenId[]> = {
@@ -34,6 +35,8 @@ function renderScreen(screen: ScreenId) {
     case 'ritual-detail': return <RitualDetail />;
     case 'mala': return <MalaScreen />;
     case 'signal-preview': return <SignalPreviewScreen />;
+    case 'you': return <YouScreen />;
+    case 'chart': return <ChartScreen />;
     default: return <Placeholder title={TITLES[screen] ?? screen} />;
   }
 }
