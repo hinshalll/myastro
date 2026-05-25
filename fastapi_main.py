@@ -83,17 +83,27 @@ def _load_secret(key: str) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _init_backend() -> None:
-    # Gemini
+    # Gemini — guarded: a missing AI library must not crash the math-only API
+    # (e.g. a lean deploy that only serves /kundli, or local chart dev). The
+    # AI-powered endpoints simply stay unavailable until the lib is installed.
     gemini_key = _load_secret("GEMINI_API_KEY")
     if gemini_key:
-        from shared.ai.gemini_client import init_gemini
-        init_gemini(gemini_key)
+        try:
+            from shared.ai.gemini_client import init_gemini
+            init_gemini(gemini_key)
+        except Exception as e:
+            print(f"[fastapi_main] WARNING: Gemini init skipped: "
+                  f"{type(e).__name__}: {e}")
 
     # DeepSeek — optional, only needed if a model in config.py points at it
     deepseek_key = _load_secret("DEEPSEEK_API_KEY")
     if deepseek_key:
-        from shared.ai.deepseek_client import init_deepseek
-        init_deepseek(deepseek_key)
+        try:
+            from shared.ai.deepseek_client import init_deepseek
+            init_deepseek(deepseek_key)
+        except Exception as e:
+            print(f"[fastapi_main] WARNING: DeepSeek init skipped: "
+                  f"{type(e).__name__}: {e}")
 
     # Swiss Ephemeris path
     try:

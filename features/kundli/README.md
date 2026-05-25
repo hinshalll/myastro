@@ -45,13 +45,30 @@ trust, from the `birth_time_known` + `exact_time` flags:
   Only Moon-based output (Moon sign, dasha, transits) should be shown.
 
 Helper flags: `houses_reliable` (needs any time), `divisionals_reliable` (needs *exact*
-time). `/kundli/compute` returns `time_precision` + both flags so the mobile app can
-hide/lock the right sections. Adding/confirming a time later → recompute once.
+time). Adding/confirming a time later → recompute once.
+
+### `/kundli/compute` response (compact, display-ready)
+
+`POST /kundli/compute` returns a small JSON summary the mobile app renders directly
+(no client-side chart parsing):
+
+- `moon`, `sun` — `{name, sign, house, nakshatra, nakshatra_lord, degree, retrograde}`
+  (`house` is `null` when houses aren't reliable).
+- `ascendant_sign`, `ascendant_nakshatra` — `null` unless `houses_reliable`.
+- `planets` — the same planet shape for Sun→Ketu (9 bodies).
+- `time_precision` + `houses_reliable` + `divisionals_reliable` — so the app hides/locks
+  the right sections. Moon-based fields are always populated (work at any tier).
 
 ## Engines used (shared)
 
 - `math_engine.kundli` — `BirthData`, `compute_chart`, `yoga_audit`, `sade_sati_timeline` (will be renamed to `shared/astro/kundli` in Phase 3)
 - `pdf_engine` — `build_kundli_pdf`, `THEMES`, `render_chart_svg` (will be renamed to `shared/pdf/`)
+
+**Lazy heavy imports:** `service.py` imports the PDF builder (jinja2/weasyprint) and the
+AI content/narrative helpers **lazily** via module `__getattr__`. Computing a chart only
+needs `pyswisseph`, so `/kundli/compute` (and any lean deploy serving just the chart) runs
+without PDF or AI libraries installed. Likewise `fastapi_main._init_backend()` guards the
+Gemini/DeepSeek init in try/except — a missing AI lib no longer crashes the math-only API.
 
 ## AI cost
 

@@ -58,13 +58,39 @@ if router is not None:
     def compute(req: KundliRequest) -> dict:
         from features.kundli.service import compute_chart
         chart = compute_chart(_profile_to_birthdata(req.profile))
-        # The chart dataclass is large; let the caller serialize as needed.
+        # The chart dataclass is large; expose a compact, display-ready summary.
         # time_precision tells the mobile app what to trust: 'exact' / 'approximate'
         # / 'unknown' (see shared/astro/kundli.py BirthData.time_precision).
         bd = chart.birth_data
+        houses_ok = bd.houses_reliable
+
+        def _planet(name: str) -> dict | None:
+            p = chart.planets.get(name)
+            if p is None:
+                return None
+            return {
+                "name": p.name,
+                "sign": p.sign,
+                "house": p.house if houses_ok else None,
+                "nakshatra": p.nakshatra,
+                "nakshatra_lord": p.nakshatra_lord,
+                "degree": p.longitude_dms,
+                "retrograde": p.is_retrograde,
+            }
+
+        order = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+        planets = [_planet(n) for n in order if chart.planets.get(n) is not None]
+
         return {
             "ok": True,
-            "ascendant_sign": chart.lagna.sign,
+            # Headline placements (always usable — Moon-based parts work at any tier)
+            "moon": _planet("Moon"),
+            "sun": _planet("Sun"),
+            # Ascendant / houses — only meaningful when a birth time is known
+            "ascendant_sign": chart.lagna.sign if houses_ok else None,
+            "ascendant_nakshatra": chart.lagna.nakshatra if houses_ok else None,
+            "planets": planets,
+            # Precision flags so the app can hide/lock the right things
             "time_precision": bd.time_precision,
             "houses_reliable": bd.houses_reliable,
             "divisionals_reliable": bd.divisionals_reliable,

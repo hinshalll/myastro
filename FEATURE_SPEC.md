@@ -1,6 +1,17 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-05-23 — Phase 3 complete. Final structure live.
+**Last updated:** 2026-05-25 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
+
+### Recent changes (2026-05-25) — mobile/backend wiring
+- **`/kundli/compute` enriched** to return a compact, display-ready summary: `moon`,
+  `sun`, `ascendant_sign`/`ascendant_nakshatra`, a 9-body `planets` array, plus the
+  precision flags. Moon-based fields populate at every tier; ascendant/houses are `null`
+  unless `houses_reliable`. (Backward compatible — only added fields.)
+- **Lean math path.** `features/kundli/service.py` now imports the PDF builder
+  (jinja2/weasyprint) and AI content/narrative helpers **lazily** (module `__getattr__`),
+  and `fastapi_main._init_backend()` guards Gemini/DeepSeek init in try/except. The
+  chart API runs with only `pyswisseph` installed — no AI/PDF libs required. Powers the
+  React Native app (`mobile/`), which reaches the API over LAN in dev.
 
 ---
 

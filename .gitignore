@@ -3,6 +3,12 @@
 
 # Claude Code's internal worktree/state — never commit
 .claude/
+
+# Claude Design handoff bundle — local reference only (re-exportable from Claude Design)
+design_import/
+
+# Local FastAPI dev server log
+backend.log
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -19,8 +25,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
