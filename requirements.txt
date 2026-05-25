@@ -20,9 +20,9 @@ pydantic>=2.0
 google-genai>=1.0        # New SDK (replaces deprecated google-generativeai)
 qdrant-client>=1.10
 langchain-qdrant>=0.2    # >=0.2 for RetrievalMode.HYBRID + FastEmbedSparse
-langchain-huggingface>=0.1
-sentence-transformers>=2.7   # Needed by HuggingFaceEmbeddings (BGE dense vectors)
-fastembed>=0.4               # BM25 sparse vectors + ONNX cross-encoder reranker
+fastembed>=0.4           # ALL vectors via ONNX: dense BGE + BM25 sparse + cross-encoder reranker
+#                          (replaced sentence-transformers/langchain-huggingface → no PyTorch;
+#                           keeps the backend light enough for free-tier hosting)
 
 # ── Astrology math ───────────────────────────────────────────────────────────
 pyswisseph>=2.10

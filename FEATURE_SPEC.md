@@ -12,6 +12,14 @@
   and `fastapi_main._init_backend()` guards Gemini/DeepSeek init in try/except. The
   chart API runs with only `pyswisseph` installed — no AI/PDF libs required. Powers the
   React Native app (`mobile/`), which reaches the API over LAN in dev.
+- **RAG embeddings → ONNX (PyTorch removed).** `qdrant_utils.py` now produces dense
+  vectors via a `FastEmbedDense` class (FastEmbed / ONNX) instead of
+  `HuggingFaceEmbeddings` (sentence-transformers + PyTorch). Same model
+  (`BAAI/bge-base-en-v1.5`, 768-dim, cosine), so the Qdrant collection layout is
+  unchanged — but re-ingest the books once with the chunker tool so stored vectors are
+  ONNX-consistent. Dropped `sentence-transformers` + `langchain-huggingface` from
+  `requirements.txt`. Result: no torch anywhere → the full backend (chart, PDF, vision,
+  AI text, AND hybrid RAG search) fits free-tier RAM for Docker hosting on Render.
 
 ---
 

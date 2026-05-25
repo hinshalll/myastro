@@ -29,7 +29,25 @@ from qdrant_client.http.models import (
     Distance, VectorParams, SparseVectorParams, Modifier,
 )
 from langchain_qdrant import QdrantVectorStore, RetrievalMode, FastEmbedSparse
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.embeddings import Embeddings
+
+
+class FastEmbedDense(Embeddings):
+    """Dense embeddings via FastEmbed (ONNX) — a drop-in replacement for the
+    old torch-based HuggingFaceEmbeddings. Same BGE model, same 768-dim
+    vectors, but a light ONNX runtime (no PyTorch) so the backend fits
+    free-tier RAM. FastEmbed is already a dependency (it powers the BM25
+    sparse vectors and the cross-encoder reranker)."""
+
+    def __init__(self, model_name: str):
+        from fastembed import TextEmbedding
+        self._model = TextEmbedding(model_name=model_name)
+
+    def embed_documents(self, texts):
+        return [v.tolist() for v in self._model.embed(list(texts))]
+
+    def embed_query(self, text):
+        return next(iter(self._model.embed([text]))).tolist()
 
 
 # ── Secrets loader ────────────────────────────────────────────────────────────
@@ -118,7 +136,7 @@ def get_vector_store_pure():
     if _VS_SINGLETON is None:
         client = get_qdrant_client_pure()
         _ensure_hybrid_collection(client)
-        embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+        embeddings = FastEmbedDense(EMBEDDING_MODEL_NAME)
         sparse = FastEmbedSparse(model_name=SPARSE_MODEL_NAME)
         _VS_SINGLETON = QdrantVectorStore(
             client=client,
