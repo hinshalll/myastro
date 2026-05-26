@@ -32,6 +32,13 @@ class TimingRequest(BaseModel):
     tz: str     # IANA tz, e.g. "Asia/Kolkata"
 
 
+class DayAlertsRequest(BaseModel):
+    date: str           # "YYYY-MM-DD"
+    tz: str             # IANA tz, e.g. "Asia/Kolkata"
+    lat: float | None = None   # optional (eclipse Sutak refinement)
+    lon: float | None = None
+
+
 class DecideRequest(BaseModel):
     profile: dict
     question: str

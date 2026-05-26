@@ -180,6 +180,120 @@ def daily_timing_windows(d, lat, lon, tz_name):
     }
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# "TODAY" HEADS-UP CARDS  (date based, Moon/Sun only — no birth time needed)
+#   • chandra_sandhi_window : Moon at a sign junction = weak/reflective window
+#   • next_eclipse          : soonest upcoming Surya/Chandra Grahan from a date
+# Pure Swiss-Ephemeris math. No AI, no new deps. NOTE: kundli._detect_grahan is
+# a NATAL eclipse-axis dosha — unrelated to these upcoming-calendar events.
+# ══════════════════════════════════════════════════════════════════════════
+
+# How close (in degrees) to a 30° sign boundary counts as Chandra Sandhi.
+_SANDHI_ORB_DEG = 1.0
+
+
+def _moon_lon_sidereal(dt_utc):
+    jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day,
+                    dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0)
+    res, _ = swe.calc_ut(jd, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+    return float(res[0]) % 360
+
+
+def chandra_sandhi_window(d, tz_name, orb_deg=_SANDHI_ORB_DEG):
+    """Find today's Chandra Sandhi window — the Moon within `orb_deg` of a 30°
+    sign boundary (last ~1° of a sign or first ~1° of the next). The Moon crosses
+    at most one sign boundary in a day, so there is at most one window.
+
+    Returns a display-ready dict (24h HH:MM local) or {"present": False}.
+    """
+    swe.set_sid_mode(swe.SIDM_LAHIRI)  # match the app's sign assignments (Lahiri)
+    lz = ZoneInfo(tz_name)
+    day_start = datetime(d.year, d.month, d.day, 0, 0, tzinfo=lz)
+
+    # Sample the day at 2-min resolution (Moon moves ~13°/day → fine for HH:MM).
+    step = timedelta(minutes=2)
+    n_steps = (24 * 60) // 2
+    in_window = False
+    win_start = win_end = None
+    boundary_lon = None
+    for i in range(n_steps + 1):
+        dt_local = day_start + step * i
+        lon = _moon_lon_sidereal(dt_local.astimezone(ZoneInfo("UTC")))
+        dist = min(lon % 30, 30 - (lon % 30))  # degrees to nearest sign boundary
+        if dist <= orb_deg:
+            if not in_window:
+                in_window = True
+                win_start = dt_local
+            win_end = dt_local
+            boundary_lon = round(lon / 30.0) * 30.0  # nearest 30° boundary
+        elif in_window:
+            break  # first contiguous window of the day is the one we report
+
+    if not in_window:
+        return {"present": False}
+
+    b = int(round(boundary_lon)) % 360
+    from_sign = sign_name(int(b / 30 - 1) % 12)
+    to_sign = sign_name(int(b / 30) % 12)
+    return {
+        "present": True,
+        "start": win_start.strftime("%H:%M"),
+        "end": win_end.strftime("%H:%M"),
+        "from_sign": from_sign,
+        "to_sign": to_sign,
+        "label": "Low window",
+        "note": "A low/reflective window — better for calm tasks; avoid big commitments.",
+        "why": (f"The Moon is crossing the junction (Chandra Sandhi) between {from_sign} "
+                f"and {to_sign}. At a sign boundary the Moon is considered weak, so this "
+                f"is a softer, more reflective stretch rather than a time to push."),
+        "sanskrit": "चन्द्र सन्धि",
+    }
+
+
+def next_eclipse(d, tz_name="UTC", lat=None, lon=None, horizon_days=30):
+    """Soonest upcoming solar OR lunar eclipse on/after date `d` (whichever is
+    sooner). Pure Swiss-Ephemeris (global search). `present` is True only if the
+    eclipse falls within `horizon_days` (else the app hides the card).
+
+    Sutak (traditional): begins ~12h before a solar / ~9h before a lunar eclipse.
+    """
+    jd_start = swe.julday(d.year, d.month, d.day, 0.0)
+
+    # Solar (global). ifltype=0 → any eclipse type; backward=False → forward search.
+    _, t_sol = swe.sol_eclipse_when_glob(jd_start, swe.FLG_SWIEPH, 0, False)
+    jd_sol = t_sol[0]
+    # Lunar (global). pyswisseph names this lun_eclipse_when; some builds add _glob.
+    _lun_fn = getattr(swe, "lun_eclipse_when_glob", None) or swe.lun_eclipse_when
+    _, t_lun = _lun_fn(jd_start, swe.FLG_SWIEPH, 0, False)
+    jd_lun = t_lun[0]
+
+    if jd_sol <= jd_lun:
+        jd_max, etype, sanskrit, sutak_hours = jd_sol, "Surya Grahan", "सूर्य ग्रहण", 12
+        why = ("A solar eclipse is coming up — traditionally a time to pause new "
+               "beginnings, keep things low-key and turn inward.")
+    else:
+        jd_max, etype, sanskrit, sutak_hours = jd_lun, "Chandra Grahan", "चन्द्र ग्रहण", 9
+        why = ("A lunar eclipse is coming up — emotions can run high, so it's a time "
+               "for rest, reflection and gentle routines.")
+
+    ecl_local = _jd_ut_to_local(jd_max, tz_name)
+    days_until = (ecl_local.date() - d).days
+    present = 0 <= days_until <= horizon_days
+
+    sutak_start = ecl_local - timedelta(hours=sutak_hours)
+    return {
+        "present": present,
+        "type": etype,
+        "date": ecl_local.date().isoformat(),
+        "days_until": days_until,
+        "sutak_start": sutak_start.strftime("%Y-%m-%d %H:%M"),
+        "sutak_note": (f"Sutak (the caution period) traditionally begins about "
+                       f"{sutak_hours} hours before, around {sutak_start.strftime('%d %b %H:%M')}."),
+        "why": why,
+        "sanskrit": sanskrit,
+    }
+
+
 def whole_sign_house(ls,ps): return ((ps-ls)%12)+1
 
 

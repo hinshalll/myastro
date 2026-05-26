@@ -24,6 +24,29 @@ Daily landing page. All widgets are toggleable from the ⚙️ popover.
 | `view.py`    | Streamlit page (toggle-driven render) |
 | `api.py`     | FastAPI router |
 
+## `/dashboard/day-alerts` — two "Today" heads-up cards (no AI)
+
+`POST /dashboard/day-alerts` returns two optional heads-up cards. Pure Swiss-Ephemeris
+math, Moon/Sun based — **no birth time, no AI, no profile**.
+
+- **Input:** `{ "date": "YYYY-MM-DD", "tz": "<IANA tz>" }` (optional `lat`/`lon` for
+  future eclipse-Sutak refinement).
+- **Output:** `{ chandra_sandhi: {...}, eclipse: {...} }` — each carries its own `present`
+  flag so the app shows/hides the card.
+  - **`chandra_sandhi`** (blueprint §6.6 — Moon at a sign junction = weak/reflective):
+    scans the transiting Moon across the local day; when it's within ~1° of a 30° sign
+    boundary it returns `{present, start, end (HH:MM), from_sign, to_sign, label:"Low
+    window", note, why, sanskrit:"चन्द्र सन्धि"}`, else `{present:false}`. (The Moon crosses
+    at most one boundary per day → at most one window.)
+  - **`eclipse`**: soonest upcoming solar OR lunar eclipse on/after the date (global
+    search). `{present, type:"Surya Grahan"|"Chandra Grahan", date, days_until,
+    sutak_start, sutak_note, why, sanskrit}`. `present` is True only within the next 30
+    days. Sutak (caution period) is approximated at ~12h before solar / ~9h before lunar.
+
+Logic lives in `shared/astro/astro_calc.py` (`chandra_sandhi_window`, `next_eclipse`).
+NOTE: this is **upcoming-calendar** eclipses — unrelated to `kundli._detect_grahan`
+(a natal eclipse-axis dosha).
+
 ## `/dashboard/forecast` — daily "Cosmic Weather" hero (no AI)
 
 `POST /dashboard/forecast` powers the mobile Today tab's hero card. **FREE + cheap by

@@ -8,7 +8,7 @@ from features.dashboard.service import fetch_data
 from features.dashboard.prompts import build_decide_prompt
 from features.dashboard.schemas import (
     DashboardRequest, DashboardData, DecideRequest, DecideResponse, TimingRequest,
-    ForecastRequest,
+    ForecastRequest, DayAlertsRequest,
 )
 
 try:
@@ -43,6 +43,22 @@ if router is not None:
         out = daily_moon_forecast(req.profile, req.date)
         out["ok"] = True
         return out
+
+    @router.post("/day-alerts")
+    def day_alerts(req: DayAlertsRequest) -> dict:
+        """Two "Today" heads-up cards: Chandra Sandhi low-window + upcoming eclipse.
+
+        Pure math (Swiss Ephemeris), Moon/Sun based — no birth time, no AI.
+        Returns { chandra_sandhi: {...}|present:false, eclipse: {...}|present:false }.
+        """
+        from datetime import date as _date
+        from shared.astro.astro_calc import chandra_sandhi_window, next_eclipse
+        d = _date.fromisoformat(req.date)
+        return {
+            "ok": True,
+            "chandra_sandhi": chandra_sandhi_window(d, req.tz),
+            "eclipse": next_eclipse(d, req.tz, req.lat, req.lon),
+        }
 
     @router.post("/timing")
     def timing(req: TimingRequest) -> dict:

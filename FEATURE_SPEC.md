@@ -2,6 +2,23 @@
 
 **Last updated:** 2026-05-26 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+### Recent changes (2026-05-26) — "Today" day-alert cards (Chandra Sandhi + eclipse)
+- **New endpoint `POST /dashboard/day-alerts`** powers two mobile "Today" heads-up cards.
+  Pure Swiss-Ephemeris math, Moon/Sun based — no birth time, no AI, no profile. Input
+  `{ date, tz }` (optional `lat`/`lon`). Returns `{ chandra_sandhi, eclipse }`, each with
+  its own `present` flag so the app shows/hides the card.
+  - **Chandra Sandhi** (blueprint §6.6): scans the transiting Moon across the local day;
+    when within ~1° of a 30° sign boundary returns `{present, start, end, from_sign,
+    to_sign, label, note, why, sanskrit}` (else `present:false`). The Moon crosses at most
+    one sign boundary per day → at most one window.
+  - **Eclipse**: soonest upcoming solar/lunar eclipse on/after the date (global search via
+    `sol_eclipse_when_glob` / `lun_eclipse_when`). Returns `{present, type:"Surya
+    Grahan"|"Chandra Grahan", date, days_until, sutak_start, sutak_note, why, sanskrit}`;
+    `present` only within the next 30 days. Sutak ≈ 12h before solar / 9h before lunar.
+- **New pure functions in `shared/astro/astro_calc.py`:** `chandra_sandhi_window(d, tz)`
+  and `next_eclipse(d, tz, lat, lon)`. No AI, no new deps, no streamlit. Distinct from
+  `kundli._detect_grahan` (a natal eclipse-axis dosha, not an upcoming calendar eclipse).
+
 ### Recent changes (2026-05-26) — daily "Cosmic Weather" forecast hero
 - **New endpoint `POST /dashboard/forecast`** powers the mobile Today tab's hero card.
   **FREE + cheap (cost rule): pure math + a pre-baked meaning lookup, NO AI call.**
