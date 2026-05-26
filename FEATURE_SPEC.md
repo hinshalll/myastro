@@ -197,7 +197,8 @@ features/<feature>/
 - API: `POST /face_reading/read` (`image_base64`, `use_kundli`, optional `profile`).
 
 ### 9. oracle — `features/oracle/` (6 sub-features)
-- Legacy dropdown router in `__init__.py` + 6 standalone show_*() entry points
+- Pure FastAPI router in `api.py` (Streamlit-free; the mobile app calls this) + legacy Streamlit dropdown in `_dropdown.py`. Package `__init__.py` is a lazy loader so importing `features.oracle.api` never pulls in Streamlit.
+- 6 standalone show_*() Streamlit entry points
 - `deep_analysis.py` — Full Life Reading: 3 parallel agents (Parashari/Timing/KP) → Synthesizer
 - `matchmaking.py` — Ashta Koota + Manglik + Compatibility Index for boy/girl
 - `marriage.py` — Destiny Marriage Matrix via `calculate_destiny_confirmation`
@@ -241,6 +242,7 @@ features/<feature>/
 | 26 | Noise in MediaPipe landmarks and HSV color space caused incorrect finger proportions, ruling planet calculation, and skin vitality, creating UI-reading mismatches. | ✅ Fixed — excluded Saturn from the dominant comparative check so active traits (Jupiter, Sun, Mercury) determine the ruling planet. Implemented a 100% automated VLM Visual Self-Correction override in Pass 1 to correct noisy MediaPipe index-vs-ring ratios and skin tone HSV metrics, and synchronized these corrections back to `st.session_state.palm_analysis` to instantly update UI widgets. |
 | 27 | Palmistry still accepted blind pre-scan retrieval and overconfident one-photo claims. | ✅ Fixed — all Vedic/Qdrant context retrieval now waits for valid Phase A observations; unusable visual scans skip the second AI call; Phase A no longer invents Kundli agreement, thumb flexibility, relationship-line counts, or mount fullness beyond what the photo supports. |
 | 28 | Smartphone backend contract only accepted one palm image and could not ask for material extra evidence smoothly. | ✅ Fixed — palmistry now accepts role-labelled optional captures, exposes a scan-only FastAPI route, and returns AI capture guidance in Phase A while preserving the old single-photo `/read` contract. |
+| 29 | `/oracle` failed to mount on the deployed backend (`ModuleNotFoundError: No module named 'ui_streamlit'`) because `features/oracle/__init__.py` eagerly `import streamlit` + the six Streamlit `show_*` views, so any `import features.oracle.api` pulled in Streamlit (absent on the Render server). | ✅ Fixed — moved the Streamlit dropdown body into `features/oracle/_dropdown.py` and turned `__init__.py` into a PEP 562 lazy loader (`__getattr__`). `api.py`/`schemas.py` were already pure; now importing the package is Streamlit-free, so all 6 endpoints mount. Streamlit app's `from features.oracle import show_oracle` still works (loads lazily). |
 
 ---
 
