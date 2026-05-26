@@ -2,6 +2,19 @@
 
 **Last updated:** 2026-05-26 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+### Recent changes (2026-05-26) — forecast accuracy + tone fix
+- **Corrected the Chandra Gochara meaning table** in `shared/astro/forecast.py`. The
+  build had mislabelled the **5th house from the natal Moon as "Playful / good"** — that's
+  the *natal* 5th-house meaning, NOT the Moon's *transit* result. Per the classical rule
+  (Phaladeepika / Brihat Jataka, cross-checked across multiple sources), the Moon's transit
+  is **favourable in 1, 3, 6, 7, 10, 11** and **challenging in 2, 4, 5, 8, 9, 12** from the
+  natal Moon. Rewrote all 12 entries so `base` scores + framing match (favourable
+  ≈0.60–0.84, challenging ≈0.32–0.46; 11th strongest, 8th hardest), each keeping its domain
+  flavour. Still a pure static lookup — no AI, no cost.
+- **Softer, jargon-free `why` text.** Removed the code-dumpy `"Tara Bala is Janma (Birth)
+  (neutral)"`; the depth line now reads in plain warm English. Sanskrit stays only in the
+  `sanskrit` field. Beginner-first per blueprint §2.
+
 ### Recent changes (2026-05-26) — "Today" day-alert cards (Chandra Sandhi + eclipse)
 - **New endpoint `POST /dashboard/day-alerts`** powers two mobile "Today" heads-up cards.
   Pure Swiss-Ephemeris math, Moon/Sun based — no birth time, no AI, no profile. Input

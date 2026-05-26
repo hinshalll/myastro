@@ -35,67 +35,74 @@ _NAK_DEVANAGARI = [
 
 # ── Pre-baked meaning table: 12 entries keyed by the Moon's house FROM the natal
 #    Moon (Chandra house). Tara Bala quality then nudges the score + framing.
-#    Easy to expand later (e.g. add a nakshatra layer). Each entry is plain data.
+#
+#    AUSPICIOUSNESS follows the classical Chandra Gochara rule (Phaladeepika /
+#    Brihat Jataka): the Moon's transit is FAVOURABLE in the 1, 3, 6, 7, 10, 11
+#    houses from the natal Moon, and CHALLENGING in the 2, 4, 5, 8, 9, 12.
+#    (Cross-checked against multiple classical sources — see commit message.)
+#    `base` scores reflect that: favourable ≈ 0.60–0.84, challenging ≈ 0.32–0.46,
+#    with the 11th strongest and the 8th hardest. Each house keeps its own DOMAIN
+#    flavour (self, money, courage, home, …) in plain, warm English.
 _CHANDRA_HOUSE: dict[int, dict] = {
-    1:  {"vibe": "Tender",    "theme": "inward and sensitive", "base": 0.55,
-         "mood": "Feelings sit close to the surface, so you may notice your moods more than usual.",
-         "opportunity": "A good day for honest self-check-ins and gentle self-care.",
-         "caution": "Try not to take passing comments too personally.",
-         "action": "Move at your own pace and protect a little quiet time."},
-    2:  {"vibe": "Grounded",  "theme": "practical and value-focused", "base": 0.52,
-         "mood": "Attention drifts toward home, money and the people closest to you.",
-         "opportunity": "Sorting finances or family matters can feel satisfying now.",
-         "caution": "Watch a tendency to cling to comfort or overspend on treats.",
-         "action": "Tidy one small practical thing you've been putting off."},
-    3:  {"vibe": "Bold",      "theme": "energetic and expressive", "base": 0.70,
-         "mood": "Courage and curiosity run high — you feel like reaching out and doing.",
-         "opportunity": "Great for conversations, short trips and starting things.",
-         "caution": "Channel the restlessness so it doesn't scatter your focus.",
+    1:  {"vibe": "Settled",   "theme": "steady and self-contained", "base": 0.62,
+         "mood": "You feel a little more at home in yourself today — steadier, and comfortable in your own skin.",
+         "opportunity": "A good day to take care of yourself and move at an easy, unhurried pace.",
+         "caution": "It's easy to get wrapped up in your own world — stay in touch with people too.",
+         "action": "Do one small, kind thing just for you."},
+    2:  {"vibe": "Guarded",   "theme": "focused on money, home and words", "base": 0.42,
+         "mood": "Thoughts circle around money, home and close family, and feelings can run a little tight.",
+         "opportunity": "Careful, steady handling of finances or family matters works better than anything bold.",
+         "caution": "Words can land harder than you mean, and spending can feel reactive — go gently on both.",
+         "action": "Pause before reacting; calmly sort one small money or home detail."},
+    3:  {"vibe": "Bold",      "theme": "courageous and outgoing", "base": 0.72,
+         "mood": "Courage and energy run high — you feel like reaching out and getting things moving.",
+         "opportunity": "Great for conversations, reaching out, short trips and starting things.",
+         "caution": "So much momentum can scatter — point it at just one or two things.",
          "action": "Make that call or send that message you've been sitting on."},
-    4:  {"vibe": "Nesting",   "theme": "homeward and reflective", "base": 0.44,
-         "mood": "You may want to retreat to familiar comforts and slow right down.",
-         "opportunity": "Lovely for nesting, rest and time with family.",
-         "caution": "Low energy or a wistful mood can creep in — that's normal today.",
-         "action": "Give yourself permission to do less and recharge at home."},
-    5:  {"vibe": "Playful",   "theme": "creative and warm-hearted", "base": 0.60,
-         "mood": "The heart feels lighter and more expressive than usual.",
-         "opportunity": "Good for creativity, romance, play and time with children.",
-         "caution": "Enthusiasm can outrun follow-through, so don't over-promise.",
-         "action": "Make space for one thing that's purely fun."},
-    6:  {"vibe": "Driven",    "theme": "productive and resilient", "base": 0.62,
-         "mood": "You feel capable of tackling chores and clearing obstacles.",
-         "opportunity": "Strong for work, health routines and sorting out problems.",
-         "caution": "Don't let a critical eye turn into stress or friction with others.",
-         "action": "Knock out one task that's been nagging at you."},
-    7:  {"vibe": "Magnetic",  "theme": "relational and social", "base": 0.72,
-         "mood": "You're drawn toward others and conversation flows more easily.",
-         "opportunity": "Excellent for partnerships, meetings and calm, open talk.",
-         "caution": "Avoid leaning on others' approval to feel settled.",
+    4:  {"vibe": "Tender",    "theme": "homeward and soft-hearted", "base": 0.44,
+         "mood": "The heart tugs toward home and comfort, and you may feel more sensitive than usual.",
+         "opportunity": "Lovely for rest, nesting and quiet time with family.",
+         "caution": "A wistful or low mood can drift in — that's the day, not you; let it pass.",
+         "action": "Give yourself permission to slow down and be at home."},
+    5:  {"vibe": "Restless",  "theme": "stimulation-seeking and a touch unsettled", "base": 0.40,
+         "mood": "The mind craves a little play, romance or attention, but can feel restless underneath.",
+         "opportunity": "Fine for light creativity and enjoying yourself — as long as you keep it low-stakes.",
+         "caution": "Not the steadiest day — skip big gambles and don't chase recognition.",
+         "action": "Pour the buzzy energy into something playful but harmless."},
+    6:  {"vibe": "Capable",   "theme": "productive and good at clearing problems", "base": 0.66,
+         "mood": "You feel ready to face problems head-on and clear what's been in your way.",
+         "opportunity": "Strong for work, health routines, and getting the upper hand on a nagging issue.",
+         "caution": "Don't let a sharp, problem-hunting mood turn into friction with people.",
+         "action": "Knock out the task or obstacle that's been nagging at you."},
+    7:  {"vibe": "Warm",      "theme": "relational and easy with others", "base": 0.74,
+         "mood": "You're drawn toward others, and conversation and connection flow more easily.",
+         "opportunity": "Excellent for partnerships, meeting people and warm, open talk.",
+         "caution": "Lovely as company is, don't lean on others' approval to feel okay.",
          "action": "Have the warm conversation you've been meaning to have."},
-    8:  {"vibe": "Deep",      "theme": "intense and introspective", "base": 0.34,
-         "mood": "Things may feel heavier or more under-the-surface than usual.",
-         "opportunity": "Useful for rest, research and quietly processing emotions.",
-         "caution": "Steer clear of big risks, confrontations and impulsive moves.",
-         "action": "Be kind to yourself and postpone anything high-stakes."},
-    9:  {"vibe": "Restless",  "theme": "seeking and a little scattered", "base": 0.42,
-         "mood": "The mind wanders toward bigger questions and far-off places.",
-         "opportunity": "Good for learning, planning travel and broadening your view.",
-         "caution": "Patience may be short, and small details can slip.",
-         "action": "Read or plan something that expands your horizon."},
-    10: {"vibe": "Sharp",     "theme": "ambitious and outward", "base": 0.74,
-         "mood": "You feel switched-on and ready to be seen and to get things done.",
+    8:  {"vibe": "Deep",      "theme": "deep, inward and a little heavy", "base": 0.32,
+         "mood": "Things can feel heavier and more under-the-surface — emotions run deep today.",
+         "opportunity": "Useful for rest, quiet research and gently processing what's beneath.",
+         "caution": "Steer clear of big risks, confrontations and impulsive moves — worry can mislead.",
+         "action": "Be gentle with yourself and postpone anything high-stakes."},
+    9:  {"vibe": "Wandering", "theme": "searching and a little scattered", "base": 0.44,
+         "mood": "The mind drifts to bigger questions and far-off places, and the here-and-now can feel dull.",
+         "opportunity": "Good for reading, planning ahead and zooming out on your life.",
+         "caution": "Patience is short and small details slip — and you may bristle at people in charge.",
+         "action": "Feed the wandering mind with something that widens your view."},
+    10: {"vibe": "Driven",    "theme": "ambitious and switched-on", "base": 0.76,
+         "mood": "You feel switched-on and ready to be seen and to get real things done.",
          "opportunity": "Strong for work, visible effort and steps toward your goals.",
-         "caution": "Don't let drive tip into impatience with people who move slower.",
+         "caution": "Don't let the drive tip into impatience with people who move slower.",
          "action": "Take one concrete step on something that matters for your future."},
-    11: {"vibe": "Buoyant",   "theme": "hopeful and connected", "base": 0.82,
-         "mood": "Optimism is high and you feel more sociable and supported.",
-         "opportunity": "Excellent for networking, friends and small wins coming in.",
-         "caution": "Enjoy it without over-committing to too many people at once.",
+    11: {"vibe": "Buoyant",   "theme": "hopeful, social and in flow", "base": 0.84,
+         "mood": "Optimism is high and you feel more sociable, supported and in flow.",
+         "opportunity": "One of the best days for friends, networking and small wins landing.",
+         "caution": "Enjoy it without over-committing to everyone at once.",
          "action": "Reconnect with someone who lifts your energy."},
-    12: {"vibe": "Reflective", "theme": "quiet and restorative", "base": 0.38,
-         "mood": "Energy turns inward — you may feel dreamy, tired or withdrawn.",
-         "opportunity": "Ideal for rest, reflection, winding down and letting go.",
-         "caution": "Not the day to force decisions or chase a packed schedule.",
+    12: {"vibe": "Quiet",     "theme": "quiet, inward and restorative", "base": 0.36,
+         "mood": "Energy turns inward — you may feel dreamy, tired or a little withdrawn.",
+         "opportunity": "Ideal for rest, winding down, reflection and quietly letting go.",
+         "caution": "Not a day to force decisions or pack the schedule; watch your energy and spending.",
          "action": "Wind down early and let yourself rest without guilt."},
 }
 
@@ -103,9 +110,9 @@ _CHANDRA_HOUSE: dict[int, dict] = {
 _TARA_QUALITY = {"Go": "favourable", "Stop": "challenging", "Caution": "neutral"}
 _TARA_DELTA = {"favourable": 0.15, "neutral": 0.0, "challenging": -0.18}
 _TARA_CLAUSE = {
-    "favourable": "the day gently supports forward motion.",
-    "neutral": "it's an even day — pace yourself and keep things steady.",
-    "challenging": "it's a day to slow down and tend to things rather than push.",
+    "favourable": "The day's natural rhythm is with you, so progress comes a little more easily.",
+    "neutral": "There's no strong pull either way, so set your own steady pace.",
+    "challenging": "It leans more toward tending and resting than pushing hard.",
 }
 
 _ORDINAL = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th",
@@ -169,9 +176,9 @@ def daily_moon_forecast(profile: dict, on_date=None) -> dict:
     score = round(min(0.98, max(0.05, m["base"] + _TARA_DELTA[quality])), 2)
 
     sign = sign_name(t_sidx)
-    why = (f"Today the Moon moves through {nak} ({sign}), the {_ORDINAL[house]} house "
-           f"from your birth Moon — a time that classically feels {m['theme']} for the mind. "
-           f"Tara Bala is {tara['tara']} ({quality}), so {_TARA_CLAUSE[quality]}")
+    why = (f"Right now the Moon is passing through {sign} (its star, {nak}). Counted from the "
+           f"sign your Moon was in when you were born, that's the {_ORDINAL[house]} step around "
+           f"the circle — a stretch that traditionally feels {m['theme']}. {_TARA_CLAUSE[quality]}")
     sanskrit = f"चन्द्रः {_NAK_DEVANAGARI[nak_idx]}-नक्षत्रे"
 
     return {
