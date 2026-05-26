@@ -96,6 +96,18 @@ if router is not None:
             "divisionals_reliable": bd.divisionals_reliable,
         }
 
+    @router.post("/dasha-timeline")
+    def dasha_timeline(req: KundliRequest) -> dict:
+        """Vimshottari Mahadasha timeline for the mobile 'Life Chapters' screen.
+
+        Same { "profile": {...} } contract as /compute. Moon-based, so it works
+        at every birth-time tier; `dates_exact` says whether the transition dates
+        can be trusted (true only for an exact birth time).
+        """
+        from features.kundli.service import compute_chart, dasha_timeline as _dasha
+        chart = compute_chart(_profile_to_birthdata(req.profile))
+        return _dasha(chart)
+
     @router.post("/free-reading")
     def free_reading(req: FreeReadingRequest) -> dict:
         from features.kundli.service import compute_chart, generate_kundli_content

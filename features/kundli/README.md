@@ -30,7 +30,7 @@ The flagship feature — full Vedic birth chart with two tabs.
 | `narrative.py`  | Premium-PDF batched narrative call (was `ai_engine/kundli_narrative.py`) |
 | `schemas.py`    | Pydantic models |
 | `view.py`       | Streamlit page (904 lines — both tabs) |
-| `api.py`        | FastAPI router (compute + free + premium) |
+| `api.py`        | FastAPI router (compute + dasha-timeline + free + premium) |
 
 ## Birth-time precision (3 tiers)
 
@@ -58,6 +58,26 @@ time). Adding/confirming a time later → recompute once.
 - `planets` — the same planet shape for Sun→Ketu (9 bodies).
 - `time_precision` + `houses_reliable` + `divisionals_reliable` — so the app hides/locks
   the right sections. Moon-based fields are always populated (work at any tier).
+
+### `/kundli/dasha-timeline` response (powers the mobile "Life Chapters" screen)
+
+`POST /kundli/dasha-timeline` takes the **same `{ "profile": {...} }` contract as
+`/compute`** and returns a compact Vimshottari Mahadasha timeline. Dasha is Moon-based,
+so it works at **every** birth-time tier (the engine uses a noon placeholder when the time
+is unknown — it never fails).
+
+- `mahadashas` — array of the full birth→~120 yr sequence, each
+  `{planet, start_date, end_date, start_age, end_age, is_balance, is_current}`
+  (ISO dates, ages in years to 1 dp; `is_balance` marks the partial opening period;
+  `is_current` marks the period running now).
+- `current_md`, `current_ad` — the Mahadasha / Antardasha lords running today.
+- `birth_nakshatra`, `start_lord` — Moon's nakshatra and the dasha-starting lord.
+- `time_precision` + `dates_exact` — `dates_exact` is True only for an **exact** birth
+  time. The *sequence and order* are always correct; the exact transition **dates** firm
+  up only with an exact time (an unknown/approximate time shifts them slightly).
+
+Reuses `build_lifetime_dasha_sequence` + `build_vimshottari_timeline` from
+`shared/astro/astro_calc.py` (no AI, no PDF — pure math).
 
 ## Engines used (shared)
 

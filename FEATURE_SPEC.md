@@ -1,6 +1,21 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-05-25 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
+**Last updated:** 2026-05-26 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
+
+### Recent changes (2026-05-26) — Life Chapters dasha timeline
+- **New endpoint `POST /kundli/dasha-timeline`** powers the mobile "Life Chapters"
+  screen (a visual Vimshottari Dasha timeline). Same `{ "profile": {...} }` contract as
+  `/kundli/compute`. Returns a compact, display-ready JSON: a `mahadashas` array (full
+  birth→~120 yr sequence, each `{planet, start_date, end_date, start_age, end_age,
+  is_balance, is_current}` with ISO dates), plus `current_md` / `current_ad`,
+  `birth_nakshatra`, `start_lord`, and `time_precision` / `dates_exact`. Pure math —
+  reuses `build_lifetime_dasha_sequence` + `build_vimshottari_timeline` from
+  `shared/astro/astro_calc.py` (no AI, no PDF). Thin `dasha_timeline(chart)` helper added
+  to `features/kundli/service.py`.
+- **Works at every birth-time tier (blueprint §6.6).** Dasha is Moon-based, so the
+  endpoint never fails on an unknown time (the engine uses a noon placeholder). The
+  sequence/order is always correct; only the exact transition **dates** firm up with an
+  exact time, signalled by `dates_exact` (True only when `time_precision == 'exact'`).
 
 ### Recent changes (2026-05-25) — mobile/backend wiring
 - **`/kundli/compute` enriched** to return a compact, display-ready summary: `moon`,
