@@ -2,6 +2,23 @@
 
 **Last updated:** 2026-05-26 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+### Recent changes (2026-05-26) — daily "Cosmic Weather" forecast hero
+- **New endpoint `POST /dashboard/forecast`** powers the mobile Today tab's hero card.
+  **FREE + cheap (cost rule): pure math + a pre-baked meaning lookup, NO AI call.**
+  **Moon-based**, so it works at every birth-time tier (unknown time → noon placeholder).
+  Same `{ profile }` contract as `/kundli/compute`, plus optional `date` (defaults to
+  today). Computes the transiting Moon at **local noon** (deterministic / cacheable), its
+  nakshatra+sign, its house from the **natal Moon** (Chandra house 1..12), and **Tara
+  Bala** quality via `calculate_tara_bala`, then maps that state through a static table.
+  Returns `vibe_word`, `vibe_score` (0..1), `mood`, `opportunity`, `caution`, `action`,
+  `why` (plain English), `sanskrit`, and `astro_state_key` (cacheable), plus debug fields.
+  Framing is actionable + reflective, never hard fate claims (blueprint §2).
+- **New module `shared/astro/forecast.py`:** `daily_moon_forecast(profile, on_date)` +
+  the `_CHANDRA_HOUSE` meaning table (12 entries, easy to expand). Pure math + lookup —
+  no AI, no PDF, no new dependencies, no streamlit. Reuses `calculate_tara_bala` and the
+  ephemeris helpers from `astro_calc.py` (does NOT use `get_gochara_overlay`, which needs
+  a birth time and returns AI prose).
+
 ### Recent changes (2026-05-26) — daily Good/Avoid timing strip
 - **New endpoint `POST /dashboard/timing`** powers the mobile "Today → Good / Avoid
   times" strip. **Date- and location-based** (weekday + sunrise/sunset), NOT birth-chart

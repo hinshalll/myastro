@@ -8,6 +8,7 @@ from features.dashboard.service import fetch_data
 from features.dashboard.prompts import build_decide_prompt
 from features.dashboard.schemas import (
     DashboardRequest, DashboardData, DecideRequest, DecideResponse, TimingRequest,
+    ForecastRequest,
 )
 
 try:
@@ -28,6 +29,20 @@ if router is not None:
             focus=d.get("FOCUS", ""),       caution=d.get("CAUTION", ""),
             window=d.get("WINDOW", ""),     summary=d.get("SUMMARY", ""),
         )
+
+    @router.post("/forecast")
+    def forecast(req: ForecastRequest) -> dict:
+        """Daily "Cosmic Weather" hero for the mobile Today tab.
+
+        FREE + cheap: pure math + a pre-baked meaning lookup, NO AI call.
+        Moon-based, so it works at every birth-time tier (unknown time → noon
+        placeholder). Same { profile } contract as /kundli/compute; optional
+        "date" (defaults to today). Deterministic for a given profile+date.
+        """
+        from shared.astro.forecast import daily_moon_forecast
+        out = daily_moon_forecast(req.profile, req.date)
+        out["ok"] = True
+        return out
 
     @router.post("/timing")
     def timing(req: TimingRequest) -> dict:

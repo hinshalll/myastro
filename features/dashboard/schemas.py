@@ -20,6 +20,11 @@ class DashboardData(BaseModel):
     summary: str
 
 
+class ForecastRequest(BaseModel):
+    profile: dict
+    date: str | None = None   # "YYYY-MM-DD"; defaults to today (profile's tz)
+
+
 class TimingRequest(BaseModel):
     date: str   # "YYYY-MM-DD"
     lat: float
