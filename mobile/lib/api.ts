@@ -1,10 +1,9 @@
 // Thin client for the Myastro FastAPI backend.
 //
-// During local development the phone reaches this computer over Wi-Fi using its
-// LAN IP (the same address Expo uses). When we later host on Render, only
-// API_BASE changes — nothing else.
-
-export const API_BASE = 'http://192.168.18.21:8000';
+// Hosted on Render (free tier) so the app works anywhere — not just on the
+// same Wi-Fi as the dev PC. For local backend dev, swap API_BASE back to the
+// LAN address (e.g. 'http://192.168.18.21:8000').
+export const API_BASE = 'https://myastroapi.onrender.com';
 
 export type Planet = {
   name: string;
@@ -41,7 +40,10 @@ export type BirthProfile = {
   gender?: string;
 };
 
-async function post<T>(path: string, body: unknown, timeoutMs = 20000): Promise<T> {
+// Default 65s: Render's free instance "sleeps" after ~15 min idle, and the
+// first request after that takes ~50s to wake. Generous timeout avoids a
+// false failure on that cold start.
+async function post<T>(path: string, body: unknown, timeoutMs = 65000): Promise<T> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
