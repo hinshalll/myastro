@@ -124,15 +124,85 @@ create table if not exists public.cached_daily (
   created_at      timestamptz default now(),
   primary key (date, astro_state_key)
 );
--- Per-chart computed-once results (key includes precision so adding birth time recomputes).
+-- Per-chart computed-once results. The cache key includes `precision` so that
+-- adding/confirming a birth time later (unknown→approximate→exact) recomputes
+-- once instead of serving a stale lower-precision result (blueprint §8.3 rule 4).
 create table if not exists public.cached_chart (
   id          uuid primary key default gen_random_uuid(),
   profile_id  uuid not null references public.profiles(id) on delete cascade,
-  kind        text not null,               -- 'kundli' | 'dharma' | 'dasha' ...
+  kind        text not null,               -- 'kundli' | 'dharma' | 'dasha' | 'full_reading' ...
+  precision   text not null default 'unknown',  -- 'exact' | 'approximate' | 'unknown'
   content     jsonb not null,
   created_at  timestamptz default now(),
-  unique (profile_id, kind)
+  unique (profile_id, kind, precision)
 );
+
+-- ── Usage counters: enforce freemium soft caps (blueprint §7) ───────────────
+-- One row per user/day/kind. kind: 'ask' | 'reading' | 'palm' | 'face' | 'tarot'.
+create table if not exists public.usage_counters (
+  user_id  uuid not null references auth.users(id) on delete cascade,
+  date     date not null,
+  kind     text not null,
+  count    integer not null default 0,
+  primary key (user_id, date, kind)
+);
+
+-- ── Groups: Family grid (household) + Couple space (blueprint Tab 2) ────────
+-- A group bundles several profiles the user already saved/connected.
+create table if not exists public.groups (
+  id          uuid primary key default gen_random_uuid(),
+  owner       uuid not null references auth.users(id) on delete cascade,
+  kind        text not null,               -- 'household' | 'couple'
+  name        text,
+  created_at  timestamptz default now()
+);
+create table if not exists public.group_members (
+  group_id    uuid not null references public.groups(id) on delete cascade,
+  profile_id  uuid not null references public.profiles(id) on delete cascade,
+  role        text,                        -- 'me' | 'partner' | 'parent' | 'child' ...
+  primary key (group_id, profile_id)
+);
+
+-- ── Ritual journeys: 21/40-day gamified remedy journeys + mala (blueprint §6.3) ──
+create table if not exists public.ritual_journeys (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  journey_key  text not null,              -- 'settle_mind' | 'open_heart' | 'money_flow' ...
+  total_days   integer not null,
+  current_day  integer not null default 0,
+  status       text not null default 'active',  -- 'active' | 'completed' | 'abandoned'
+  progress     jsonb default '{}'::jsonb,  -- per-day task completion
+  started_at   timestamptz default now(),
+  updated_at   timestamptz default now()
+);
+create index if not exists ritual_journeys_user_idx on public.ritual_journeys(user_id);
+
+-- ── Rewards / badges: streak milestones, unlocked perks (blueprint §6.4) ────
+create table if not exists public.rewards (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  kind       text not null,                -- 'badge' | 'streak_milestone' | 'free_unlock'
+  ref        text,                         -- e.g. '7_day_streak'
+  meta       jsonb,
+  earned_at  timestamptz default now()
+);
+create index if not exists rewards_user_idx on public.rewards(user_id);
+
+-- ── Ask / Prashna conversation history (always-on Ask button) ───────────────
+create table if not exists public.ai_conversations (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  kind        text not null default 'ask', -- 'ask' | 'prashna' | 'decision'
+  title       text,
+  messages    jsonb not null default '[]'::jsonb,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+create index if not exists ai_conversations_user_idx on public.ai_conversations(user_id);
+
+-- NOTE: notification preferences (which alerts are on/off) and dismissed cards
+-- (e.g. "Hide" on the eclipse card) live in app_users.settings (jsonb) — no
+-- dedicated table needed.
 
 -- ============================================================================
 -- Row-Level Security
@@ -148,6 +218,12 @@ alter table public.subscriptions  enable row level security;
 alter table public.purchases      enable row level security;
 alter table public.cached_chart   enable row level security;
 alter table public.cached_daily   enable row level security;
+alter table public.usage_counters enable row level security;
+alter table public.groups         enable row level security;
+alter table public.group_members  enable row level security;
+alter table public.ritual_journeys enable row level security;
+alter table public.rewards        enable row level security;
+alter table public.ai_conversations enable row level security;
 
 -- Helper: "the row belongs to the current user" policies.
 -- app_users: row id == auth.uid()
@@ -204,6 +280,35 @@ create policy cached_chart_owner on public.cached_chart
 drop policy if exists cached_daily_read on public.cached_daily;
 create policy cached_daily_read on public.cached_daily
   for select using (auth.role() = 'authenticated');
+
+-- new user-data tables: own rows only
+drop policy if exists usage_owner on public.usage_counters;
+create policy usage_owner on public.usage_counters
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists groups_owner on public.groups;
+create policy groups_owner on public.groups
+  for all using (owner = auth.uid()) with check (owner = auth.uid());
+
+drop policy if exists group_members_owner on public.group_members;
+create policy group_members_owner on public.group_members
+  for all using (
+    exists (select 1 from public.groups g where g.id = group_id and g.owner = auth.uid())
+  ) with check (
+    exists (select 1 from public.groups g where g.id = group_id and g.owner = auth.uid())
+  );
+
+drop policy if exists ritual_owner on public.ritual_journeys;
+create policy ritual_owner on public.ritual_journeys
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists rewards_owner on public.rewards;
+create policy rewards_owner on public.rewards
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists ai_conv_owner on public.ai_conversations;
+create policy ai_conv_owner on public.ai_conversations
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- ── Auto-create an app_users row when a new auth user signs up ──────────────
 create or replace function public.handle_new_user()
