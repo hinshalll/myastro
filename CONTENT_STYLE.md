@@ -60,3 +60,20 @@ someone who knows **nothing** about astrology — warm, human, jargon-free — a
 - [ ] Sanskrit/technical only behind "why?" / `sanskrit`?
 - [ ] Warm, specific, actionable — doesn't sound AI-written?
 - [ ] Pure static lookup — no live AI call added to a free surface?
+
+---
+
+## 5. UI display notes (read when building the frontend)
+
+Running list of decisions the UI must honour (so they're not forgotten):
+
+- **Sanskrit is optional, depth-only.** Never put Sanskrit/Devanagari in primary UI. Show
+  it only inside the "why?" reveal (the `sanskrit` field). It's a trust/authenticity touch
+  for users who know astrology; beginners ignore it. The app works fine if it's hidden.
+- **Good/Avoid times strip (`/dashboard/timing`):** show the **quality colours + times +
+  the plain `summary`** as the primary content. The Choghadiya `name` values are Sanskrit
+  (Amrit, Labh, Char…) — show them only as a small secondary label or on tap, not as the
+  headline.
+- **Forecast "why?" (`/dashboard/forecast`):** the `why` text is the depth reveal; the
+  `vibe_word` + `mood` are the headline. Keep the `sanskrit` line as a small subtitle inside
+  "why?", per blueprint §2.
