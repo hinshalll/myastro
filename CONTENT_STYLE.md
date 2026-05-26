@@ -17,10 +17,10 @@ someone who knows **nothing** about astrology — warm, human, jargon-free — a
   Don't re-derive these — use the engine.
 - **Meanings/interpretations are NOT automatically correct.** When you author or edit any
   interpretation (what a placement/transit/number/card *means*):
-  1. **Research authoritative sources first** (classical texts + reputable references) —
-     do NOT improvise from general memory.
-  2. **Cross-check multiple sources** for anything contested; prefer the *classical* rule
-     when classical and "modern/psychological" readings disagree.
+  1. **Research it from multiple reputable sources online first** — always, not only when
+     unsure. Never improvise a meaning from general memory.
+  2. **Cross-check the sources against each other.** When classical and
+     "modern/psychological" readings disagree, prefer the **classical** rule.
   3. **Don't confuse different concepts.** Classic trap (already hit once): a planet's
      *natal house* meaning is NOT the same as its *transit* result. Example: the Moon's
      **transit** is favourable in houses **1,3,6,7,10,11** and challenging in
