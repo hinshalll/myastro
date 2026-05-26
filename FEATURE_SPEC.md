@@ -2,6 +2,20 @@
 
 **Last updated:** 2026-05-26 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+### Recent changes (2026-05-26) — daily Good/Avoid timing strip
+- **New endpoint `POST /dashboard/timing`** powers the mobile "Today → Good / Avoid
+  times" strip. **Date- and location-based** (weekday + sunrise/sunset), NOT birth-chart
+  based, so no profile is needed. Input `{ date, lat, lon, tz }`. Returns display-ready
+  `avoid` (Rahu Kaal, Yamaganda, Gulika Kaal), `good` (Abhijit Muhurta) — each
+  `{name, start, end}` in 24h `HH:MM` — plus `choghadiya` (8 day + 8 night segments
+  tiling sunrise→next sunrise, each `{name, start, end, quality, period}`,
+  `quality ∈ good|neutral|avoid`), a one-line `summary`, and `weekday`/`sunrise`/`sunset`.
+- **New pure functions in `shared/astro/astro_calc.py`:** `daily_timing_windows`,
+  `sun_rise_set` (Swiss Ephemeris sunrise/sunset), plus the classical weekday segment
+  tables for Rahu/Yamaganda/Gulika and the Choghadiya wheel. Pure math — no AI, no PDF,
+  no new dependencies. (The kaal fields on `PanchangaInfo` were only ever declared, never
+  populated; this is the first code that actually computes them.)
+
 ### Recent changes (2026-05-26) — Life Chapters dasha timeline
 - **New endpoint `POST /kundli/dasha-timeline`** powers the mobile "Life Chapters"
   screen (a visual Vimshottari Dasha timeline). Same `{ "profile": {...} }` contract as

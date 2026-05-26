@@ -54,6 +54,132 @@ def get_panchanga(sun_lon,moon_lon,dt_local):
             "weekday":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][dt_local.weekday()]}
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# DAILY MUHURTA / KAAL WINDOWS  (date + location based — NOT birth-chart based)
+# Powers the mobile "Today → Good / Avoid times" strip. Pure math: Swiss
+# Ephemeris sunrise/sunset + classical weekday segment rules. No AI, no deps.
+# ══════════════════════════════════════════════════════════════════════════
+
+# Each value is the 1-based index (1..8) of the eight equal DAYTIME parts
+# (sunrise→sunset) that the period occupies, keyed by Python weekday() (Mon=0..Sun=6).
+_RAHU_SEGMENT      = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
+_YAMAGANDA_SEGMENT = {0: 4, 1: 3, 2: 2, 3: 1, 4: 7, 5: 6, 6: 5}
+_GULIKA_SEGMENT    = {0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 7}
+
+# Successive order of the seven Choghadiya (ruled by Sun/Venus/Mercury/Moon/
+# Saturn/Jupiter/Mars). Day and night both walk forward through this wheel.
+CHOGHADIYA_WHEEL = ["Udveg", "Char", "Labh", "Amrit", "Kaal", "Shubh", "Rog"]
+# First daytime Choghadiya of the day = the weekday lord's, by weekday() (Mon=0..Sun=6).
+_CHOGHADIYA_DAY_START = {0: 3, 1: 6, 2: 2, 3: 5, 4: 1, 5: 4, 6: 0}
+CHOGHADIYA_QUALITY = {
+    "Amrit": "good", "Shubh": "good", "Labh": "good",
+    "Char": "neutral",
+    "Udveg": "avoid", "Kaal": "avoid", "Rog": "avoid",
+}
+
+
+def _jd_ut_to_local(jd_ut, tz_name):
+    """Swiss-Ephemeris UT Julian Day → tz-aware local datetime."""
+    y, m, day, hour = swe.revjul(jd_ut, swe.GREG_CAL)
+    total_sec = int(round(hour * 3600))
+    h, rem = divmod(total_sec, 3600)
+    mi, s = divmod(rem, 60)
+    base = datetime(y, m, day, 0, 0, tzinfo=ZoneInfo("UTC"))
+    return (base + timedelta(hours=h, minutes=mi, seconds=s)).astimezone(ZoneInfo(tz_name))
+
+
+def sun_rise_set(d, lat, lon, tz_name):
+    """Sunrise, sunset and the NEXT day's sunrise for a date+location.
+    Returns three tz-aware local datetimes: (sunrise, sunset, next_sunrise)."""
+    jd_midnight, _, _ = local_to_julian_day(d, time(0, 0), tz_name)
+    geopos = (lon, lat, 0.0)
+
+    def _event(jd_start, rsmi):
+        _, tret = swe.rise_trans(jd_start, swe.SUN, rsmi, geopos)
+        return tret[0]
+
+    jd_rise = _event(jd_midnight, swe.CALC_RISE)
+    jd_set = _event(jd_midnight, swe.CALC_SET)
+    jd_next_rise = _event(jd_set, swe.CALC_RISE)
+    return (_jd_ut_to_local(jd_rise, tz_name),
+            _jd_ut_to_local(jd_set, tz_name),
+            _jd_ut_to_local(jd_next_rise, tz_name))
+
+
+def _hm(dt): return dt.strftime("%H:%M")
+
+
+def _ampm(dt):
+    h = dt.hour % 12 or 12
+    return f"{h}:{dt.minute:02d} {'am' if dt.hour < 12 else 'pm'}"
+
+
+def daily_timing_windows(d, lat, lon, tz_name):
+    """Display-ready auspicious/inauspicious windows for a given date + location.
+
+    Date- and location-based (depends on weekday + sunrise/sunset), NOT on a
+    birth chart. Returns:
+      avoid       — Rahu Kaal, Yamaganda, Gulika Kaal: {name, start, end} (24h HH:MM)
+      good        — Abhijit Muhurta: {name, start, end}
+      choghadiya  — 8 day + 8 night segments tiling sunrise→next sunrise,
+                    each {name, start, end, quality, period}
+      summary     — one-line plain-English hint
+      plus sunrise / sunset / weekday for display.
+    """
+    sunrise, sunset, next_sunrise = sun_rise_set(d, lat, lon, tz_name)
+    wd = d.weekday()
+    day_len = sunset - sunrise
+
+    def _day_seg(i):  # 0-based index into the 8 equal daytime parts
+        step = day_len / 8
+        return sunrise + step * i, sunrise + step * (i + 1)
+
+    def _win(name, s, e): return {"name": name, "start": _hm(s), "end": _hm(e)}
+
+    rk_s, rk_e = _day_seg(_RAHU_SEGMENT[wd] - 1)
+    avoid = [
+        _win("Rahu Kaal", rk_s, rk_e),
+        _win("Yamaganda", *_day_seg(_YAMAGANDA_SEGMENT[wd] - 1)),
+        _win("Gulika Kaal", *_day_seg(_GULIKA_SEGMENT[wd] - 1)),
+    ]
+
+    # Abhijit Muhurta — the 8th of 15 daytime muhurtas (centred on local noon).
+    midday = sunrise + day_len / 2
+    half = day_len / 30
+    ab_s, ab_e = midday - half, midday + half
+    good = [_win("Abhijit Muhurta", ab_s, ab_e)]
+
+    choghadiya = []
+    day_start = _CHOGHADIYA_DAY_START[wd]
+    for i in range(8):
+        s, e = _day_seg(i)
+        name = CHOGHADIYA_WHEEL[(day_start + i) % 7]
+        choghadiya.append({"name": name, "start": _hm(s), "end": _hm(e),
+                           "quality": CHOGHADIYA_QUALITY[name], "period": "day"})
+    night_len = next_sunrise - sunset
+    night_start = (day_start + 5) % 7  # night begins with the 5th-from-weekday lord
+    for i in range(8):
+        step = night_len / 8
+        s, e = sunset + step * i, sunset + step * (i + 1)
+        name = CHOGHADIYA_WHEEL[(night_start + i) % 7]
+        choghadiya.append({"name": name, "start": _hm(s), "end": _hm(e),
+                           "quality": CHOGHADIYA_QUALITY[name], "period": "night"})
+
+    summary = (f"Strong window {_ampm(ab_s)}–{_ampm(ab_e)} (Abhijit Muhurta); "
+               f"soft dip {_ampm(rk_s)}–{_ampm(rk_e)} (Rahu Kaal).")
+
+    return {
+        "weekday": ["Monday", "Tuesday", "Wednesday", "Thursday",
+                    "Friday", "Saturday", "Sunday"][wd],
+        "sunrise": _hm(sunrise),
+        "sunset": _hm(sunset),
+        "avoid": avoid,
+        "good": good,
+        "choghadiya": choghadiya,
+        "summary": summary,
+    }
+
+
 def whole_sign_house(ls,ps): return ((ps-ls)%12)+1
 
 

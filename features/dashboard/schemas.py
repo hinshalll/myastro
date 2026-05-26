@@ -20,6 +20,13 @@ class DashboardData(BaseModel):
     summary: str
 
 
+class TimingRequest(BaseModel):
+    date: str   # "YYYY-MM-DD"
+    lat: float
+    lon: float
+    tz: str     # IANA tz, e.g. "Asia/Kolkata"
+
+
 class DecideRequest(BaseModel):
     profile: dict
     question: str

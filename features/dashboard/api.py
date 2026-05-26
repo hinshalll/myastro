@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from features.dashboard.service import fetch_data
 from features.dashboard.prompts import build_decide_prompt
 from features.dashboard.schemas import (
-    DashboardRequest, DashboardData, DecideRequest, DecideResponse,
+    DashboardRequest, DashboardData, DecideRequest, DecideResponse, TimingRequest,
 )
 
 try:
@@ -28,6 +28,19 @@ if router is not None:
             focus=d.get("FOCUS", ""),       caution=d.get("CAUTION", ""),
             window=d.get("WINDOW", ""),     summary=d.get("SUMMARY", ""),
         )
+
+    @router.post("/timing")
+    def timing(req: TimingRequest) -> dict:
+        """Today's auspicious / inauspicious windows for a date + location.
+
+        Date- and location-based (weekday + sunrise/sunset), NOT birth-chart based.
+        Pure math — no AI. Powers the mobile "Today → Good / Avoid times" strip.
+        """
+        from shared.astro.astro_calc import daily_timing_windows
+        d = date.fromisoformat(req.date)
+        out = daily_timing_windows(d, req.lat, req.lon, req.tz)
+        out["ok"] = True
+        return out
 
     @router.post("/decide", response_model=DecideResponse)
     def decide(req: DecideRequest) -> DecideResponse:
