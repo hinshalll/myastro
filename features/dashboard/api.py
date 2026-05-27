@@ -110,6 +110,51 @@ if router is not None:
         out["ok"] = True
         return out
 
+    @router.post("/decide-quick")
+    def decide_quick(req: DecideRequest) -> dict:
+        """AI-FREE quick yes/no for "should I do X right now?".
+
+        Pure Tara-Bala math (today's Moon read from the natal Moon, at the current
+        moment) + a templated plain-English line — NO Gemini call, so it's instant
+        and free. Powers the Ask sheet's one-tap "quick yes/no" mode. The deeper,
+        question-aware answer is the AI Ask (/decide or /consultation). Moon-based,
+        so it works even when the birth time is unknown. The `question` is optional
+        and only echoed back (the verdict is the day's Moon quality, not parsed).
+        """
+        import swisseph as swe
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from shared.astro.constants import PLANETS
+        from shared.astro.astro_calc import get_planet_longitude_and_speed, calculate_tara_bala
+        from shared.astro.forecast import _natal_moon_lon  # unknown-time-safe natal Moon
+
+        natal = _natal_moon_lon(req.profile)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        now = datetime.now(ZoneInfo("UTC"))
+        jd_now = swe.julday(now.year, now.month, now.day, now.hour + now.minute / 60.0)
+        transit, _ = get_planet_longitude_and_speed(jd_now, PLANETS["Moon"])
+        tara = calculate_tara_bala(natal, transit)
+
+        verdict = {"Go": "Yes", "Stop": "Wait", "Caution": "Proceed gently"}.get(tara["status"], "Proceed gently")
+        reason = {
+            "Yes": "The day's flow is with you right now — a fine moment to go ahead.",
+            "Wait": "The timing leans against you at the moment — better to give it a little while.",
+            "Proceed gently": "It's a mixed moment — you can move ahead, just gently and without forcing it.",
+        }[verdict]
+        quality = {"Go": "a favourable", "Stop": "a challenging", "Caution": "a mixed"}.get(tara["status"], "a mixed")
+        why = (f"Right now the Moon sits in {tara['tara']} — {quality} day-star counted from the "
+               f"one you were born under. That's the classical Tara Bala read of this moment.")
+
+        return {
+            "ok": True,
+            "verdict": verdict,            # Yes / Wait / Proceed gently
+            "reason": reason,              # one warm plain-English line
+            "why": why,                    # the astrology, plain
+            "sanskrit": "तारा बल",
+            "question": req.question,      # echoed for the UI
+            "tara": tara["tara"],
+        }
+
     @router.post("/timing")
     def timing(req: TimingRequest) -> dict:
         """Today's auspicious / inauspicious windows for a date + location.

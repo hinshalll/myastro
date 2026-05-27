@@ -76,6 +76,18 @@ CHOGHADIYA_QUALITY = {
     "Char": "neutral",
     "Udveg": "avoid", "Kaal": "avoid", "Rog": "avoid",
 }
+# Plain-English guidance so the Today "Good/Avoid times" strip reads clearly.
+_AVOID_TIP = {
+    "Rahu Kaal":   "Best to avoid starting anything important.",
+    "Yamaganda":   "Not a window for big decisions or new beginnings.",
+    "Gulika Kaal": "Hold off on signing, buying, or committing.",
+}
+_GOOD_TIP = "The day's strongest stretch — good to act, sign, or begin."
+_CHOG_TIP = {
+    "good":    "Fine to act.",
+    "neutral": "Ordinary — nothing for or against.",
+    "avoid":   "Better to wait.",
+}
 
 
 def _jd_ut_to_local(jd_ut, tz_name):
@@ -134,36 +146,42 @@ def daily_timing_windows(d, lat, lon, tz_name):
         step = day_len / 8
         return sunrise + step * i, sunrise + step * (i + 1)
 
-    def _win(name, s, e): return {"name": name, "start": _hm(s), "end": _hm(e)}
+    def _win(name, s, e, tip=None):
+        w = {"name": name, "start": _hm(s), "end": _hm(e)}
+        if tip:
+            w["tip"] = tip
+        return w
 
     rk_s, rk_e = _day_seg(_RAHU_SEGMENT[wd] - 1)
     avoid = [
-        _win("Rahu Kaal", rk_s, rk_e),
-        _win("Yamaganda", *_day_seg(_YAMAGANDA_SEGMENT[wd] - 1)),
-        _win("Gulika Kaal", *_day_seg(_GULIKA_SEGMENT[wd] - 1)),
+        _win("Rahu Kaal", rk_s, rk_e, _AVOID_TIP["Rahu Kaal"]),
+        _win("Yamaganda", *_day_seg(_YAMAGANDA_SEGMENT[wd] - 1), tip=_AVOID_TIP["Yamaganda"]),
+        _win("Gulika Kaal", *_day_seg(_GULIKA_SEGMENT[wd] - 1), tip=_AVOID_TIP["Gulika Kaal"]),
     ]
 
     # Abhijit Muhurta — the 8th of 15 daytime muhurtas (centred on local noon).
     midday = sunrise + day_len / 2
     half = day_len / 30
     ab_s, ab_e = midday - half, midday + half
-    good = [_win("Abhijit Muhurta", ab_s, ab_e)]
+    good = [_win("Abhijit Muhurta", ab_s, ab_e, _GOOD_TIP)]
 
     choghadiya = []
     day_start = _CHOGHADIYA_DAY_START[wd]
     for i in range(8):
         s, e = _day_seg(i)
         name = CHOGHADIYA_WHEEL[(day_start + i) % 7]
+        q = CHOGHADIYA_QUALITY[name]
         choghadiya.append({"name": name, "start": _hm(s), "end": _hm(e),
-                           "quality": CHOGHADIYA_QUALITY[name], "period": "day"})
+                           "quality": q, "tip": _CHOG_TIP[q], "period": "day"})
     night_len = next_sunrise - sunset
     night_start = (day_start + 5) % 7  # night begins with the 5th-from-weekday lord
     for i in range(8):
         step = night_len / 8
         s, e = sunset + step * i, sunset + step * (i + 1)
         name = CHOGHADIYA_WHEEL[(night_start + i) % 7]
+        q = CHOGHADIYA_QUALITY[name]
         choghadiya.append({"name": name, "start": _hm(s), "end": _hm(e),
-                           "quality": CHOGHADIYA_QUALITY[name], "period": "night"})
+                           "quality": q, "tip": _CHOG_TIP[q], "period": "night"})
 
     summary = (f"Strong window {_ampm(ab_s)}–{_ampm(ab_e)} (Abhijit Muhurta); "
                f"soft dip {_ampm(rk_s)}–{_ampm(rk_e)} (Rahu Kaal).")

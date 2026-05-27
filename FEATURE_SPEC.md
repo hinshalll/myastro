@@ -2,6 +2,17 @@
 
 **Last updated:** 2026-05-27 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+### Recent changes (2026-05-27) — AI-free quick-decide + clearer timing
+- **New endpoint `POST /dashboard/decide-quick`** — an AI-FREE one-tap "should I do X right
+  now?" for the Ask sheet's quick yes/no mode. Pure Tara-Bala math (the current moment's
+  Moon read from the natal Moon) + a templated plain line — **no Gemini call**, instant and
+  free. Returns `{ verdict (Yes/Wait/Proceed gently), reason, why, sanskrit, tara, question }`.
+  Moon-based, so it works at unknown birth time. The deeper, question-aware answer stays in
+  the AI Ask (`/decide`, `/consultation`).
+- **`/dashboard/timing` now carries plain-English `tip`s** on each avoid window (Rahu Kaal /
+  Yamaganda / Gulika), the good window (Abhijit), and every Choghadiya segment (per quality)
+  — so the "Good/Avoid times" strip reads clearly, not just colour bars. Pure math.
+
 ### Recent changes (2026-05-27) — Today tab "next 7 days" forecast rail
 - **New endpoint `POST /dashboard/week`** powers the Today tab's "next N days" peek (a
   horizontal date rail under the hero; tapping a day re-renders the hero with that date).
