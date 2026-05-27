@@ -8,7 +8,7 @@ from features.dashboard.service import fetch_data
 from features.dashboard.prompts import build_decide_prompt
 from features.dashboard.schemas import (
     DashboardRequest, DashboardData, DecideRequest, DecideResponse, TimingRequest,
-    ForecastRequest, DayAlertsRequest, RelationshipWeatherRequest,
+    ForecastRequest, DayAlertsRequest, RelationshipWeatherRequest, MuhurtaRequest,
 )
 
 try:
@@ -77,6 +77,23 @@ if router is not None:
             "chandra_sandhi": chandra_sandhi_window(d, req.tz),
             "eclipse": next_eclipse(d, req.tz, req.lat, req.lon),
         }
+
+    @router.post("/muhurta")
+    def muhurta(req: MuhurtaRequest) -> dict:
+        """Event Timing Planner — best dates+times to do X over a date range.
+
+        FREE: pure math + a pre-baked classical Muhurta lookup, NO AI, no new
+        deps. Date- and location-based (panchanga + sunrise/sunset), NO birth
+        chart needed. Scores each day's five panchanga limbs against sourced
+        rules for the event, then picks the best clear window (Abhijit / good
+        Choghadiya) avoiding Rahu Kaal etc. Returns the top few days, or says
+        plainly when nothing in the range is strongly auspicious. Deterministic.
+        """
+        from shared.astro.muhurta import plan_muhurta
+        out = plan_muhurta(req.event_type, req.start_date, req.end_date,
+                           req.lat, req.lon, req.tz, req.top_n)
+        out["ok"] = True
+        return out
 
     @router.post("/timing")
     def timing(req: TimingRequest) -> dict:

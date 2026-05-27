@@ -128,6 +128,43 @@ Pure math, no AI, no new dependencies. All logic lives in `shared/astro/astro_ca
 rules). Day windows split sunrise→sunset into 8 equal parts; the kaal periods pick the
 weekday's segment; Choghadiya walks the 7-fold wheel from the weekday's starting period.
 
+## `/dashboard/muhurta` — Event Timing Planner ("best dates & times to do X") (no AI)
+
+`POST /dashboard/muhurta` powers the Explore tab's Muhurta planner — best dates+times for
+an event (travel, signing a deal, naming, buying a vehicle, housewarming, general…) over a
+date range. **FREE + cheap by design** (cost rule): pure math + a pre-baked **classical
+Muhurta lookup**, **no AI call, no new dependencies**. **Date- and location-based**
+(panchanga + sunrise/sunset), so **no birth chart is needed**.
+
+- **Input:** `{ "event_type": "travel|signing|naming|vehicle|housewarming|general",
+  "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "lat", "lon", "tz", "top_n"? }`.
+  Unknown `event_type` falls back to `general`.
+- **How it works:** for each day in the range it reads the panchanga **at local sunrise**
+  (the day's ruling limbs — classical din-shuddhi) — tithi, nakshatra, yoga, karana,
+  weekday — and scores it against **sourced** classical rules for that event:
+  - **Nakshatra** is the core gate — each event has its own favourable-star set (verified
+    across multiple panchang references; see `_EVENT_RULES` source notes).
+  - **Tithi:** penalise Rikta (4/9/14) and Amavasya; reward the broadly auspicious tithis.
+  - **Weekday:** per-event good / avoid days.
+  - **Yoga:** heavily avoid Vyatipata & Vaidhriti (milder caution for other harsh yogas);
+    small bonus for auspicious ones.
+  - **Karana:** penalise Vishti (Bhadra).
+  Then it picks the best clear daytime window — **Abhijit Muhurta** first, else the first
+  "good" Choghadiya (Amrit/Shubh/Labh) — that **steps clear of Rahu Kaal / Yamaganda /
+  Gulika Kaal** (reuses `daily_timing_windows`).
+- **Output:** `{ event_type, event_label, range, found, message, recommendations: [ {
+  date, start, end, score (0..1), reason, why, sanskrit, + debug: nakshatra, tithi,
+  weekday, yoga, karana, window, window_clear } ] }`. A day must carry a favourable star
+  **and** clear a minimum score to be recommended; if nothing in the range qualifies,
+  `found:false` and `message` says so plainly (no forced weak pick).
+- **Framing (blueprint §2):** warm, jargon-free, gentle guidance — never fate. Sanskrit
+  appears only inside `why` / `sanskrit`. Deterministic for the same inputs.
+
+Logic lives in `shared/astro/muhurta.py` (`plan_muhurta(...)` + the static `_EVENT_RULES`
+table). Reuses `get_panchanga`, `nakshatra_info`, `sun_rise_set` and `daily_timing_windows`
+from `astro_calc.py`, plus `NAK_NATURES` from `constants.py`. Pure math + lookup — no AI,
+no new dependencies, no streamlit.
+
 ## AI
 
 - `fetch_data` — 1 Gemini Flash Lite call returning JSON tiles (~₹0.02). Cached 24h.

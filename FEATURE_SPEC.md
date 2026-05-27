@@ -2,6 +2,37 @@
 
 **Last updated:** 2026-05-27 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+### Recent changes (2026-05-27) — Explore tab Event Timing Planner (Muhurta)
+- **New endpoint `POST /dashboard/muhurta`** powers the Explore tab's "best dates & times
+  to do X" planner (travel, signing/business, naming, vehicle, housewarming, general…).
+  **FREE + cheap (cost rule): pure math + a pre-baked classical Muhurta lookup, NO AI, no
+  new dependencies.** **Date- and location-based** (panchanga + sunrise/sunset), so **no
+  birth chart is needed**. Input `{ event_type, start_date, end_date, lat, lon, tz, top_n? }`
+  (unknown `event_type` → `general`). Deterministic for the same inputs.
+- **Method (all classical rules VERIFIED across multiple reputable sources** — Brihat
+  Samhita / Muhurta Chintamani tradition, drikpanchang, mpanchang, astrobix, astroccult,
+  astrosight, anytimeastro): for each day it reads the panchanga **at local sunrise** and
+  scores the five limbs against the event's rules —
+  - **Nakshatra** = the core gate; each event has its own favourable-star set (e.g.
+    housewarming → the fixed Dhruva stars + soft ones; travel → light/movable stars;
+    business → Pushya + the steady Uttaras). See `_EVENT_RULES` source notes.
+  - **Tithi:** penalise Rikta (4/9/14) + Amavasya; reward the broadly auspicious tithis.
+  - **Weekday:** per-event good / avoid days. **Yoga:** strongly avoid Vyatipata & Vaidhriti
+    (milder for other harsh yogas), small bonus for auspicious ones. **Karana:** avoid
+    Vishti (Bhadra).
+  Then it picks the best clear daytime window — **Abhijit Muhurta** first, else the first
+  "good" Choghadiya — that steps clear of **Rahu Kaal / Yamaganda / Gulika Kaal** (reuses
+  `daily_timing_windows`). A day must carry a favourable star AND clear a min score to be
+  recommended; **if nothing qualifies, `found:false` + a plain message — no forced pick.**
+- **Output:** `{ event_type, event_label, range, found, message, recommendations:[ { date,
+  start, end, score (0..1), reason, why, sanskrit, + debug: nakshatra, tithi, weekday,
+  yoga, karana, window, window_clear } ] }`. Warm, jargon-free; Sanskrit only in
+  `why`/`sanskrit`; gentle guidance, never fate (blueprint §2).
+- **New module `shared/astro/muhurta.py`:** `plan_muhurta(...)` + the static `_EVENT_RULES`
+  table (easy to expand — add an event entry). Reuses `get_panchanga`, `nakshatra_info`,
+  `sun_rise_set`, `daily_timing_windows` (`astro_calc.py`) and `NAK_NATURES`
+  (`constants.py`). Pure math + lookup — no AI, no new dependencies, no streamlit.
+
 ### Recent changes (2026-05-27) — People tab daily "relationship weather"
 - **New endpoint `POST /dashboard/relationship-weather`** powers the People tab's daily
   per-person guidance for how today feels between the user and ONE saved person. **FREE +

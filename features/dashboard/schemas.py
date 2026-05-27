@@ -38,6 +38,16 @@ class TimingRequest(BaseModel):
     tz: str     # IANA tz, e.g. "Asia/Kolkata"
 
 
+class MuhurtaRequest(BaseModel):
+    event_type: str     # travel|signing|naming|vehicle|housewarming|general
+    start_date: str     # "YYYY-MM-DD"
+    end_date: str       # "YYYY-MM-DD"
+    lat: float
+    lon: float
+    tz: str             # IANA tz, e.g. "Asia/Kolkata"
+    top_n: int = 5      # how many of the best days to return
+
+
 class DayAlertsRequest(BaseModel):
     date: str           # "YYYY-MM-DD"
     tz: str             # IANA tz, e.g. "Asia/Kolkata"
