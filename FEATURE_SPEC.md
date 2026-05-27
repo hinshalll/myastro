@@ -2,6 +2,18 @@
 
 **Last updated:** 2026-05-27 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+### Recent changes (2026-05-27) — Today tab "next 7 days" forecast rail
+- **New endpoint `POST /dashboard/week`** powers the Today tab's "next N days" peek (a
+  horizontal date rail under the hero; tapping a day re-renders the hero with that date).
+  **FREE: pure math + lookup, NO AI, no new deps.** Reuses `daily_moon_forecast` for each of
+  N days (default 7) and adds a coarse `band` (`good` ≥0.60 / `neutral` / `difficult` <0.45)
+  for the rail colour + an `is_today` flag. Each entry is the FULL daily forecast (vibe_word,
+  vibe_score, mood, opportunity, caution, action, why, sanskrit), so tapping a day needs zero
+  extra calls. Input `{ profile, start_date?, days? }` (same `profile` shape as
+  `/kundli/compute`; `start_date` defaults to today in the profile's tz). Moon-based → works
+  at every birth-time tier; deterministic. New `weekly_moon_forecast` + `_band` in
+  `shared/astro/forecast.py`.
+
 ### Recent changes (2026-05-27) — Explore tab Event Timing Planner (Muhurta)
 - **New endpoint `POST /dashboard/muhurta`** powers the Explore tab's "best dates & times
   to do X" planner (travel, signing/business, naming, vehicle, housewarming, general…).

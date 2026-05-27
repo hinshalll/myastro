@@ -8,7 +8,7 @@ from features.dashboard.service import fetch_data
 from features.dashboard.prompts import build_decide_prompt
 from features.dashboard.schemas import (
     DashboardRequest, DashboardData, DecideRequest, DecideResponse, TimingRequest,
-    ForecastRequest, DayAlertsRequest, RelationshipWeatherRequest, MuhurtaRequest,
+    ForecastRequest, WeekRequest, DayAlertsRequest, RelationshipWeatherRequest, MuhurtaRequest,
 )
 
 try:
@@ -41,6 +41,21 @@ if router is not None:
         """
         from shared.astro.forecast import daily_moon_forecast
         out = daily_moon_forecast(req.profile, req.date)
+        out["ok"] = True
+        return out
+
+    @router.post("/week")
+    def week(req: WeekRequest) -> dict:
+        """Next-N-days forecast rail for the mobile Today tab (default 7 days).
+
+        FREE: pure math + lookup, NO AI. Reuses the daily "Cosmic Weather"
+        forecast for each day and adds a coarse `band` (good/neutral/difficult)
+        for the rail's colour + an `is_today` flag. Same { profile } contract as
+        /forecast; optional "start_date" (defaults to today, profile's tz).
+        Tapping a day in the app shows that entry's full forecast (already here).
+        """
+        from shared.astro.forecast import weekly_moon_forecast
+        out = weekly_moon_forecast(req.profile, req.start_date, req.days)
         out["ok"] = True
         return out
 

@@ -71,6 +71,21 @@ design** (cost rule): pure math + a pre-baked meaning **lookup**, **no AI call**
 Pure math + lookup, no AI, no new dependencies, no streamlit. The meaning table is plain
 data — easy to expand later (e.g. add a per-nakshatra layer).
 
+## `/dashboard/week` — "next 7 days" forecast rail (no AI)
+
+`POST /dashboard/week` powers the Today tab's horizontal date rail under the hero. Tapping
+a day re-renders the hero card with that date's forecast.
+
+- **Input:** `{ "profile": {...}, "start_date"?: "YYYY-MM-DD", "days"?: 7 }` (same `profile`
+  shape as `/kundli/compute`; `start_date` defaults to today in the profile's tz).
+- **Output:** `{ start_date, days: [ ... ] }` — each entry is the **full** `/dashboard/forecast`
+  result for that date (`vibe_word`, `vibe_score`, `mood`, `opportunity`, `caution`,
+  `action`, `why`, `sanskrit`, …) **plus** `band` (`good` ≥0.60 / `neutral` / `difficult`
+  <0.45 — for the rail colour) and `is_today`. Returning the full forecast per day means
+  tapping a day needs no extra network call.
+- Moon-based → works at every birth-time tier. Deterministic. Logic: `weekly_moon_forecast`
+  in `shared/astro/forecast.py` (loops `daily_moon_forecast`). Pure math, no AI, no new deps.
+
 ## `/dashboard/relationship-weather` — daily per-person "relationship weather" (no AI)
 
 `POST /dashboard/relationship-weather` powers the People tab's daily guidance for how

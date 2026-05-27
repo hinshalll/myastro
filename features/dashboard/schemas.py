@@ -25,6 +25,12 @@ class ForecastRequest(BaseModel):
     date: str | None = None   # "YYYY-MM-DD"; defaults to today (profile's tz)
 
 
+class WeekRequest(BaseModel):
+    profile: dict
+    start_date: str | None = None   # "YYYY-MM-DD"; defaults to today (profile's tz)
+    days: int = 7                   # how many consecutive days (the "next 7 days" rail)
+
+
 class RelationshipWeatherRequest(BaseModel):
     profile_a: dict             # the user (kundli/compute shape)
     profile_b: dict             # the saved person (kundli/compute shape)

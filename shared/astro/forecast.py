@@ -15,7 +15,7 @@ Framing rule (blueprint §2): actionable + reflective, never hard fate claims.
 Plain English everywhere; Sanskrit only inside `why` / `sanskrit`.
 """
 
-from datetime import date as _date, time as _time, datetime
+from datetime import date as _date, time as _time, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from shared.astro.constants import PLANETS
@@ -200,3 +200,37 @@ def daily_moon_forecast(profile: dict, on_date=None) -> dict:
         "tara": tara["tara"],
         "tara_quality": quality,
     }
+
+
+def _band(score: float) -> str:
+    """Coarse good / neutral / difficult band for the 7-day rail's colour."""
+    if score >= 0.60:
+        return "good"
+    if score < 0.45:
+        return "difficult"
+    return "neutral"
+
+
+def weekly_moon_forecast(profile: dict, start_date=None, days: int = 7) -> dict:
+    """`days` consecutive daily forecasts from start_date for the Today tab's
+    "next N days" rail. Each entry is the full daily_moon_forecast plus a coarse
+    `band` (good/neutral/difficult) for the rail colour and an `is_today` flag.
+
+    Pure math + lookup, no AI. Same { profile } contract as daily_moon_forecast;
+    works at every birth-time tier. `start_date`: None → today (profile's tz).
+    """
+    tz = profile["tz"]
+    today = datetime.now(ZoneInfo(tz)).date()
+    if start_date is None:
+        start_date = today
+    elif isinstance(start_date, str):
+        start_date = _date.fromisoformat(start_date)
+
+    out = []
+    for i in range(max(1, days)):
+        d = start_date + timedelta(days=i)
+        f = daily_moon_forecast(profile, d)
+        f["band"] = _band(f["vibe_score"])
+        f["is_today"] = (d == today)
+        out.append(f)
+    return {"start_date": start_date.isoformat(), "days": out}
