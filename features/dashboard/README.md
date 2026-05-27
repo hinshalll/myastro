@@ -83,25 +83,29 @@ time → noon placeholder for that person's natal Moon).
   Both profiles use the `/kundli/compute` shape; `profile_a` = the user, `profile_b` = the
   saved person. `date` defaults to today in `profile_a`'s tz.
 - **Two classical layers (sourced — see commit + module docstring):**
-  1. **Baseline ("how these two mesh"):** Ashta Koota (36-guna) matching between the two
-     natal Moons via `shared/astro/scoring.py::calculate_ashta_koota`, plus the **Rashi
-     (Moon-sign) relationship** between them, which sets the *flavour* of the bond (same
-     sign = mirrored; 4-10 = respect/practical; 5-9 Nava-Pancham = warm; 6-8 Shad-Ashtaka
-     = friction; etc.).
+  1. **Baseline ("how these two mesh"):** the RELATIONSHIP-NEUTRAL kootas only — **Graha
+     Maitri** (minds/temperaments, /5) + **Gana** (temperament, /6) from
+     `shared/astro/scoring.py::calculate_ashta_koota` — blended 50/50 with the **Rashi
+     (Moon-sign) relationship** flavour (same sign = mirrored; 4-10 = respect/practical;
+     5-9 Nava-Pancham = warm; 6-8 Shad-Ashtaka = friction; etc.). The full 36-guna Ashta
+     Koota *total* is deliberately NOT used here — it's a MARRIAGE-matching tool (Yoni/Nadi
+     = sexual compatibility/progeny; its Bhakoot factor penalises the warm 5-9 pairing).
+     Full Ashta Koota lives in the dedicated Compatibility & Marriage feature.
   2. **Daily ("how today feels"):** the **Tara Bala** of today's transiting Moon read from
      **each** person's natal Moon (favourable / neutral / challenging), combined into one
      day-tone. Kept deliberately modest and framed as gentle guidance — there is no single
      classical "daily formula for a pair", so it does not overclaim.
 - **Output (display-ready):** `tone_word`, `summary`, `good_for`, `avoid`, `score` (0..1,
   today weighted 0.6 / durable baseline 0.4), `why` (plain-English astrology), `sanskrit`
-  (e.g. `अष्टकूट · तारा बल · चन्द्रः …-नक्षत्रे`). Plus `astro_state_key` (cacheable) and
-  debug fields: `gunas`, `baseline_score`, `rashi_relation`, `moon_sign_distance`,
+  (e.g. `ग्रह-मैत्री · गण · तारा बल · चन्द्रः …-नक्षत्रे`). Plus `astro_state_key` (cacheable) and
+  debug fields: `maitri`, `gana`, `baseline_score`, `rashi_relation`, `moon_sign_distance`,
   `moon_nakshatra`, `moon_sign`, `tara_a`/`tara_b` (+ their qualities), `day_state`.
 - **Framing (blueprint §2):** warm, jargon-free, gentle guidance — never fate. Sanskrit
   appears only inside `why` / `sanskrit`. Deterministic for the same two profiles + date.
 
 Logic lives in `shared/astro/relationship_weather.py` (reuses `forecast.py`'s Moon helpers
-+ `scoring.py`'s Ashta Koota). Pure math + lookup, no AI, no new dependencies, no streamlit.
++ only the Graha Maitri + Gana kootas from `scoring.py`, not the full 36-guna marriage
+total). Pure math + lookup, no AI, no new dependencies, no streamlit.
 
 ## `/dashboard/timing` — Good / Avoid times strip (no AI)
 

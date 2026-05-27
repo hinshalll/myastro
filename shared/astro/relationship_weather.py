@@ -8,11 +8,17 @@ placeholder for that person's natal Moon — same fallback as forecast.py).
 
 Two layers, both sourced from classical Indian/Vedic practice:
 
-  1. BASELINE — "how these two mesh" — Ashta Koota (36-guna) matching between the
-     two natal Moons (shared.astro.scoring.calculate_ashta_koota), plus the
-     Rashi (Moon-sign) relationship between them, which colours the *flavour* of
-     the bond. The Rashi-relationship lore is the classical Bhakoot / Nava-Pancham
-     / Shad-Ashtaka reading (Brihat Parashara / Muhurta texts):
+  1. BASELINE — "how these two mesh" — built from the RELATIONSHIP-NEUTRAL parts of
+     the classical compatibility system, so it suits ANY bond (parent, friend,
+     partner): Graha Maitri (how the two minds/temperaments befriend each other, /5)
+     + Gana (temperament match, /6), blended with the Moon-sign (Rashi) relationship
+     that colours the bond's flavour. We deliberately DROP the marriage/procreation-
+     specific kootas (Yoni = sexual compatibility, Nadi = progeny) and never use the
+     full 36-guna Ashta Koota *total* here — that whole system is a MARRIAGE-matching
+     tool (and its Bhakoot factor penalises the warm 5-9 pairing, which caused a
+     contradiction). Full Ashta Koota lives in the dedicated Compatibility & Marriage
+     feature. The Rashi-relationship lore (Bhakoot / Nava-Pancham / Shad-Ashtaka,
+     Brihat Parashara / Muhurta texts):
        • same sign            → mirrored moods
        • 2-12 axis (dist 1)   → natural give-and-take
        • 3-11 axis (dist 2)   → easy, friendly companions
@@ -149,9 +155,6 @@ def daily_relationship_weather(profile_a: dict, profile_b: dict, on_date=None) -
     date or "YYYY-MM-DD". Deterministic for the same two profiles + date.
     Works at every birth-time tier (unknown time → noon placeholder per person).
     """
-    # Lazy import (scoring.py pulls the whole astro stack; keep it off cold paths).
-    from shared.astro.scoring import calculate_ashta_koota
-
     tz = profile_a.get("tz") or profile_b.get("tz")
     if on_date is None:
         on_date = datetime.now(ZoneInfo(tz)).date()
@@ -162,12 +165,18 @@ def daily_relationship_weather(profile_a: dict, profile_b: dict, on_date=None) -
     moon_a = _natal_moon_lon(profile_a)
     moon_b = _natal_moon_lon(profile_b)
 
-    # 2. BASELINE — Ashta Koota gunas (0..36) + Rashi-relationship flavour.
+    # 2. BASELINE — the RELATIONSHIP-NEUTRAL compatibility, so it fits any bond.
+    #    Only the general kootas: Graha Maitri (minds/temperaments getting along, /5)
+    #    + Gana (temperament, /6), blended with the Moon-sign rapport flavour. We
+    #    DROP the marriage/procreation kootas (Yoni=sexual, Nadi=progeny) and never
+    #    use the full 36-guna total (its Bhakoot factor penalises the warm 5-9
+    #    pairing — the contradiction). Full Ashta Koota lives in Compatibility/Marriage.
+    from shared.astro.scoring import calculate_ashta_koota  # lazy: pulls the astro stack
     koota = calculate_ashta_koota(moon_a, moon_b)
-    gunas = float(koota["score"])
-    baseline = gunas / 36.0
+    rapport = (koota["maitri"] + koota["gana"]) / 11.0       # mind + temperament fit (0..1)
     dist = _moon_sign_distance(moon_a, moon_b)
     flav = _RASHI_FLAVOUR[dist]
+    baseline = round(0.5 * rapport + 0.5 * flav["base"], 4)  # mind-fit + Moon-sign rapport
 
     # 3. DAILY — today's transiting Moon, read as a Tara from EACH natal Moon.
     transit = _transit_moon_lon(on_date, tz)
@@ -192,17 +201,15 @@ def daily_relationship_weather(profile_a: dict, profile_b: dict, on_date=None) -
     avoid = f"{day['avoid']}; with the two of you, also watch {flav['watch']}"
 
     why = (
-        "This blends two old readings. First, the Moon you were each born under: "
-        f"your two Moons sit on {_RASHI_CLASSICAL[dist]}, which is why your bond "
-        "tends to feel the way it does — that Moon-to-Moon match is the classical "
-        "Ashta Koota (the 36-point compatibility), and here it comes to "
-        f"{int(gunas)} of 36. Second, today's sky: the Moon is travelling through "
-        f"{nak}, which counts as a {qa} day-star for the first of you and a {qb} "
-        f"one for the second — read from each birth star, that's the daily Tara Bala. "
-        "Put together, today leans "
+        "This blends two readings. First, the two of you: how naturally your minds "
+        "and temperaments get along (the classical Graha Maitri and Gana match), "
+        f"together with the Moon-sign relationship between you — here, {_RASHI_CLASSICAL[dist]}. "
+        f"Second, today's sky: the Moon is travelling through {nak}, which counts as "
+        f"a {qa} day-star from the first of you and a {qb} one from the second — read "
+        "from each birth star, that's the daily Tara Bala. Put together, today leans "
         f"“{day['word'].lower()}” between you. Take it as gentle guidance, not fate."
     )
-    sanskrit = f"अष्टकूट · तारा बल · चन्द्रः {_NAK_DEVANAGARI[nak_idx]}-नक्षत्रे"
+    sanskrit = f"ग्रह-मैत्री · गण · तारा बल · चन्द्रः {_NAK_DEVANAGARI[nak_idx]}-नक्षत्रे"
 
     return {
         "date": on_date.isoformat(),
@@ -216,7 +223,7 @@ def daily_relationship_weather(profile_a: dict, profile_b: dict, on_date=None) -
         # Identical states share this key → cacheable.
         "astro_state_key": f"d{dist}-{state}-nak{nak_idx}",
         # Transparency / debug fields (cheap, Moon-based, safe at any tier).
-        "gunas": gunas,
+        "maitri": koota["maitri"], "gana": koota["gana"],
         "baseline_score": round(baseline, 2),
         "rashi_relation": flav["key"],
         "moon_sign_distance": dist,
