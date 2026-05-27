@@ -8,7 +8,7 @@ from features.dashboard.service import fetch_data
 from features.dashboard.prompts import build_decide_prompt
 from features.dashboard.schemas import (
     DashboardRequest, DashboardData, DecideRequest, DecideResponse, TimingRequest,
-    ForecastRequest, DayAlertsRequest,
+    ForecastRequest, DayAlertsRequest, RelationshipWeatherRequest,
 )
 
 try:
@@ -41,6 +41,24 @@ if router is not None:
         """
         from shared.astro.forecast import daily_moon_forecast
         out = daily_moon_forecast(req.profile, req.date)
+        out["ok"] = True
+        return out
+
+    @router.post("/relationship-weather")
+    def relationship_weather(req: RelationshipWeatherRequest) -> dict:
+        """Daily "relationship weather" between the user and one saved person.
+
+        FREE: pure math + a pre-baked meaning lookup, NO AI, no new deps.
+        Ashta Koota baseline (how the two mesh) + a Moon-based daily Tara layer
+        (how today feels between them). All Moon-based, so it works even when
+        either person's birth time is unknown. Both profiles use the
+        /kundli/compute shape; optional "date" (defaults to today). Deterministic
+        for the same two profiles + date.
+        Returns { tone_word, summary, good_for, avoid, score (0..1), why,
+        sanskrit, ... } (plus debug fields).
+        """
+        from shared.astro.relationship_weather import daily_relationship_weather
+        out = daily_relationship_weather(req.profile_a, req.profile_b, req.date)
         out["ok"] = True
         return out
 

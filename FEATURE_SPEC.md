@@ -1,6 +1,37 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-05-26 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
+**Last updated:** 2026-05-27 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
+
+### Recent changes (2026-05-27) — People tab daily "relationship weather"
+- **New endpoint `POST /dashboard/relationship-weather`** powers the People tab's daily
+  per-person guidance for how today feels between the user and ONE saved person. **FREE +
+  cheap (cost rule): pure math + a pre-baked meaning lookup, NO AI, no new dependencies.**
+  **Moon-based**, so it works even when **either person's birth time is unknown** (noon
+  placeholder per person). Input `{ profile_a, profile_b, date? }` — both profiles use the
+  `/kundli/compute` shape (`profile_a` = user, `profile_b` = saved person); `date` defaults
+  to today in `profile_a`'s tz. Deterministic for the same two profiles + date.
+- **Two classical layers (sourced — verified across multiple reputable sources):**
+  1. **Baseline ("how these two mesh"):** Ashta Koota (36-guna) matching between the two
+     natal Moons via `scoring.py::calculate_ashta_koota`, plus the **Rashi (Moon-sign)
+     relationship** flavour (same sign = mirrored moods; 2-12 = give-and-take; 3-11 = easy
+     companions; 4-10 = respect/practical care; **5-9 Nava-Pancham = natural warmth**;
+     **6-8 Shad-Ashtaka = friction/needs patience**; 7-7 = complementary opposites — the
+     classical Bhakoot/Nava-Pancham/Shad-Ashtaka lore).
+  2. **Daily ("how today feels"):** the **Tara Bala** of today's transiting Moon read from
+     **each** person's natal Moon (favourable 2/4/6/8/9, neutral/restless 1, challenging
+     3/5/7), combined into one day-tone. Kept deliberately modest + framed as gentle
+     guidance — no single classical "daily formula for a pair" exists, so it does not
+     overclaim a natal meaning as a transit result.
+- **Output (display-ready):** `tone_word`, `summary`, `good_for`, `avoid`, `score` (0..1,
+  today weighted 0.6 / durable baseline 0.4, clamped [0.08, 0.96]), `why` (plain English),
+  `sanskrit` (Devanagari only), plus `astro_state_key` (cacheable) and debug fields
+  (`gunas`, `baseline_score`, `rashi_relation`, `moon_sign_distance`, `moon_nakshatra`,
+  `moon_sign`, `tara_a`/`tara_b` + qualities, `day_state`). Framing: warm, jargon-free,
+  gentle guidance, never fate (blueprint §2).
+- **New module `shared/astro/relationship_weather.py`:** `daily_relationship_weather(
+  profile_a, profile_b, on_date)` + the `_RASHI_FLAVOUR` (7) and `_DAY` (6) static tables.
+  Reuses `forecast.py`'s Moon-longitude helpers (+ unknown-time fallback) and
+  `scoring.py`'s Ashta Koota. Pure math + lookup — no AI, no new dependencies, no streamlit.
 
 ### Recent changes (2026-05-26) — forecast accuracy + tone fix
 - **Corrected the Chandra Gochara meaning table** in `shared/astro/forecast.py`. The

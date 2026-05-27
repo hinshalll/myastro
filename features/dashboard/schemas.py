@@ -25,6 +25,12 @@ class ForecastRequest(BaseModel):
     date: str | None = None   # "YYYY-MM-DD"; defaults to today (profile's tz)
 
 
+class RelationshipWeatherRequest(BaseModel):
+    profile_a: dict             # the user (kundli/compute shape)
+    profile_b: dict             # the saved person (kundli/compute shape)
+    date: str | None = None     # "YYYY-MM-DD"; defaults to today (profile_a's tz)
+
+
 class TimingRequest(BaseModel):
     date: str   # "YYYY-MM-DD"
     lat: float
