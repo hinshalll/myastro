@@ -239,10 +239,12 @@ def plan_muhurta(event_type: str, start_date, end_date, lat: float, lon: float,
         nak = r["nak"]
         pan = r["pan"]
         nature = _NAK_TO_NATURE.get(nak, "")
-        nat_phrase = f" — a {nature.split(' (')[0].lower()} star" if nature else ""
+        _art = lambda w: ("an" if w[:1].lower() in "aeiou" else "a")  # a/an by sound
+        nat_word = nature.split(' (')[0].lower() if nature else ""
+        nat_phrase = f" — {_art(nat_word)} {nat_word} star" if nat_word else ""
 
         is_abhijit = name == "Abhijit Muhurta"
-        win_phrase = "Abhijit Muhurta, the day's strongest stretch" if is_abhijit else f"a {name} window"
+        win_phrase = "Abhijit Muhurta, the day's strongest stretch" if is_abhijit else f"{_art(name)} {name} window"
         reason = (f"{nak} is one of the welcoming stars for {label}{nat_phrase}, "
                   f"and the day lines up well. A clear time opens "
                   f"{_ampm(s)}–{_ampm(e)} ({win_phrase}).")
