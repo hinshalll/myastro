@@ -1,11 +1,12 @@
+// Root layout — full chain (providers + fonts + AskOverlay), MINUS the
+// expo-splash-screen manual calls that crashed on SDK 54 Android. The
+// expo-splash-screen plugin in app.json handles the splash automatically.
 import 'react-native-gesture-handler';
-import { useEffect, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as SplashScreen from 'expo-splash-screen';
 
 import {
   useFonts as useHankenFonts,
@@ -18,8 +19,6 @@ import { NotoSansDevanagari_400Regular } from '@expo-google-fonts/noto-sans-deva
 
 import { ThemeProvider, useTheme } from '@/constants/ThemeContext';
 import { AppProvider } from '@/constants/AppContext';
-
-SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppFrame() {
   const { p, name } = useTheme();
@@ -36,7 +35,8 @@ function AppFrame() {
 }
 
 export default function RootLayout() {
-  const [loaded] = useHankenFonts({
+  // Load fonts in the background; don't gate the UI on it.
+  useHankenFonts({
     HankenGrotesk_400Regular,
     HankenGrotesk_500Medium,
     HankenGrotesk_700Bold,
@@ -44,14 +44,8 @@ export default function RootLayout() {
     NotoSansDevanagari_400Regular,
   });
 
-  const onLayoutRoot = useCallback(() => {
-    if (loaded) SplashScreen.hideAsync().catch(() => {});
-  }, [loaded]);
-
-  if (!loaded) return null;
-
   return (
-    <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRoot}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider initial="dark">
           <AppProvider>
