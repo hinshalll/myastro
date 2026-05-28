@@ -1,6 +1,7 @@
-import React from 'react';
-import { RootApp } from '@/nav/RootApp';
+import { Redirect } from 'expo-router';
 
+// First run lands on onboarding. In the real app this gate would check
+// whether the user has completed setup and send returning users to /today.
 export default function Index() {
-  return <RootApp />;
+  return <Redirect href="/onboarding/welcome" />;
 }
