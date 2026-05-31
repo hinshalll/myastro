@@ -228,6 +228,12 @@ _CAPTURE_LABELS = {
     "non_dominant_full": "CAP NON-DOM FULL",
 }
 _CAPTURE_ROLES = {"dominant_full", *_CAPTURE_LABELS.keys()}
+_WEAK_LINE_STATES = {"faint", "fragmented"}
+
+
+def _short_text(value, fallback="not_assessable") -> str:
+    text = str(value or "").strip()
+    return text if text else fallback
 
 
 def _build_rich_palm_data(phase_a: dict, hand_metrics: dict, vitality: dict) -> tuple[dict, dict]:
@@ -296,9 +302,11 @@ def _build_rich_palm_data(phase_a: dict, hand_metrics: dict, vitality: dict) -> 
     elevations = {}
     phase_a_mounts = phase_a.get("mounts", {})
     for mount, details in phase_a_mounts.items():
-        fullness = details.get("fullness", "moderate")
-        score = 60 if fullness == "prominent" else (40 if fullness == "moderate" else 20)
-        elevations[mount] = {"score": score}
+        fullness = details.get("fullness", "not_assessable")
+        if fullness == "not_assessable":
+            continue
+        score = 80 if fullness == "prominent" else (50 if fullness == "moderate" else 25)
+        elevations[mount] = {"score": score, "fullness": fullness}
 
     # 3. Marks
     marks = []
@@ -420,6 +428,145 @@ def _enforce_capture_role_limits(phase_a: dict, capture_roles: list[str]) -> Non
             "A neutral open palm cannot prove how far the thumb bends.",
             "Angustha Shastra thumb-flex detail",
         )
+
+
+def _build_accuracy_guardrails(
+    phase_a: dict,
+    hand_metrics: dict,
+    vitality: dict,
+    capture_roles: list[str],
+) -> dict:
+    """
+    Convert Phase A observations into explicit claim rules for Phase B.
+    This is deterministic and adds no AI call; it prevents weak observations
+    from becoming confident life claims in the prose pass.
+    """
+    lines = phase_a.get("lines", {}) if isinstance(phase_a, dict) else {}
+    mounts = phase_a.get("mounts", {}) if isinstance(phase_a, dict) else {}
+    fingers = phase_a.get("fingers", {}) if isinstance(phase_a, dict) else {}
+    thumb = phase_a.get("thumb", {}) if isinstance(phase_a, dict) else {}
+    special = phase_a.get("special_marks", {}) if isinstance(phase_a, dict) else {}
+    role_set = set(capture_roles or [])
+
+    strong = []
+    cautious = []
+    forbidden = []
+    section_rules = []
+
+    line_labels = {
+        "heart": "Heart line",
+        "head": "Head line",
+        "life": "Life line",
+        "fate": "Fate line",
+        "sun": "Sun line",
+    }
+    for key, label in line_labels.items():
+        data = lines.get(key, {}) if isinstance(lines, dict) else {}
+        visibility = _short_text(data.get("visibility"), "not_assessable")
+        path = _short_text(data.get("path"), "no reliable path")
+        if visibility == "clear":
+            strong.append(f"{label}: clear; {path}")
+        elif visibility in _WEAK_LINE_STATES:
+            cautious.append(
+                f"{label}: {visibility}; mention gently as tentative, not as a fixed life outcome; {path}"
+            )
+        else:
+            forbidden.append(f"{label}: not visually reliable; do not interpret it")
+
+    marriage = lines.get("marriage_lines", {}) if isinstance(lines, dict) else {}
+    marriage_count = _short_text(marriage.get("count_visible"), "not_assessable")
+    if "mercury_edge" not in role_set or marriage_count in {"0", "not_assessable"}:
+        forbidden.append(
+            "Marriage/relationship line count: do not mention a count, single bond, timing, or marriage-line meaning"
+        )
+        section_rules.append(
+            "Love section may use the heart line and Venus mount only; do not cite marriage/relationship lines."
+        )
+    else:
+        cautious.append(
+            f"Marriage/relationship lines: {marriage_count} visible from Mercury-edge capture; keep interpretation modest"
+        )
+
+    thumb_flex = _short_text(thumb.get("flexibility_estimate"), "not_assessable")
+    if "thumb_flex" not in role_set or thumb_flex == "not_assessable":
+        forbidden.append(
+            "Thumb flexibility: do not call the thumb flexible, stiff, firm, adaptable, or rigid from flexibility"
+        )
+    else:
+        cautious.append(f"Thumb flexibility: {thumb_flex}; use only for thumb-flex detail")
+
+    for mount, details in (mounts.items() if isinstance(mounts, dict) else []):
+        fullness = _short_text(details.get("fullness"), "not_assessable")
+        marks = _short_text(details.get("marks"), "no notable marks")
+        if fullness == "prominent":
+            strong.append(f"{mount} mount: prominent; marks: {marks}")
+        elif fullness == "moderate":
+            cautious.append(f"{mount} mount: moderate; treat as neutral support, not dominance")
+        elif fullness == "flat":
+            cautious.append(f"{mount} mount: visually flat; use gently because one photo can flatten depth")
+        else:
+            forbidden.append(f"{mount} mount fullness: not assessable")
+
+    for mark, status in (special.items() if isinstance(special, dict) else []):
+        if status == "visible":
+            strong.append(f"{mark.replace('_', ' ').title()}: visible")
+        else:
+            forbidden.append(f"{mark.replace('_', ' ').title()}: do not mention as present")
+
+    finger_shape = _short_text(fingers.get("tip_shape_dominant"), "not_assessable")
+    finger_ratio = _short_text(fingers.get("index_vs_ring_length"), "not_assessable")
+    if finger_shape != "not_assessable":
+        strong.append(f"Finger tip shape: {finger_shape}")
+    if finger_ratio != "not_assessable":
+        strong.append(f"Index vs ring length: {finger_ratio}")
+
+    thumb_set = _short_text(thumb.get("set"), "not_assessable")
+    thumb_tip = _short_text(thumb.get("tip_shape"), "not_assessable")
+    if thumb_set != "not_assessable":
+        cautious.append(f"Thumb set: {thumb_set}; physical architecture only")
+    if thumb_tip != "not_assessable":
+        cautious.append(f"Thumb tip shape: {thumb_tip}; physical architecture only")
+
+    vit_class = _short_text((vitality or {}).get("class"), "not_assessable")
+    if vit_class != "not_assessable":
+        cautious.append(
+            f"Palm tone: {vit_class}; visual tone only, never health, sleep, circulation, or life-energy diagnosis"
+        )
+
+    if any(
+        isinstance(lines.get(k), dict)
+        and lines[k].get("visibility") in _WEAK_LINE_STATES
+        for k in ("fate", "sun")
+    ):
+        section_rules.append(
+            "Career section must use soft language if fate or sun line is faint/fragmented."
+        )
+
+    return {
+        "strong_claims_allowed": strong[:18],
+        "cautious_claims_only": cautious[:24],
+        "forbidden_claims": forbidden[:24],
+        "section_rules": section_rules[:10],
+    }
+
+
+def _format_accuracy_guardrails(guardrails: dict) -> str:
+    """Render claim rules compactly for the final text-only prompt."""
+    if not isinstance(guardrails, dict):
+        return ""
+    labels = [
+        ("STRONG CLAIMS ALLOWED", guardrails.get("strong_claims_allowed") or []),
+        ("CAUTIOUS CLAIMS ONLY", guardrails.get("cautious_claims_only") or []),
+        ("FORBIDDEN CLAIMS", guardrails.get("forbidden_claims") or []),
+        ("SECTION RULES", guardrails.get("section_rules") or []),
+    ]
+    lines = []
+    for label, items in labels:
+        if not items:
+            continue
+        lines.append(f"{label}:")
+        lines.extend(f"- {item}" for item in items)
+    return "\n".join(lines)
 
 
 def _build_image_inputs(enhanced_palm, mount_crops: dict, supplemental_captures=None):
@@ -556,6 +703,12 @@ def _scan_palm_internal(
         }
 
     _apply_visual_self_correction(phase_a, hand_metrics, vitality)
+    phase_a["accuracy_guardrails"] = _build_accuracy_guardrails(
+        phase_a=phase_a,
+        hand_metrics=hand_metrics,
+        vitality=vitality,
+        capture_roles=capture_roles,
+    )
     return {
         "phase_a": phase_a,
         "capture_guidance": _capture_guidance(phase_a),
@@ -671,6 +824,7 @@ def read_palm(
 
     # ── Pass 3: Coherent Reading Generation ──
     phase_a_str = json.dumps(phase_a, indent=2)
+    evidence_context = _format_accuracy_guardrails(phase_a.get("accuracy_guardrails") or {})
     prompt_b = build_phase_b_prompt(
         hand_metrics=hand_metrics,
         vitality=vitality,
@@ -679,6 +833,7 @@ def read_palm(
         dossier=dossier,
         knowledge_context=knowledge_ctx,
         qdrant_context=qdrant_ctx,
+        evidence_context=evidence_context,
     )
 
     try:

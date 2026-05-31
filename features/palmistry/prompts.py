@@ -127,6 +127,7 @@ def build_phase_b_prompt(
     dossier: str = "",
     knowledge_context: str = "",
     qdrant_context: str = "",
+    evidence_context: str = "",
 ) -> str:
     hm  = hand_metrics or {}
     vit = vitality or {}
@@ -168,6 +169,12 @@ def build_phase_b_prompt(
             f"\n<kundli_dossier>\n{dossier}\n</kundli_dossier>\n"
         )
 
+    evidence_block = ""
+    if evidence_context and len(evidence_context.strip()) > 30:
+        evidence_block = (
+            f"\n<accuracy_claim_rules>\n{evidence_context}\n</accuracy_claim_rules>\n"
+        )
+
     return f"""Be conservative. When uncertain between two readings, prefer the safer one and say so. NEVER fabricate planetary positions, nakshatras, degrees, or palm features — every claim must come from either the math-derived facts, the Phase A JSON observations provided, the kundli dossier, or the classical passages.
 
 You are an expert Vedic palmist trained in classical Samudrika Shastra. Write a highly personalized, gorgeous markdown reading for the user.
@@ -176,7 +183,7 @@ You are an expert Vedic palmist trained in classical Samudrika Shastra. Write a 
 {phase_a_json_str}
 
 ═══ MEASURED GEOMETRY SIGNALS ═══
-{math_signals}{dossier_block}{knowledge_block}{qdrant_block}
+{math_signals}{evidence_block}{dossier_block}{knowledge_block}{qdrant_block}
 
 ═══ THE READING (Markdown Format) ═══
 Write the reading using only the confirmed Phase A observations + the math facts + the kundli (if provided) + classical passages. This final prose pass is intentionally text-only: do not re-inspect or invent visual evidence beyond the Phase A JSON.
@@ -188,6 +195,7 @@ HARD RULES:
 4. Tone: Extremely personal, warm, cozy, highly supportive, and comforting—like a kind, wise elder Vedic guide speaking to you over a warm cup of spiced tea in a peaceful home. Absolutely no cold, dry, or technical "AI" words or machine-learning jargon. Never say "the image shows", "pixel analysis", "VLM", "the algorithm scans", "detected by camera", or "based on the data". Talk directly to the person about their hand, their physical traits, and their spiritual energy in a loving, human way.
 5. Length: 300–450 words across all sections. Keep it extremely concise, cozy, and deeply impactful to respect the user's reading experience and save generation costs.
 6. Treat palm-tone vitality as a visual signal from this photo, not a health, circulation, sleep, or energy diagnosis.
+7. The <accuracy_claim_rules> block is stricter than intuition. Strong claims may be stated normally. Cautious claims must use gentle language such as "suggests", "appears", or "may". Forbidden claims must not appear in the reading at all.
 
 ABOUT FAINT, ABSENT, AND UNCLEAR LINES:
 Keep faint or absent line interpretations bounded and gentle. Treat "not_assessable" as an observation limit, not a trait. Do not convert a weak or missing visual signal into a strong personality, relationship, career, health, or spiritual claim unless the supplied Vedic knowledge or classical passages support that exact nuance.
@@ -204,10 +212,10 @@ One cozy, flowing paragraph. Seamlessly blend your reading of the major lines Ph
 One cozy paragraph. Lead with the most developed mount. Describe its warm influence on their personality. Briefly note any special marks (mystic cross, Ring of Solomon, Ring of Saturn) if they were detected — explain their rare, beautiful spiritual significance.
 
 ## Hand Architecture
-One warm, brief paragraph. Hand type, finger shape, and thumb. What this cozy physical combination says about their natural temperament and approach to life.
+One warm, brief paragraph. Hand type, finger shape, and thumb. Do not use thumb flexibility unless the claim rules explicitly allow it.
 
 ## Love and Relationships
-One cozy, supportive paragraph. Venus mount, heart line, and marriage indications, woven with the 7th house energy if a chart dossier is present. Focus on their beautiful capacity for connection, warmth, and emotional harmony.
+One cozy, supportive paragraph. Venus mount and heart line are the default relationship evidence. Mention marriage/relationship lines only if the claim rules explicitly allow them.
 
 ## Career and Purpose
 One cozy, supportive paragraph. Fate line (or its absence), Sun line, Saturn, Mercury, and Jupiter mounts, woven with 10th house indicators if a chart dossier is present. Focus on long-term fulfillment, creative expression, and walking their own unique path.
@@ -242,4 +250,5 @@ def build_palm_reading_prompt(
         dossier=dossier,
         knowledge_context=knowledge_context,
         qdrant_context=qdrant_context,
+        evidence_context="",
     )

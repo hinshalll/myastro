@@ -92,6 +92,7 @@ MOUNT_TO_PLANET = {
     "Sun":        "sun",
     "Mercury":    "mercury",
     "Venus":      "venus",
+    "Mars":       "mars",
     "Mars_Upper": "mars",
     "Mars_Lower": "mars",
     "Luna":       "moon",
@@ -133,11 +134,24 @@ def _get_dominant_planet(palm_data: dict, elevations: dict) -> str | None:
     if not k:
         return None
 
-    # 1. Highest mount
+    # 1. Highest mount, only when it is clearly dominant. Moderate/equal mounts
+    # are too neutral to pick a ruling planet reliably from one flat photo.
     if elevations:
-        top_mount = max(elevations, key=lambda m: elevations[m].get("score", 0))
+        ranked = sorted(
+            elevations.items(),
+            key=lambda item: item[1].get("score", 0),
+            reverse=True,
+        )
+        top_mount, top_data = ranked[0]
+        top_score = top_data.get("score", 0)
+        second_score = ranked[1][1].get("score", 0) if len(ranked) > 1 else 0
         planet = MOUNT_TO_PLANET.get(top_mount)
-        if planet and planet in k.get("planets", {}):
+        if (
+            top_score >= 70
+            and top_score - second_score >= 20
+            and planet
+            and planet in k.get("planets", {})
+        ):
             return planet
 
     # 2. Hand type

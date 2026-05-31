@@ -169,13 +169,47 @@ def _smoke_phase_b_is_text_only_and_role_gated():
     assert phase_b_model.calls == 1
     assert len(phase_b_model.last_contents) == 1
     assert isinstance(phase_b_model.last_contents[0], str)
+    prompt_b = phase_b_model.last_contents[0]
+    assert "<accuracy_claim_rules>" in prompt_b
+    assert "FORBIDDEN CLAIMS" in prompt_b
+    assert "Marriage/relationship line count" in prompt_b
+    assert "Thumb flexibility" in prompt_b
     assert result["phase_a"]["lines"]["marriage_lines"]["count_visible"] == "not_assessable"
     assert result["phase_a"]["thumb"]["flexibility_estimate"] == "not_assessable"
+    assert "accuracy_guardrails" in result["phase_a"]
     optional_roles = {
         item["role"]
         for item in result["capture_guidance"]["optional_for_detail"]
     }
     assert {"mercury_edge", "thumb_flex"} <= optional_roles
+
+
+def _smoke_neutral_mounts_do_not_pick_planet():
+    from features.palmistry.knowledge_lookup import _get_dominant_planet
+
+    phase_a = {
+        "lines": {},
+        "mounts": {
+            "Jupiter": {"fullness": "moderate", "marks": "no notable marks"},
+            "Saturn": {"fullness": "moderate", "marks": "no notable marks"},
+            "Sun": {"fullness": "moderate", "marks": "no notable marks"},
+        },
+    }
+    rich_palm, elevations = vlm_reader._build_rich_palm_data(
+        phase_a=phase_a,
+        hand_metrics={},
+        vitality={},
+    )
+
+    assert _get_dominant_planet(rich_palm, elevations) is None
+
+    elevations["Venus"] = {"score": 80, "fullness": "prominent"}
+    assert _get_dominant_planet(rich_palm, elevations) == "venus"
+
+    assert _get_dominant_planet(
+        rich_palm,
+        {"Mars": {"score": 80, "fullness": "prominent"}, "Jupiter": {"score": 50, "fullness": "moderate"}},
+    ) == "mars"
 
 
 def _smoke_api_rejects_non_hand_before_ai():
@@ -211,6 +245,7 @@ if __name__ == "__main__":
     _smoke_phase_a_prompt_limits()
     _smoke_invalid_scan_stops_before_phase_b()
     _smoke_phase_b_is_text_only_and_role_gated()
+    _smoke_neutral_mounts_do_not_pick_planet()
     _smoke_api_rejects_non_hand_before_ai()
     _smoke_scan_accepts_role_labelled_captures()
     print("palmistry accuracy smoke checks passed")

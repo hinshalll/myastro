@@ -42,7 +42,7 @@ def _build_query(palm_data: dict, elevations: dict = None) -> str:
             key=lambda x: -x[1]
         )[:3]
         for mount, score in top_mounts:
-            if score >= 40:
+            if elevations[mount].get("fullness") == "prominent" or score >= 70:
                 parts.append(f"{mount} mount prominent (score {score})")
 
     marks = palm_data.get("marks", [])

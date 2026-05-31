@@ -25,13 +25,30 @@ confirmed.
      splits, islands, and similar formations.
 2. **Pass 2 - Free Context Gathering:** Parses valid Phase A JSON locally, then
    queries `knowledge_lookup.py` and Qdrant using only the features Phase A
-   actually confirmed.
+   actually confirmed. Neutral/moderate mounts do not choose the ruling planet
+   or enter Qdrant as "prominent"; a mount must be clearly dominant first.
 3. **Pass 3 - Text-Only Reading:** Calls a text-only AI generation pass with
    the Phase A JSON, optional Kundli dossier, targeted Qdrant passages, and
    static Vedic context. The final prose model does not receive the images
    again, which lowers image-token cost and prevents it from re-reading the
    palm differently from the verified scan. If Phase A is invalid, poor, or not
    ready, Phase B is skipped.
+
+## Accuracy Guardrails
+
+After Phase A, Python builds an `accuracy_guardrails` block inside `phase_a`.
+It separates observations into:
+
+- `strong_claims_allowed` - clear visual facts the final reading may state.
+- `cautious_claims_only` - faint, fragmented, moderate, or one-photo-limited
+  facts that must use soft language.
+- `forbidden_claims` - blocked or unassessable details that must not appear in
+  the reading.
+- `section_rules` - section-level instructions, such as keeping love readings
+  to the heart line and Venus mount when no Mercury-edge capture exists.
+
+This is deterministic and adds no AI call. It makes the final reading less
+likely to turn weak scan evidence into confident claims.
 
 ## Visual Self-Correction
 
