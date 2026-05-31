@@ -69,9 +69,8 @@ For each MOUNT CROP, judge only visible fullness and clear marks (cross, star, t
 
 IMPORTANT: Do not mistake minor skin creases or texture for major lines. Be extremely precise.
 
-Output ONLY this JSON wrapped in ```json``` fences:
+Output ONLY this JSON object. Do not wrap it in markdown fences:
 
-```json
 {{
   "image_quality": "good|acceptable|poor",
   "image_issues": "brief note or empty string",
@@ -117,8 +116,7 @@ Output ONLY this JSON wrapped in ```json``` fences:
       {{ "role": "dominant_line_closeup", "reason": "brief note", "unlocks": "brief detail" }}
     ]
   }}
-}}
-```"""
+}}"""
 
 
 def build_phase_b_prompt(
@@ -181,7 +179,7 @@ You are an expert Vedic palmist trained in classical Samudrika Shastra. Write a 
 {math_signals}{dossier_block}{knowledge_block}{qdrant_block}
 
 ═══ THE READING (Markdown Format) ═══
-Write the reading using only the confirmed Phase A observations + the math facts + the kundli (if provided) + classical passages. 
+Write the reading using only the confirmed Phase A observations + the math facts + the kundli (if provided) + classical passages. This final prose pass is intentionally text-only: do not re-inspect or invent visual evidence beyond the Phase A JSON.
 
 HARD RULES:
 1. Never claim a feature exists if Phase A marked it "not_assessable" or "not_visible" or "absent".

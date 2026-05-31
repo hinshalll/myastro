@@ -13,7 +13,7 @@ import PIL.Image
 import numpy as np
 from functools import lru_cache
 
-from shared.ai.gemini_client import get_ai_model_by_name
+from shared.ai.gemini_client import get_ai_model_by_name, get_ai_model_for_json
 from shared.ai import config
 from features.palmistry.prompts import build_phase_a_prompt, build_phase_b_prompt
 
@@ -23,6 +23,13 @@ from features.palmistry.prompts import build_phase_a_prompt, build_phase_b_promp
 # The vision model is set in shared/ai/config.py (the "vision" task). Change it
 # there to experiment — this just reads whatever is configured.
 MODEL_NAME = config.model_for("vision")
+PHASE_B_MODEL_NAME = config.model_for("default")
+
+_PHASE_A_SYSTEM_RULES = """
+You are a conservative visual observer for Vedic palmistry.
+Return only valid JSON. Do not add markdown, prose, or explanations.
+Prefer not_assessable over guessing whenever a feature is not plainly visible.
+"""
 
 
 # ── REFERENCE IMAGES (Dual diagram comparative calibration) ────────────────────
@@ -359,6 +366,62 @@ def _capture_guidance(phase_a: dict) -> dict:
     }
 
 
+def _add_optional_capture_hint(phase_a: dict, role: str, reason: str, unlocks: str) -> None:
+    """Add one optional capture hint without duplicating roles."""
+    if role not in _CAPTURE_ROLES:
+        return
+    guidance = phase_a.setdefault("capture_guidance", {})
+    if not isinstance(guidance, dict):
+        guidance = {}
+        phase_a["capture_guidance"] = guidance
+    optional = guidance.setdefault("optional_for_detail", [])
+    if not isinstance(optional, list):
+        optional = []
+        guidance["optional_for_detail"] = optional
+    if any(isinstance(item, dict) and item.get("role") == role for item in optional):
+        return
+    optional.append({
+        "role": role,
+        "reason": reason,
+        "unlocks": unlocks,
+    })
+
+
+def _enforce_capture_role_limits(phase_a: dict, capture_roles: list[str]) -> None:
+    """
+    Apply non-negotiable evidence gates for details that a normal front-palm
+    photo cannot read reliably. The AI may still suggest the extra capture.
+    """
+    if not isinstance(phase_a, dict):
+        return
+    role_set = set(capture_roles or [])
+
+    lines = phase_a.get("lines")
+    if isinstance(lines, dict) and "mercury_edge" not in role_set:
+        marriage = lines.get("marriage_lines")
+        if isinstance(marriage, dict):
+            marriage["count_visible"] = "not_assessable"
+            marriage["description"] = (
+                "not_assessable: Mercury side-edge capture not supplied"
+            )
+        _add_optional_capture_hint(
+            phase_a,
+            "mercury_edge",
+            "The side edge below Mercury is needed for relationship-line counts.",
+            "relationship and marriage-line detail",
+        )
+
+    thumb = phase_a.get("thumb")
+    if isinstance(thumb, dict) and "thumb_flex" not in role_set:
+        thumb["flexibility_estimate"] = "not_assessable"
+        _add_optional_capture_hint(
+            phase_a,
+            "thumb_flex",
+            "A neutral open palm cannot prove how far the thumb bends.",
+            "Angustha Shastra thumb-flex detail",
+        )
+
+
 def _build_image_inputs(enhanced_palm, mount_crops: dict, supplemental_captures=None):
     """Build labelled VLM inputs; supplemental captures stay AI-owned evidence."""
     main_palm = _label_image(_arr_to_pil(enhanced_palm), "FULL PALM")
@@ -456,7 +519,10 @@ def _scan_palm_internal(
     )
 
     try:
-        model = get_ai_model_by_name(MODEL_NAME)
+        if config.detect_provider(MODEL_NAME) == "gemini":
+            model = get_ai_model_for_json(MODEL_NAME, _PHASE_A_SYSTEM_RULES, temperature=0.0)
+        else:
+            model = get_ai_model_by_name(MODEL_NAME)
         response_a = model.generate_content(images + [prompt_a])
         text_a = response_a.text or ""
     except Exception as e:
@@ -474,6 +540,7 @@ def _scan_palm_internal(
         }
 
     phase_a = _extract_json(text_a)
+    _enforce_capture_role_limits(phase_a, capture_roles)
     if not _phase_a_has_observations(phase_a):
         return {
             "phase_a": phase_a if isinstance(phase_a, dict) else {},
@@ -496,8 +563,6 @@ def _scan_palm_internal(
         "vitality": vitality,
         "raw": text_a,
         "error": "",
-        "_images": images,
-        "_model": model,
     }
 
 
@@ -617,7 +682,8 @@ def read_palm(
     )
 
     try:
-        response_b = scanned["_model"].generate_content(scanned["_images"] + [prompt_b])
+        phase_b_model = get_ai_model_by_name(PHASE_B_MODEL_NAME)
+        response_b = phase_b_model.generate_content([prompt_b])
         text_b = response_b.text or ""
     except Exception as e:
         return {
