@@ -198,15 +198,12 @@ export function PrecisionBanner() {
 }
 
 // ─── Fade-up entrance (editorial reveal) ───
-// Was: <Animated.View entering={FadeInDown...} /> — but Reanimated v4's
-// `entering`/`exiting` layout animations are flaky on Android + New
-// Architecture (the "setLayoutAnimationEnabledExperimental is a no-op"
-// warning we get on boot), and trigger crashes when used in a loop (e.g.
-// the You tab's 7 sections). Falling back to a plain View loses the
-// entrance fade-up but everything renders cleanly. We can re-enable once
-// Reanimated's layout-animation Android support stabilises.
-export function FadeUp({ children, style }: { children: ReactNode; delay?: number; style?: StyleProp<ViewStyle> }) {
-  return <View style={style}>{children}</View>;
+export function FadeUp({ children, delay = 0, style }: { children: ReactNode; delay?: number; style?: StyleProp<ViewStyle> }) {
+  return (
+    <Animated.View entering={FadeInDown.duration(450).delay(delay)} style={style}>
+      {children}
+    </Animated.View>
+  );
 }
 
 // ─── Editorial divider section (hairline top + kicker) ───

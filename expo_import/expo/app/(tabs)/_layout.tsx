@@ -1,5 +1,6 @@
 import { Tabs, router } from 'expo-router';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/constants/ThemeContext';
@@ -62,13 +63,10 @@ function FloatingPill({
   const { p } = useTheme();
   return (
     <View pointerEvents="box-none" style={[styles.pillWrap, { bottom: insetsBottom + 18 }]}>
-      <View
-        style={[styles.pill, {
-          borderColor: p.border,
-          // Solid (no BlurView) — expo-blur has Android rendering issues under
-          // SDK 54 + New Architecture that can make the tab bar invisible.
-          backgroundColor: themeName === 'dark' ? 'rgba(11,9,7,0.95)' : 'rgba(255,255,255,0.95)',
-        }]}
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 40 : 30}
+        tint={themeName === 'dark' ? 'dark' : 'light'}
+        style={[styles.pill, { borderColor: p.border, backgroundColor: themeName === 'dark' ? 'rgba(11,9,7,0.6)' : 'rgba(255,255,255,0.7)' }]}
       >
         {TABS.map(t => {
           const isActive = t.name === active;
@@ -91,7 +89,7 @@ function FloatingPill({
             </Pressable>
           );
         })}
-      </View>
+      </BlurView>
     </View>
   );
 }
