@@ -50,6 +50,15 @@ It separates observations into:
 This is deterministic and adds no AI call. It makes the final reading less
 likely to turn weak scan evidence into confident claims.
 
+## Palm Accuracy Lab
+
+For short-term manual testing, Streamlit has a hidden helper enabled only when
+`PALMISTRY_EVAL_MODE=1` is set in the environment or Streamlit secrets. After a
+reading, it shows a compact Phase A checklist and lets the tester write plain
+English corrections, then downloads an accuracy packet JSON. The packet does
+not train the model by itself and does not store the image; send the JSON
+alongside the original photo when debugging. Normal users never see this panel.
+
 ## Visual Self-Correction
 
 - **Saturn middle finger exclusion:** The middle finger is normally the longest,
