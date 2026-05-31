@@ -2,6 +2,10 @@
 
 **Last updated:** 2026-05-27 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
 
+> **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
+> built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
+> not Flutter — the "Future work" section below predates that decision and is stale.
+
 ### Recent changes (2026-05-27) — AI-free quick-decide + clearer timing
 - **New endpoint `POST /dashboard/decide-quick`** — an AI-FREE one-tap "should I do X right
   now?" for the Ask sheet's quick yes/no mode. Pure Tara-Bala math (the current moment's

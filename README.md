@@ -7,7 +7,9 @@ Vedic-astrology + AI divination app. Two front-ends share one backend:
 
 ## For AI assistants
 
-**Read `FEATURE_SPEC.md` first.** It is the single source of truth for what every feature does, what AI it uses, what RAG books, and what's where in the code. Each `features/<feature>/README.md` adds a plain-English page about that feature.
+**Read `FEATURE_SPEC.md` first** for the high-level source of truth (what every feature does, what AI/RAG it uses, what's where). **Then read `SYSTEM_REFERENCE.md`** — the deep map of the real product: the shared engine's functions, every FastAPI endpoint, both the Streamlit (real) and mobile (mockup) surfaces, and an honest "what's built vs new" list. Each `features/<feature>/README.md` adds a plain-English page about that feature.
+
+> **The two surfaces:** the **Streamlit app is the real working product**; the **React Native/Expo `mobile/` app is a visual mockup** wired only for the birth chart. The job is to wire the mockup to the FastAPI endpoints. See `SYSTEM_REFERENCE.md`.
 
 ## Project layout
 
