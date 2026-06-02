@@ -1,5 +1,16 @@
 # Ephemeris & Accuracy — Decision (locked 2026-06-02)
 
+> **STATUS (2026-06-03): free engine CALCULATIONS COMPLETE + validated vs Swiss Ephemeris.**
+> `shared/astro/ephem_skyfield.py` covers positions (7 + 3 outer), Lahiri ayanamsa (0.00"),
+> mean node, ascendant, whole-sign houses, **Placidus + KP** (0.00", 0/3600 sub-lords),
+> sunrise/sunset (≤21s), moonrise/moonset (≤36s), and eclipses (exact dates). Derived layers
+> (panchanga, all 16 vargas D1–D60, dasha) validated via existing Python on the new positions:
+> 0 mismatches (D60 irreducible ~0.1%). Regression test: `python scripts/validate_ephemeris.py`.
+> **REMAINING = INTEGRATION, not calculation:** (1) adapter seam — reroute `astro_calc`/`kundli`
+> to call this engine instead of `swe`; (2) unify Rahu/Ketu to Mean node (TRUE→MEAN); (3) freeze
+> the Lahiri anchor `_LAHIRI_A0_FALLBACK` + drop the `swisseph` import so the shipping engine is
+> fully SE-free. Then `pyswisseph` can be removed from runtime (kept only as a dev test ref).
+
 **Plain-English summary:** Build the **free Skyfield + JPL engine** as the **shipping engine
 now**, and validate it to **~99.9% practical parity with Swiss Ephemeris**. We keep
 `pyswisseph` (Swiss Ephemeris) installed **only as the local validation reference** (the
