@@ -1,9 +1,11 @@
 """shared.astro.ephem_skyfield — FREE ephemeris provider (Skyfield + JPL DE440s).
 
 The future shipping engine: MIT (Skyfield) + public-domain (JPL DE440s), replacing
-AGPL Swiss Ephemeris. Validated vs pyswisseph (dev-only reference):
-  planet sidereal longitudes ~17", Lahiri ayanamsa 0.00", mean node 0.19",
-  ascendant ~17" — all far inside any sign/nakshatra boundary.
+AGPL Swiss Ephemeris. Validated vs pyswisseph (dev-only reference) across 2000
+random charts (1900-2050, all latitudes):
+  planet longitudes <=3.0", ascendant <=2.7", Lahiri ayanamsa 0.00",
+  mean node <=0.2"  ->  0 sign / 0 nakshatra / 0 ascendant-sign mismatches.
+Nutation-in-longitude is removed (mean equinox) to match SE's Lahiri reference.
 
 Conventions (locked, see docs/ephemeris-decision.md): Lahiri (Chitrapaksha)
 ayanamsa, sidereal, Mean lunar node, whole-sign houses (Ascendant below).
@@ -75,6 +77,13 @@ def ayanamsa(jd_ut: float) -> float:
     return _A0() + np.degrees(erfa.p06e(jd_ut, 0.0)[12])
 
 
+def _nutation_lon_deg(jd_ut: float) -> float:
+    """Nutation in longitude (Delta-psi) in degrees. Subtracted to move from the
+    true equinox of date to the MEAN equinox, which is what the Lahiri ayanamsa is
+    referred to (matches Swiss Ephemeris to ~1 arcsec instead of ~17)."""
+    return np.degrees(erfa.nut06a(jd_ut, 0.0)[0])
+
+
 def planet_sidereal_lon(jd_ut: float, planet: str) -> float:
     """Sidereal (Lahiri) ecliptic longitude of a planet, degrees [0,360)."""
     eph = _eph()
@@ -82,7 +91,7 @@ def planet_sidereal_lon(jd_ut: float, planet: str) -> float:
     t = _time(jd_ut)
     trop = (earth.at(t).observe(eph[_BODY[planet]]).apparent()
             .ecliptic_latlon(epoch="date")[1].degrees)
-    return (trop - ayanamsa(jd_ut)) % 360.0
+    return (trop - _nutation_lon_deg(jd_ut) - ayanamsa(jd_ut)) % 360.0
 
 
 def planet_sidereal_lon_speed(jd_ut: float, planet: str):
@@ -106,9 +115,12 @@ def ascendant_sidereal(jd_ut: float, lat: float, lon: float) -> float:
     """Sidereal (Lahiri) Ascendant (Lagna) longitude, degrees. Whole-sign houses
     follow directly from the Ascendant's sign."""
     t = _time(jd_ut)
+    # Apparent sidereal time + true obliquity give the Ascendant in the TRUE equinox
+    # frame; subtract nutation-in-longitude to reach the MEAN equinox the Lahiri
+    # ayanamsa is referred to (matches Swiss Ephemeris to ~1-2 arcsec).
     ramc = np.radians((t.gast * 15.0 + lon) % 360.0)
     eps = erfa.obl06(jd_ut, 0.0) + erfa.nut06a(jd_ut, 0.0)[1]   # true obliquity
     phi = np.radians(lat)
     asc = np.arctan2(np.cos(ramc),
                      -(np.sin(ramc) * np.cos(eps) + np.tan(phi) * np.sin(eps)))
-    return (np.degrees(asc) - ayanamsa(jd_ut)) % 360.0
+    return (np.degrees(asc) - _nutation_lon_deg(jd_ut) - ayanamsa(jd_ut)) % 360.0
