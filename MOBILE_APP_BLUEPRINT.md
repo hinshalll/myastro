@@ -332,6 +332,20 @@ high-intent moments like Diwali — natural, not spammy).
 
 ## 9. Technical architecture
 
+> **Ephemeris & accuracy — locked decision (full detail in `docs/ephemeris-decision.md`):**
+> The **shipping engine is free Skyfield + JPL (DE440), built now**, re-implementing the small
+> low-level layer (Lahiri/Chitrapaksha ayanamsa, Ascendant, whole-sign houses, mean node,
+> sunrise/eclipses); all higher Vedic logic is existing Python on top. It's **validated to
+> ~99.9% practical parity against Swiss Ephemeris** (`pyswisseph` is kept **only as the local
+> validation reference** — not shipped) + spot-checked vs AstroSage, so chart parity is a
+> *measured fact*. Everything sits behind an **ephemeris adapter seam** (app calls one
+> interface, never the engine directly). **KP is an optional flag-gated module, default OFF**
+> (Placidus only when KP on; KP code kept). Conventions: **Lahiri (Chitrapaksha) ayanamsa + sidereal +
+> whole-sign houses + Vimshottari dasha + Mean node** (the classical Vedic standard — Surya
+> Siddhanta / B.V. Raman; configurable). **Buying the Swiss Ephemeris license (~CHF 750) is an
+> optional FUTURE upgrade if the app profits** — a one-file change thanks to the adapter.
+> VedAstro rejected (slow/finicky/inconsistent).
+
 ### 9.1 Stack
 | Layer | Choice |
 |---|---|
@@ -339,7 +353,7 @@ high-intent moments like Diwali — natural, not spammy).
 | Push | **Expo Push** (free) |
 | Auth + DB | **Supabase** (Postgres + Auth + RLS) |
 | RAG vectors | **Qdrant** (FastEmbed/ONNX embeddings — re-ingest done) |
-| Astrology math | **Swiss Ephemeris** (in FastAPI) |
+| Astrology math | **Skyfield + JPL (DE440)** — free shipping engine, behind a swappable adapter; validated ~99.9% vs Swiss Ephemeris (kept only as the dev reference). See §9 note. |
 | AI — text | **DeepSeek / Gemini** (switchable) |
 | AI — vision | **Gemini** (palm/face) |
 | Backend | **FastAPI** (existing), Docker on Render |
