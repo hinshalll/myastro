@@ -124,3 +124,43 @@ def ascendant_sidereal(jd_ut: float, lat: float, lon: float) -> float:
     asc = np.arctan2(np.cos(ramc),
                      -(np.sin(ramc) * np.cos(eps) + np.tan(phi) * np.sin(eps)))
     return (np.degrees(asc) - _nutation_lon_deg(jd_ut) - ayanamsa(jd_ut)) % 360.0
+
+
+def whole_sign_house(asc_lon: float, body_lon: float) -> int:
+    """Whole-sign house (1..12) of a body, given the Ascendant longitude.
+    The house IS the sign counted from the Ascendant's sign (traditional Vedic)."""
+    asc_sign = int(asc_lon // 30) % 12
+    body_sign = int(body_lon // 30) % 12
+    return ((body_sign - asc_sign) % 12) + 1
+
+
+def whole_sign_cusps(asc_lon: float) -> list:
+    """The 12 whole-sign house cusp longitudes (each at its sign's 0 deg)."""
+    asc_sign = int(asc_lon // 30) % 12
+    return [((asc_sign + i) % 12) * 30.0 for i in range(12)]
+
+
+def sun_rise_set(d, lat: float, lon: float, tz_name: str):
+    """Local sunrise, sunset, and next-day sunrise as tz-aware datetimes.
+    Standard definition (Sun's upper limb at the horizon with refraction), matching
+    Swiss Ephemeris's default — needed for Rahu Kaal / Choghadiya / Muhurta windows."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    from skyfield import almanac
+    from skyfield.api import wgs84
+
+    eph, ts = _eph(), _ts()
+    tz, utc = ZoneInfo(tz_name), ZoneInfo("UTC")
+    loc = wgs84.latlon(lat, lon)
+    start = datetime(d.year, d.month, d.day, tzinfo=tz)
+    t0 = ts.from_datetime(start.astimezone(utc))
+    t1 = ts.from_datetime((start + timedelta(days=2)).astimezone(utc))
+    f = almanac.sunrise_sunset(eph, loc)
+    times, events = almanac.find_discrete(t0, t1, f)
+    seq = [(ti.utc_datetime().astimezone(tz), int(ev)) for ti, ev in zip(times, events)]
+    rises = [dt for dt, ev in seq if ev == 1]
+    sets_ = [dt for dt, ev in seq if ev == 0]
+    sunrise = rises[0] if rises else None
+    sunset = next((s for s in sets_ if sunrise and s > sunrise), None)
+    next_sunrise = rises[1] if len(rises) > 1 else None
+    return sunrise, sunset, next_sunrise
