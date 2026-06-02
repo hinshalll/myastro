@@ -37,6 +37,9 @@ _BODY = {
     "Sun": "sun", "Moon": "moon", "Mercury": "mercury", "Venus": "venus",
     "Mars": "mars barycenter", "Jupiter": "jupiter barycenter",
     "Saturn": "saturn barycenter",
+    # Outer planets (Western appendix only; not classical Vedic grahas)
+    "Uranus": "uranus barycenter", "Neptune": "neptune barycenter",
+    "Pluto": "pluto barycenter",
 }
 
 _KERNEL = os.environ.get("JPL_KERNEL", "de440s.bsp")
@@ -216,3 +219,59 @@ def placidus_cusps(jd_ut: float, lat: float, lon: float) -> list:
     e11, e12, e2, e3 = sid(c11), sid(c12), sid(c2), sid(c3)
     return [a, e2, e3, (m + 180) % 360, (e11 + 180) % 360, (e12 + 180) % 360,
             (a + 180) % 360, (e2 + 180) % 360, (e3 + 180) % 360, m, e11, e12]
+
+
+def moon_rise_set(d, lat: float, lon: float, tz_name: str):
+    """Local moonrise, moonset (next after rise) as tz-aware datetimes.
+    Topocentric (includes lunar parallax + refraction), matching Swiss Ephemeris."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    from skyfield import almanac
+    from skyfield.api import wgs84
+
+    eph, ts = _eph(), _ts()
+    tz, utc = ZoneInfo(tz_name), ZoneInfo("UTC")
+    loc = wgs84.latlon(lat, lon)
+    start = datetime(d.year, d.month, d.day, tzinfo=tz)
+    t0 = ts.from_datetime(start.astimezone(utc))
+    t1 = ts.from_datetime((start + timedelta(days=2)).astimezone(utc))
+    # radius_degrees ~0.25 = Moon's apparent semidiameter (upper-limb rise/set,
+    # matching Swiss Ephemeris's convention).
+    f = almanac.risings_and_settings(eph, eph["moon"], loc, radius_degrees=0.25)
+    times, events = almanac.find_discrete(t0, t1, f)
+    seq = [(ti.utc_datetime().astimezone(tz), int(ev)) for ti, ev in zip(times, events)]
+    rises = [dt for dt, ev in seq if ev == 1]
+    sets_ = [dt for dt, ev in seq if ev == 0]
+    moonrise = rises[0] if rises else None
+    moonset = next((s for s in sets_ if moonrise and s > moonrise), None)
+    return moonrise, moonset
+
+
+def next_eclipses(from_date, horizon_days: int = 400):
+    """(next_solar_date, next_lunar_date) on/after from_date, searching forward.
+    Lunar via Skyfield eclipselib; solar (global) via a new-moon-near-node test
+    (the Moon's ecliptic latitude at conjunction within the solar eclipse limit).
+    Dates are UTC — for an alert card, day-level precision is what matters."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    from skyfield import almanac, eclipselib
+
+    eph, ts = _eph(), _ts()
+    d0 = datetime(from_date.year, from_date.month, from_date.day, tzinfo=ZoneInfo("UTC"))
+    t0 = ts.from_datetime(d0)
+    t1 = ts.from_datetime(d0 + timedelta(days=horizon_days))
+
+    lt, _ly, _det = eclipselib.lunar_eclipses(t0, t1, eph)
+    next_lunar = lt[0].utc_datetime().date() if len(lt.tt) else None
+
+    next_solar = None
+    earth = eph["earth"]
+    pt, pp = almanac.find_discrete(t0, t1, almanac.moon_phases(eph))
+    for i in range(len(pp)):
+        if int(pp[i]) == 0:  # new moon
+            ti = pt[i]
+            beta = earth.at(ti).observe(eph["moon"]).apparent().ecliptic_latlon()[0].degrees
+            if abs(beta) < 1.5:  # within the solar-eclipse ecliptic limit
+                next_solar = ti.utc_datetime().date()
+                break
+    return next_solar, next_lunar
