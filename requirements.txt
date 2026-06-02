@@ -25,7 +25,12 @@ fastembed>=0.4           # ALL vectors via ONNX: dense BGE + BM25 sparse + cross
 #                           keeps the backend light enough for free-tier hosting)
 
 # ── Astrology math ───────────────────────────────────────────────────────────
-pyswisseph>=2.10
+# Free shipping engine (MIT + public-domain) — replaces AGPL Swiss Ephemeris.
+# Validated to 0 sign/nakshatra mismatches vs pyswisseph. See docs/ephemeris-decision.md.
+skyfield>=1.49           # MIT; positions from JPL ephemerides
+jplephem>=2.21           # MIT; reads JPL .bsp kernels (de440s.bsp, downloaded separately)
+pyerfa>=2.0              # BSD; IAU precession/nutation (Lahiri ayanamsa, obliquity)
+pyswisseph>=2.10         # DEV-ONLY validation reference now (not the shipping engine)
 geopy>=2.4
 timezonefinder>=6.5
 tzdata>=2024.1          # Windows has no system tz database; zoneinfo needs this
