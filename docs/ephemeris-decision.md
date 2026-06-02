@@ -57,8 +57,11 @@ licensed substitute.** (AGPL only triggers at public launch, so `pyswisseph` is 
 6. **KP = optional flag-gated module, default OFF.** Placidus cusps computed **only when KP is
    on** (everything else uses whole-sign). KP code kept in the repo. KP's blunt "not promised"
    verdicts are also tonally wrong for a warm beginner-first app → off-by-default fixes that.
-   Later it becomes a user setting (needs Placidus → either the SE upgrade or Placidus-on-
-   Skyfield work).
+   **UPDATE (validated):** Placidus is now implemented on the free engine
+   (`ephem_skyfield.placidus_cusps`) and validated to **0.00″ vs Swiss Ephemeris across
+   300 charts × 12 cusps (incl. 60°N), with 0/3600 KP cusp sub-lord mismatches** — so KP
+   needs **NO Swiss Ephemeris.** It can become a user setting whenever desired, with zero
+   SE dependency. (Still off-by-default for tone; the default Vedic chart stays whole-sign.)
 7. **Locked conventions (most accepted in Vedic astrology — verified):**
    - **Ayanamsa: Lahiri (Chitrapaksha)** — Government of India official standard; AstroSage default.
    - **Zodiac: Sidereal (Nirayana).**
