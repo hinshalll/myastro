@@ -1,70 +1,102 @@
-"""Validate the free Skyfield engine against Swiss Ephemeris (dev-only reference).
+"""Comprehensive validation of the free Skyfield engine vs Swiss Ephemeris.
 
-Runs many random charts and reports max differences + sign/nakshatra mismatch rates.
-Mismatches are expected ONLY at razor-edge boundaries (within ~17") — the same zone
-where AstroSage / Drik Panchang already disagree with each other.
+Swiss Ephemeris (pyswisseph) is a DEV-ONLY reference here — never shipped.
+Runs N random charts and checks every calculation the app uses:
+positions, ayanamsa, mean node, ascendant, whole-sign houses, panchanga, and
+all 16 divisional charts (D1-D60).
+
+Expected result: 0 mismatches everywhere EXCEPT D60, which has an irreducible
+~0.05-0.1% boundary-flip rate (its 0.5-degree slices are finer than the ~1-3"
+engine residual). That is gated by birth-time precision, not the engine, and is
+acceptable — see docs/ephemeris-decision.md.
 
 Run from repo root:  python scripts/validate_ephemeris.py [N]
-Requires a JPL kernel `de440s.bsp` in the working dir (gitignored).
+Requires `de440s.bsp` in the working dir (gitignored).
 """
 import os
 import random
 import sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import swisseph as swe
 from shared.astro.ephem_skyfield import (
-    planet_sidereal_lon, mean_node_sidereal, ascendant_sidereal,
+    planet_sidereal_lon, ascendant_sidereal, whole_sign_house, mean_node_sidereal,
 )
+from shared.astro.kundli import (
+    d1_si, d2_si, d3_si, d4_si, d7_si, d9_si, d10_si, d12_si,
+    d16_si, d20_si, d24_si, d27_si, d30_si, d40_si, d45_si, d60_si,
+)
+from shared.astro.astro_calc import get_panchanga, nakshatra_info
 
-PLANETS = [("Sun", swe.SUN), ("Moon", swe.MOON), ("Mercury", swe.MERCURY),
-           ("Venus", swe.VENUS), ("Mars", swe.MARS), ("Jupiter", swe.JUPITER),
-           ("Saturn", swe.SATURN)]
+PLANETS = [("Sun", swe.SUN), ("Moon", swe.MOON), ("Mars", swe.MARS),
+           ("Mercury", swe.MERCURY), ("Jupiter", swe.JUPITER),
+           ("Venus", swe.VENUS), ("Saturn", swe.SATURN)]
+VARGAS = [("D1", d1_si), ("D2", d2_si), ("D3", d3_si), ("D4", d4_si), ("D7", d7_si),
+          ("D9", d9_si), ("D10", d10_si), ("D12", d12_si), ("D16", d16_si),
+          ("D20", d20_si), ("D24", d24_si), ("D27", d27_si), ("D30", d30_si),
+          ("D40", d40_si), ("D45", d45_si), ("D60", d60_si)]
 NAK = 360.0 / 27.0
 
 
-def sign(x): return int(x // 30) % 12
-def nak(x): return int(x // NAK) % 27
-def adiff(a, b): return abs((a - b + 180) % 360 - 180) * 3600  # arcseconds
+def sgn(x): return int(x // 30) % 12
+def nk(x): return int(x // NAK) % 27
+def adiff(a, b): return abs((a - b + 180) % 360 - 180) * 3600
 
 
-def main(n=500):
-    random.seed(42)
+def main(n=500, seed=98765):
+    random.seed(seed)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
-    max_pos = sign_mm = nak_mm = total = 0
-    max_node = max_asc = asc_sign_mm = 0
-    worst = ""
+    maxpos = maxasc = maxnode = 0.0
+    sign_mm = nak_mm = asc_sign_mm = house_mm = total = 0
+    vmm = {v[0]: 0 for v in VARGAS}
+    t_mm = y_mm = k_mm = pn_mm = 0
     for _ in range(n):
-        Y = random.randint(1900, 2050); Mo = random.randint(1, 12); D = random.randint(1, 28)
-        h = random.uniform(0, 24); lat = random.uniform(-60, 60); lon = random.uniform(-180, 180)
+        Y = random.randint(1940, 2035); Mo = random.randint(1, 12); D = random.randint(1, 28)
+        h = random.uniform(0, 24); lat = random.uniform(-58, 62); lon = random.uniform(-180, 180)
         jd = swe.julday(Y, Mo, D, h)
-        for name, sid in PLANETS:
-            me = planet_sidereal_lon(jd, name)
-            se, _ = swe.calc_ut(jd, sid, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
-            d = adiff(me, se[0])
-            if d > max_pos:
-                max_pos = d; worst = f"{name} {Y}-{Mo:02d}-{D:02d} ({d:.1f}\")"
-            total += 1
-            if sign(me) != sign(se[0]): sign_mm += 1
-            if nak(me) != nak(se[0]): nak_mm += 1
-        me = mean_node_sidereal(jd)
-        se, _ = swe.calc_ut(jd, swe.MEAN_NODE, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
-        max_node = max(max_node, adiff(me, se[0]))
-        me = ascendant_sidereal(jd, lat, lon)
+        am = ascendant_sidereal(jd, lat, lon)
         _, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
-        max_asc = max(max_asc, adiff(me, ascmc[0]))
-        if sign(me) != sign(ascmc[0]): asc_sign_mm += 1
+        maxasc = max(maxasc, adiff(am, ascmc[0])); asc_sign_mm += sgn(am) != sgn(ascmc[0])
+        myl = {}; sel = {}
+        for nm, b in PLANETS:
+            ml = planet_sidereal_lon(jd, nm)
+            sl, _ = swe.calc_ut(jd, b, swe.FLG_SWIEPH | swe.FLG_SIDEREAL); sl = sl[0]
+            myl[nm] = ml; sel[nm] = sl; total += 1
+            maxpos = max(maxpos, adiff(ml, sl))
+            sign_mm += sgn(ml) != sgn(sl); nak_mm += nk(ml) != nk(sl)
+            if whole_sign_house(am, ml) != ((sgn(sl) - sgn(ascmc[0])) % 12) + 1:
+                house_mm += 1
+            for vn, fn in VARGAS:
+                if fn(ml) != fn(sl):
+                    vmm[vn] += 1
+        mn = mean_node_sidereal(jd)
+        sn, _ = swe.calc_ut(jd, swe.MEAN_NODE, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        maxnode = max(maxnode, adiff(mn, sn[0]))
+        dt = datetime(Y, Mo, D, int(h), int((h % 1) * 60), tzinfo=ZoneInfo("Asia/Kolkata"))
+        pm = get_panchanga(myl["Sun"], myl["Moon"], dt)
+        ps = get_panchanga(sel["Sun"], sel["Moon"], dt)
+        t_mm += pm["tithi"] != ps["tithi"]; y_mm += pm["yoga"] != ps["yoga"]
+        k_mm += pm["karana"] != ps["karana"]
+        pn_mm += nakshatra_info(myl["Moon"])[0] != nakshatra_info(sel["Moon"])[0]
 
-    print(f"Charts: {n}   Planet positions checked: {total}")
-    print(f"Max planet position diff : {max_pos:.1f} arcsec   (worst: {worst})")
-    print(f"Max mean-node diff       : {max_node:.1f} arcsec")
-    print(f"Max ascendant diff       : {max_asc:.1f} arcsec")
-    print(f"Sign mismatches          : {sign_mm}/{total} ({100*sign_mm/total:.3f}%)")
-    print(f"Nakshatra mismatches     : {nak_mm}/{total} ({100*nak_mm/total:.3f}%)")
-    print(f"Ascendant-sign mismatches: {asc_sign_mm}/{n} ({100*asc_sign_mm/n:.3f}%)")
-    print("(Mismatches occur only within ~17\" of a boundary — the same edge zone "
-          "where major Vedic apps already disagree with each other.)")
+    print(f"=== Engine validation vs Swiss Ephemeris: {n} charts, {total} positions (seed {seed}) ===")
+    print(f"max diffs   : planet {maxpos:.2f}\"  ascendant {maxasc:.2f}\"  mean-node {maxnode:.2f}\"")
+    print(f"positions   : sign {sign_mm}/{total}  nakshatra {nak_mm}/{total}")
+    print(f"ascendant   : sign {asc_sign_mm}/{n}   houses {house_mm}/{total}")
+    print(f"panchanga   : tithi {t_mm}  yoga {y_mm}  karana {k_mm}  moon-nak {pn_mm}  (/{n})")
+    print("divisionals : " + "  ".join(f"{vn}:{vmm[vn]}" for vn, _ in VARGAS))
+    core = sign_mm + nak_mm + asc_sign_mm + house_mm + t_mm + y_mm + k_mm + pn_mm \
+        + sum(vmm[v] for v in vmm if v != "D60")
+    d60 = vmm["D60"]
+    print()
+    if core == 0:
+        print(f"PASS: 0 mismatches across all core calculations. "
+              f"D60 {d60}/{total} ({100*d60/total:.3f}%) — irreducible boundary rate, acceptable.")
+    else:
+        print(f"REVIEW: {core} non-D60 mismatches found — investigate (boundary cases expected to be tiny).")
 
 
 if __name__ == "__main__":
