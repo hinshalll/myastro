@@ -19,6 +19,11 @@ create table if not exists public.app_users (
   email       text,
   language    text default 'en',
   push_token  text,                       -- Expo push token
+  -- depth_mode: how much astrology to SHOW by default (blueprint §6.7).
+  -- 'simple' = plain-English meanings only; 'full' = charts/dashas/Sanskrit.
+  -- A default, not a lock: the user can drill up/down anywhere. Mirrored into
+  -- settings.depth_mode for forward-compat; this column is the fast read/write path.
+  depth_mode  text not null default 'simple' check (depth_mode in ('simple','full')),
   settings    jsonb default '{}'::jsonb,
   created_at  timestamptz default now()
 );
@@ -200,6 +205,80 @@ create table if not exists public.ai_conversations (
 );
 create index if not exists ai_conversations_user_idx on public.ai_conversations(user_id);
 
+-- ── Diyas: the in-app currency (blueprint §7) ──────────────────────────────
+-- Display name in the app = "Diyas" (lamps; lit by practice/streaks, spent on
+-- AI readings, gifted, or topped-up). Table names are kept NEUTRAL so the
+-- display word can be renamed without a DB migration. Wallets/ledger are written
+-- SERVER-SIDE ONLY (service role) so a client can never inflate its own balance.
+create table if not exists public.coin_wallets (
+  user_id         uuid primary key references auth.users(id) on delete cascade,
+  balance         integer not null default 0 check (balance >= 0),
+  lifetime_earned integer not null default 0,
+  lifetime_spent  integer not null default 0,
+  updated_at      timestamptz default now()
+);
+
+-- Append-only ledger: every wallet change is one signed row (audit trail).
+-- delta > 0 = diyas in; delta < 0 = diyas out. balance_after snapshots the
+-- resulting balance for cheap auditing/debugging.
+create table if not exists public.coin_transactions (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  delta         integer not null,            -- signed: +earned/bought/ad, -spent/gifted-out
+  source        text not null,               -- 'earned_daily'|'earned_streak'|'earned_practice'|'bought_iap'|'ad_reward'|'spent'|'referral_bonus'|'gift_received'|'gift_sent'|'admin_adjust'
+  ref           text,                         -- e.g. 'full_life_reading' | IAP receipt id | mantra/journey key
+  meta          jsonb,
+  balance_after integer,                      -- wallet balance after this row applied
+  created_at    timestamptz default now()
+);
+create index if not exists coin_tx_user_idx on public.coin_transactions(user_id, created_at);
+
+-- ── Referrals: invite → both earn diyas (blueprint §7 growth loop) ──────────
+create table if not exists public.referrals (
+  id               uuid primary key default gen_random_uuid(),
+  referrer_user_id uuid not null references auth.users(id) on delete cascade,
+  referee_user_id  uuid references auth.users(id) on delete set null,  -- filled when invitee signs up
+  code             text not null unique,      -- short shareable code
+  status           text not null default 'pending',  -- 'pending'|'redeemed'|'rewarded'
+  created_at       timestamptz default now(),
+  redeemed_at      timestamptz
+);
+create index if not exists referrals_referrer_idx on public.referrals(referrer_user_id);
+create index if not exists referrals_code_idx on public.referrals(code);
+
+-- ── Gifts: gift a reading/report or diyas (diaspora lever, blueprint §7) ─────
+-- The diya debit happens via a coin_transactions row (source='gift_sent');
+-- the recipient redeems claim_token → server creates the underlying purchase.
+create table if not exists public.gifts (
+  id                uuid primary key default gen_random_uuid(),
+  sender_user_id    uuid not null references auth.users(id) on delete cascade,
+  recipient_user_id uuid references auth.users(id) on delete set null,  -- null until a non-user claims
+  recipient_contact text,                      -- email/phone for not-yet-users
+  item              text not null,             -- 'full_life_reading' | 'diyas' | ...
+  coin_cost         integer not null default 0,
+  message           text,
+  status            text not null default 'pending',  -- 'pending'|'claimed'|'expired'
+  claim_token       text unique,
+  created_at        timestamptz default now(),
+  claimed_at        timestamptz
+);
+create index if not exists gifts_sender_idx on public.gifts(sender_user_id);
+create index if not exists gifts_recipient_idx on public.gifts(recipient_user_id);
+
+-- ── Ad rewards: rewarded-video tracking (blueprint §7) ──────────────────────
+-- One row per verified ad view. UNIQUE(network, ssv_id) makes a duplicate
+-- server-side-verification callback impossible to claim twice. Service-role only.
+create table if not exists public.ad_rewards (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  network       text not null,               -- 'admob' | 'unity' | ...
+  ssv_id        text not null,               -- server-side-verification id from the ad network
+  coins_awarded integer not null default 0,
+  created_at    timestamptz default now(),
+  unique (network, ssv_id)
+);
+create index if not exists ad_rewards_user_idx on public.ad_rewards(user_id);
+
 -- NOTE: notification preferences (which alerts are on/off) and dismissed cards
 -- (e.g. "Hide" on the eclipse card) live in app_users.settings (jsonb) — no
 -- dedicated table needed.
@@ -224,6 +303,11 @@ alter table public.group_members  enable row level security;
 alter table public.ritual_journeys enable row level security;
 alter table public.rewards        enable row level security;
 alter table public.ai_conversations enable row level security;
+alter table public.coin_wallets      enable row level security;
+alter table public.coin_transactions enable row level security;
+alter table public.referrals         enable row level security;
+alter table public.gifts             enable row level security;
+alter table public.ad_rewards        enable row level security;
 
 -- Helper: "the row belongs to the current user" policies.
 -- app_users: row id == auth.uid()
@@ -310,6 +394,32 @@ drop policy if exists ai_conv_owner on public.ai_conversations;
 create policy ai_conv_owner on public.ai_conversations
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+-- Currency tables: a user may READ their own wallet/ledger/ads, but all WRITES
+-- go through the server (service role bypasses RLS). No insert/update/delete
+-- policy is granted to normal users → they can never alter their own balance.
+drop policy if exists coin_wallets_read on public.coin_wallets;
+create policy coin_wallets_read on public.coin_wallets
+  for select using (user_id = auth.uid());
+
+drop policy if exists coin_tx_read on public.coin_transactions;
+create policy coin_tx_read on public.coin_transactions
+  for select using (user_id = auth.uid());
+
+drop policy if exists ad_rewards_read on public.ad_rewards;
+create policy ad_rewards_read on public.ad_rewards
+  for select using (user_id = auth.uid());
+
+-- Referrals: the referrer (and the referee, once linked) can read; writes server-side.
+drop policy if exists referrals_read on public.referrals;
+create policy referrals_read on public.referrals
+  for select using (referrer_user_id = auth.uid() or referee_user_id = auth.uid());
+
+-- Gifts: sender and recipient can read their gifts; writes server-side
+-- (the diya debit must be applied atomically on the server).
+drop policy if exists gifts_read on public.gifts;
+create policy gifts_read on public.gifts
+  for select using (sender_user_id = auth.uid() or recipient_user_id = auth.uid());
+
 -- ── Auto-create an app_users row when a new auth user signs up ──────────────
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -324,3 +434,27 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ── Auto-stamp updated_at on rows that change ───────────────────────────────
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists coin_wallets_set_updated on public.coin_wallets;
+create trigger coin_wallets_set_updated before update on public.coin_wallets
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists ai_conv_set_updated on public.ai_conversations;
+create trigger ai_conv_set_updated before update on public.ai_conversations
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists ritual_set_updated on public.ritual_journeys;
+create trigger ritual_set_updated before update on public.ritual_journeys
+  for each row execute function public.set_updated_at();
+
+-- Prune index: lets us cheaply delete stale shared daily content later.
+create index if not exists cached_daily_created_idx on public.cached_daily(created_at);
