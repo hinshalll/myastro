@@ -1,0 +1,14 @@
+# Myastro — DEV-ONLY requirements (NOT installed in production)
+# =============================================================================
+# Install with:  pip install -r requirements.txt -r requirements-dev.txt
+#
+# These are tools used only during development / validation. The shipping
+# runtime (Streamlit app + FastAPI backend) does NOT import any of them.
+
+# ── Ephemeris validation reference ───────────────────────────────────────────
+# Swiss Ephemeris (AGPL / paid). Kept ONLY as the local measuring-stick to
+# cross-check the free Skyfield engine (scripts/validate_ephemeris.py and the
+# EPHEMERIS_PROVIDER=swisseph branch of shared/astro/ephemeris.py). It is NEVER
+# imported by the default (skyfield) runtime, so production stays AGPL-free.
+# See docs/ephemeris-decision.md.
+pyswisseph>=2.10

@@ -26,11 +26,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python deps first (better layer caching on code-only changes)
+# Install Python deps first (better layer caching on code-only changes).
+# NOTE: requirements.txt is the SE-free runtime set (no pyswisseph). The Swiss
+# Ephemeris dev reference lives in requirements-dev.txt and is NOT installed here.
 COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# App code (ephe/ Swiss Ephemeris data is included; see .dockerignore)
+# Bake the JPL kernel (de440s.bsp, ~32 MB, public domain) into the image so the
+# free Skyfield engine never has to download it at runtime (the container FS is
+# ephemeral on Render's free tier — a runtime download would repeat on every cold
+# start). Its own cached layer: not invalidated by app-code changes below.
+RUN python -c "from skyfield.api import load; load('de440s.bsp')"
+
+# App code. de440s.bsp is gitignored so it is NOT in the build context — the
+# baked copy above survives this COPY.
 COPY . .
 
 # Render injects $PORT; default to 8000 for local `docker run`.

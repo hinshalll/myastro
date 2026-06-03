@@ -1,6 +1,7 @@
 # Keep the API image small + the build fast. Exclude everything the FastAPI
-# backend doesn't need at runtime. (Do NOT exclude ephe/ — Swiss Ephemeris
-# data files are required by the chart engine.)
+# backend doesn't need at runtime. The chart engine is the free Skyfield engine
+# (de440s.bsp JPL kernel, baked in by the Dockerfile) — it does NOT use the old
+# Swiss Ephemeris ephe/ data, so that is excluded below.
 
 .git
 .github
@@ -19,6 +20,10 @@ web
 ui_streamlit
 design_import
 node_modules
+
+# Swiss Ephemeris data — no longer used by the runtime (the free Skyfield engine
+# replaced it). Kept in the repo only for the local dev validation reference.
+ephe
 
 # Local secrets — env vars are set in the Render dashboard instead
 .streamlit/secrets.toml
