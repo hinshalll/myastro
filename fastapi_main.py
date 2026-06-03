@@ -45,7 +45,18 @@ URL map
     /palmistry/read              POST  features/palmistry/api.py
     /face_reading/read           POST  features/face_reading/api.py
     /vault/{user_id}             GET/POST/PUT/DELETE  features/vault/api.py
+    /me/profiles                 GET/POST  features/me/api.py  (Supabase; JWT required)
+    /me/profiles/{id}            PUT/DELETE
+    /me/checkins                 GET/POST  (POST upserts + bumps the check-in streak)
+    /me/journal                  GET/POST
+    /me/streaks/{kind}           GET
     /docs                        Interactive Swagger UI (built into FastAPI)
+
+Auth note
+---------
+The /me/* endpoints require a Supabase JWT: `Authorization: Bearer <token>`.
+The mobile app gets that token from Supabase Auth (client-side sign-in); this
+backend verifies it and resolves the user_id. All other routers are unchanged.
 """
 
 from __future__ import annotations
@@ -157,6 +168,7 @@ _FEATURES = [
     ("face_reading", "features.face_reading.api"),  # /read (photo; optional kundli cross-ref)
     ("vault",        "features.vault.api"),
     ("oracle",       "features.oracle.api"),   # /deep-analysis, /matchmaking, /marriage, /gochara, /compare, /prashna
+    ("me",           "features.me.api"),       # authenticated user data: profiles/checkins/journal/streaks (Supabase + RLS)
 ]
 
 for prefix, module_path in _FEATURES:
