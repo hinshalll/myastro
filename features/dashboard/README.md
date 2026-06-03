@@ -139,7 +139,8 @@ needs no profile.
   - plus `weekday`, `sunrise`, `sunset`.
 
 Pure math, no AI, no new dependencies. All logic lives in `shared/astro/astro_calc.py`
-(`daily_timing_windows`, `sun_rise_set` via Swiss Ephemeris + classical weekday segment
+(`daily_timing_windows`, `sun_rise_set` via the free ephemeris adapter — Skyfield, ≤21s vs
+Swiss Ephemeris — + classical weekday segment
 rules). Day windows split sunrise→sunset into 8 equal parts; the kaal periods pick the
 weekday's segment; Choghadiya walks the 7-fold wheel from the weekday's starting period.
 

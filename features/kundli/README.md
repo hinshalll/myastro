@@ -86,9 +86,12 @@ Reuses `build_lifetime_dasha_sequence` + `build_vimshottari_timeline` from
 
 **Lazy heavy imports:** `service.py` imports the PDF builder (jinja2/weasyprint) and the
 AI content/narrative helpers **lazily** via module `__getattr__`. Computing a chart only
-needs `pyswisseph`, so `/kundli/compute` (and any lean deploy serving just the chart) runs
-without PDF or AI libraries installed. Likewise `fastapi_main._init_backend()` guards the
-Gemini/DeepSeek init in try/except — a missing AI lib no longer crashes the math-only API.
+needs the free ephemeris engine (skyfield + jplephem + pyerfa + the `de440s.bsp` kernel) —
+**no Swiss Ephemeris** — so `/kundli/compute` (and any lean deploy serving just the chart)
+runs without PDF or AI libraries installed. The chart honours `profile.ayanamsha` (any of
+`lahiri`/`raman`/`krishnamurti`/`yukteshwar`/`fagan_bradley`, default lahiri). Likewise
+`fastapi_main._init_backend()` guards the Gemini/DeepSeek init in try/except — a missing AI
+lib no longer crashes the math-only API.
 
 ## AI cost
 

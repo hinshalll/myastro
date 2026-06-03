@@ -48,12 +48,40 @@ Per-feature folder contract (every feature has these):
 ## 1. The shared engine — `shared/astro/`
 
 This is the part that makes the whole product defensible: a full, classically-accurate
-Vedic compute engine. **Zero Streamlit/FastAPI imports** — pure Python + Swiss Ephemeris.
-Sidereal, Lahiri ayanamsha, Whole-Sign houses + KP Placidus cusps.
+Vedic compute engine. **Zero Streamlit/FastAPI imports.** Sidereal, Lahiri ayanamsha
+(default; 4 more available), Whole-Sign houses + KP Placidus cusps.
+
+**Ephemeris = the free, owned Skyfield engine** (MIT + JPL DE440s public-domain + pyERFA
+BSD) reached through a one-file **adapter seam** — the runtime is **fully Swiss-Ephemeris-
+free**. See §1.0 below and `docs/ephemeris-decision.md`.
+
+### 1.0 Ephemeris adapter seam — `ephemeris.py` + `ephem_skyfield.py`
+The whole app gets every raw celestial number from **`shared.astro.ephemeris`** (the
+adapter), never from a specific engine directly. The provider is chosen by the
+`EPHEMERIS_PROVIDER` env var:
+- **`skyfield`** (DEFAULT) — the free shipping engine in `ephem_skyfield.py` (Skyfield +
+  JPL `de440s.bsp` + pyERFA). No Swiss Ephemeris.
+- **`swisseph`** — Swiss Ephemeris, **dev cross-validation only** (`pyswisseph` lives in
+  `requirements-dev.txt`, not installed in production).
+
+Adapter surface (all return plain Python floats/lists): `ayanamsa(jd, mode)`,
+`planet_lon(_speed)(jd, name, mode)`, `planet_lat`, `node_lon` (**Mean** node — unified
+convention), `ascendant`, `houses(system, mode)`, tropical variants
+(`planet_lon_tropical`, `ascendant_tropical`, `houses_tropical`, `node_lon_tropical`) for
+the Western chart, calendar helpers (`julday`, `jd_to_utc`), `sun_rise_set`,
+`moon_rise_set`, `next_eclipse(s)`. **Planet IDs are NAME STRINGS** ("Moon", "Mars" …).
+- **Ayanamsha `mode`** — all five implemented on the free engine via frozen J2000 anchors
+  + shared IAU-2006 precession: `lahiri` (default), `raman`, `krishnamurti` (KP),
+  `yukteshwar`, `fagan_bradley`. Validated to ≤0.001″ vs Swiss Ephemeris.
+- **Validation:** `scripts/validate_ephemeris.py` diffs the free engine vs Swiss Ephemeris
+  (positions, ayanamshas, ascendant, houses, tropical, latitude, calendar, all 16 vargas,
+  panchanga) → 0 mismatches except the irreducible D60 boundary rate (~0.1%).
 
 ### 1.1 `constants.py` (the lookup tables everything keys on)
-- `SIGNS` (12), `PLANETS` (7 classical → Swiss IDs), `OUTER_PLANETS` (Uranus/Neptune/Pluto,
-  display + Western only — skipped by dasha/yoga/dignity logic).
+- `SIGNS` (12), `PLANETS` (7 classical → **name strings**, passed to the ephemeris adapter),
+  `OUTER_PLANETS` (Uranus/Neptune/Pluto, display + Western only — skipped by
+  dasha/yoga/dignity logic). *(No `swisseph` import — IDs became names when the engine
+  moved off Swiss Ephemeris.)*
 - `DIGNITIES` (exalt/debil sign per planet), `OWN_SIGNS`, `SIGN_LORDS_MAP`, `COMBUST_DEGREES`.
 - `NAKSHATRAS` (27), `NAKSHATRA_LORDS` (Vimshottari order ×3), `NAK_NATURES` (Fixed/Movable/
   Fierce/Mixed/Swift/Tender/Sharp → which stars), `NAK_ADVICE` (plain-English per nature).
@@ -106,8 +134,10 @@ The flagship. `BirthData` (input) → `compute_chart(bd)` → `KundliChart` (eve
   - `houses_reliable` (needs any time), `divisionals_reliable` (needs *exact* time).
   - Unknown time → **noon placeholder** so the chart never crashes; only Moon-based output
     is shown. This is why every mobile daily endpoint works at any birth-time tier.
-- **`compute_chart`** pipeline: ayanamsha set → julian day → all 9 planets + outer →
-  Lagna + Placidus cusps → Panchanga → per-planet `PlanetPosition` (sign, house, nakshatra,
+- **`compute_chart`** pipeline: pick ayanamsha (`bd.ayanamsha`, default lahiri — threaded
+  through every position/lagna/cusp call) → julian day → all 9 planets + outer (Rahu/Ketu =
+  **Mean** node) → Lagna + Placidus cusps → Panchanga → per-planet `PlanetPosition`
+  (sign, house, nakshatra,
   pada, sub-lord, avastha, retrograde, **combustion** with retro-aware orbs, **dignity**) →
   houses with occupants → `LagnaInfo` (incl. Arudha + Indu) → functional profile → Chara
   Karakas → conjunctions/aspects/graha-yuddha. Then **layered enrichment** (each in its own
@@ -267,7 +297,8 @@ service_role key is server-only — never ship it to the app; the app uses the a
   (en/hi/ta/te/mr/bn/gu), optional Western appendix, optional AI narrative (~₹5).
 - **FastAPI:** `/compute` (compact summary — what the app renders), `/dasha-timeline`
   (Life Chapters), `/free-reading`, `/premium-pdf`.
-- **Engine:** `kundli.py` (§1.3). Lazy heavy imports → `/compute` needs only pyswisseph.
+- **Engine:** `kundli.py` (§1.3). Lazy heavy imports → `/compute` needs only the free
+  ephemeris engine (skyfield + jplephem + pyerfa + the `de440s.bsp` kernel), no SE.
 
 ### 4.4 oracle — 6 premium sub-features (Streamlit-free `api.py`, lazy `__init__`)
 - `/deep-analysis` (Full Life Reading — 3 parallel agents Parashari/Timing/KP → synthesizer),

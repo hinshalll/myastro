@@ -1,10 +1,28 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-05-27 — Mobile build underway (see `MOBILE_APP_BLUEPRINT.md`).
+**Last updated:** 2026-06-03 — Ephemeris adapter integrated; runtime is Swiss-Ephemeris-free.
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
+
+### Recent changes (2026-06-03) — free Skyfield ephemeris wired in (SE-free runtime)
+- **The whole app now gets every celestial number from the adapter `shared.astro.ephemeris`**
+  (default provider = the free Skyfield + JPL DE440s + pyERFA engine), never from Swiss
+  Ephemeris directly. `astro_calc`, `kundli`, `scoring`, `muhurta`, `dossier_builder`, the
+  `features/*` routers and both entry points (Streamlit `app.py`, `fastapi_main.py`) were
+  rerouted; **no `swe` in the runtime path.** Validated 0 sign/nakshatra/house mismatches vs
+  Swiss Ephemeris (dual-provider chart compare) + `scripts/validate_ephemeris.py`.
+- **All 5 ayanamshas on the free engine** — `lahiri` (default), `raman`, `krishnamurti` (KP),
+  `yukteshwar`, `fagan_bradley`, each a frozen J2000 anchor + shared IAU-2006 precession
+  (≤0.001″ vs SE). `bd.ayanamsha` now actually drives the whole chart.
+- **Rahu/Ketu unified to the Mean node everywhere** (was TRUE in astro_calc/kundli, MEAN in
+  scoring). **Western/tropical chart** also runs on the free engine (tropical positions +
+  Placidus + ascendant + Mean node, ≤2.4″ vs SE). **Graha Yuddha** uses real ecliptic latitude.
+- **`pyswisseph` is now dev-only** (`requirements-dev.txt`) — kept solely as the validation
+  reference. The Lahiri/other anchors are frozen constants (no `swisseph` import at runtime).
+  `constants.PLANETS` are NAME strings. Docker bakes in `de440s.bsp`; the old `ephe/` SE data
+  is excluded from the image. See `docs/ephemeris-decision.md`.
 
 ### Recent changes (2026-05-27) — AI-free quick-decide + clearer timing
 - **New endpoint `POST /dashboard/decide-quick`** — an AI-FREE one-tap "should I do X right
@@ -152,7 +170,7 @@
   tiling sunrise→next sunrise, each `{name, start, end, quality, period}`,
   `quality ∈ good|neutral|avoid`), a one-line `summary`, and `weekday`/`sunrise`/`sunset`.
 - **New pure functions in `shared/astro/astro_calc.py`:** `daily_timing_windows`,
-  `sun_rise_set` (Swiss Ephemeris sunrise/sunset), plus the classical weekday segment
+  `sun_rise_set` (sunrise/sunset via the free ephemeris adapter, ≤21s vs SE), plus the classical weekday segment
   tables for Rahu/Yamaganda/Gulika and the Choghadiya wheel. Pure math — no AI, no PDF,
   no new dependencies. (The kaal fields on `PanchangaInfo` were only ever declared, never
   populated; this is the first code that actually computes them.)
@@ -180,7 +198,8 @@
 - **Lean math path.** `features/kundli/service.py` now imports the PDF builder
   (jinja2/weasyprint) and AI content/narrative helpers **lazily** (module `__getattr__`),
   and `fastapi_main._init_backend()` guards Gemini/DeepSeek init in try/except. The
-  chart API runs with only `pyswisseph` installed — no AI/PDF libs required. Powers the
+  chart API runs with only the free ephemeris engine (skyfield + jplephem + pyerfa +
+  `de440s.bsp`) installed — no Swiss Ephemeris, no AI/PDF libs required. Powers the
   React Native app (`mobile/`), which reaches the API over LAN in dev.
 - **RAG embeddings → ONNX (PyTorch removed).** `qdrant_utils.py` now produces dense
   vectors via a `FastEmbedDense` class (FastEmbed / ONNX) instead of
@@ -209,7 +228,7 @@ features/                       ← ALL user-visible features. One folder each.
   vault/                        (Saved profiles CRUD + import/export)
 
 shared/                         ← Backend plumbing shared by every feature.
-  astro/                        Swiss Ephemeris + dasha + scoring + chart compute
+  astro/                        free Skyfield ephemeris (adapter) + dasha + scoring + chart compute
     astro_calc.py               Ephemeris + dasha + panchanga
     constants.py                Signs, planets, dignities
     dossier_builder.py          generate_astrology_dossier + get_gochara_overlay
