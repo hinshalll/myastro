@@ -27,6 +27,12 @@ create table if not exists public.app_users (
   settings    jsonb default '{}'::jsonb,
   created_at  timestamptz default now()
 );
+-- Idempotency: `create table if not exists` will NOT add new columns to an
+-- already-existing app_users (e.g. a DB created before depth_mode landed). This
+-- guarantees the column exists on re-run.
+alter table public.app_users
+  add column if not exists depth_mode text not null default 'simple'
+  check (depth_mode in ('simple','full'));
 
 -- ── Profiles: the user themselves + people they save (People tab) ───────────
 -- source: 'self' (the account owner) | 'friend' (a live app user) | 'manual' (static chart)
