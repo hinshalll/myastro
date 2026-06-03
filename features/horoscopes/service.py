@@ -11,8 +11,7 @@ import json
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
-import swisseph as swe
-
+from shared.astro import ephemeris
 from shared.astro.constants import PLANETS
 from shared.astro.astro_calc import (
     local_to_julian_day, get_planet_longitude_and_speed,
@@ -35,7 +34,7 @@ _FALLBACK = (
 
 def generate_western_forecast(sun_sign: str, today_str: str) -> str:
     """Daily Western (tropical) horoscope. `today_str` is part of the cache key."""
-    now_jd = swe.julday(*[int(x) for x in today_str.split("-")], 12.0)
+    now_jd = ephemeris.julday(*[int(x) for x in today_str.split("-")], 12.0)
 
     lines = [f"TODAY'S TROPICAL TRANSITS ({today_str}):"]
     for pname, pid in PLANETS.items():
@@ -68,7 +67,7 @@ def generate_vedic_forecast(prof_json: str, timeframe: str, today_str: str) -> s
     natal_moon_sidx = sign_index_from_lon(natal_moon_lon)
     rashi = sign_name(natal_moon_sidx)
 
-    now_jd = swe.julday(*[int(x) for x in today_str.split("-")], 12.0)
+    now_jd = ephemeris.julday(*[int(x) for x in today_str.split("-")], 12.0)
     lines = [f"GOCHARA (TRANSIT) FROM NATAL MOON ({today_str}):"]
     for pname, pid in PLANETS.items():
         t_lon, _ = get_planet_longitude_and_speed(now_jd, pid)

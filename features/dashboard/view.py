@@ -5,10 +5,10 @@ ui_streamlit/pages/dashboard.py
 import json
 import random
 import streamlit as st
-import swisseph as swe
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 
+from shared.astro import ephemeris
 from shared.astro.constants import PLANETS, DASHA_ORDER
 from features.tarot.constants import FULL_TAROT_DECK, TAROT_BASE
 from shared.astro.astro_calc import (
@@ -117,9 +117,8 @@ def show_dashboard():
         for i in range(7):
             d = now + timedelta(days=i)
             utc_d = d.astimezone(ZoneInfo("UTC"))
-            jd = swe.julday(utc_d.year, utc_d.month, utc_d.day, 12.0)
-            moon_raw, _ = swe.calc_ut(jd, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
-            moon = float(moon_raw[0]) % 360
+            jd = ephemeris.julday(utc_d.year, utc_d.month, utc_d.day, 12.0)
+            moon = ephemeris.planet_lon(jd, "Moon")
             tara = calculate_tara_bala(natal_moon, moon)
             is_today = (i == 0)
             if is_today:
@@ -182,7 +181,7 @@ def show_dashboard():
                         jd_nat, _, _ = local_to_julian_day(date.fromisoformat(prof["date"]), datetime.strptime(prof["time"],"%H:%M").time(), prof["tz"])
                         natal_moon, _ = get_planet_longitude_and_speed(jd_nat, PLANETS["Moon"])
                         dt_now = datetime.now(ZoneInfo("UTC"))
-                        jd_now = swe.julday(dt_now.year, dt_now.month, dt_now.day, dt_now.hour + dt_now.minute / 60.0)
+                        jd_now = ephemeris.julday(dt_now.year, dt_now.month, dt_now.day, dt_now.hour + dt_now.minute / 60.0)
                         transit_moon, _ = get_planet_longitude_and_speed(jd_now, PLANETS["Moon"])
                         tara = calculate_tara_bala(natal_moon, transit_moon)
                         py_verdict = "YES" if tara["status"] == "Go" else ("WAIT" if tara["status"] == "Stop" else "PROCEED CAUTIOUSLY")

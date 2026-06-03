@@ -151,8 +151,8 @@ check("Same-nadi different-rashi-lord triggers PARTIAL exception",
 # ─────────────────────────────────────────────────────────────────────────────
 section("F9 — calculate_marital_analysis transparency fields")
 
-import swisseph as swe
-jd_test = swe.julday(1995, 6, 15, 6.5)  # arbitrary chart
+from shared.astro import ephemeris
+jd_test = ephemeris.julday(1995, 6, 15, 6.5)  # arbitrary chart
 m = calculate_marital_analysis(jd_test, 28.6, 77.2)
 check("UL_Lord_Used field present", "UL_Lord_Used" in m,
       f"keys: {list(m.keys())}")

@@ -2,7 +2,7 @@
 ui_streamlit/app.py  (entry point — run with: streamlit run ui_streamlit/app.py)
 
 Responsibilities:
-  1. Page config + Swiss Ephemeris setup
+  1. Page config
   2. Init Gemini (ONE call, centralised in shared.ai)
   3. Load profiles from LocalStorage into session state
   4. Route nav_page to the right show_*() function
@@ -10,6 +10,9 @@ Responsibilities:
 
 Nothing else lives here. All helpers are in state.py.
 All page logic is in pages/.
+
+Ephemeris: shared.astro.ephemeris (default provider = Skyfield + JPL DE440s).
+No Swiss Ephemeris in the shipping runtime path. See docs/ephemeris-decision.md.
 """
 
 import sys, os
@@ -17,7 +20,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import json
 import streamlit as st
-import swisseph as swe
 from streamlit_local_storage import LocalStorage
 
 # ── engine imports ────────────────────────────────────────────────────────────
@@ -50,12 +52,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Swiss Ephemeris ───────────────────────────────────────────────────────────
-try:
-    swe.set_ephe_path("ephe")
-except Exception:
-    pass
-swe.set_sid_mode(swe.SIDM_LAHIRI)
+# ── Ephemeris ────────────────────────────────────────────────────────────────
+# Engine setup is handled in shared.astro.ephemeris (Skyfield default).
+# No per-call configuration is required from the UI layer.
 
 # ── AI keys — configured ONCE here, used everywhere via shared.ai ─────────────
 api_key = st.secrets.get("GEMINI_API_KEY")

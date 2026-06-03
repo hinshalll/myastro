@@ -105,15 +105,8 @@ def _init_backend() -> None:
             print(f"[fastapi_main] WARNING: DeepSeek init skipped: "
                   f"{type(e).__name__}: {e}")
 
-    # Swiss Ephemeris path
-    try:
-        import swisseph as swe
-        ephe_path = Path(__file__).parent / "ephe"
-        if ephe_path.exists():
-            swe.set_ephe_path(str(ephe_path))
-        swe.set_sid_mode(swe.SIDM_LAHIRI)
-    except Exception:
-        pass
+    # Ephemeris: handled in shared.astro.ephemeris (Skyfield default — no setup
+    # required, no SE in the shipping runtime). See docs/ephemeris-decision.md.
 
 
 _init_backend()

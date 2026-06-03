@@ -121,17 +121,16 @@ if router is not None:
         so it works even when the birth time is unknown. The `question` is optional
         and only echoed back (the verdict is the day's Moon quality, not parsed).
         """
-        import swisseph as swe
         from datetime import datetime
         from zoneinfo import ZoneInfo
+        from shared.astro import ephemeris
         from shared.astro.constants import PLANETS
         from shared.astro.astro_calc import get_planet_longitude_and_speed, calculate_tara_bala
         from shared.astro.forecast import _natal_moon_lon  # unknown-time-safe natal Moon
 
         natal = _natal_moon_lon(req.profile)
-        swe.set_sid_mode(swe.SIDM_LAHIRI)
         now = datetime.now(ZoneInfo("UTC"))
-        jd_now = swe.julday(now.year, now.month, now.day, now.hour + now.minute / 60.0)
+        jd_now = ephemeris.julday(now.year, now.month, now.day, now.hour + now.minute / 60.0)
         transit, _ = get_planet_longitude_and_speed(jd_now, PLANETS["Moon"])
         tara = calculate_tara_bala(natal, transit)
 
@@ -170,7 +169,7 @@ if router is not None:
 
     @router.post("/decide", response_model=DecideResponse)
     def decide(req: DecideRequest) -> DecideResponse:
-        import swisseph as swe
+        from shared.astro import ephemeris
         from shared.astro.constants import PLANETS
         from shared.astro.astro_calc import (
             local_to_julian_day, get_planet_longitude_and_speed, calculate_tara_bala,
@@ -184,8 +183,8 @@ if router is not None:
         jd_nat, _, _ = local_to_julian_day(p_date, p_time, prof["tz"])
         natal_moon, _ = get_planet_longitude_and_speed(jd_nat, PLANETS["Moon"])
         dt_now = datetime.now(ZoneInfo("UTC"))
-        jd_now = swe.julday(dt_now.year, dt_now.month, dt_now.day,
-                            dt_now.hour + dt_now.minute / 60.0)
+        jd_now = ephemeris.julday(dt_now.year, dt_now.month, dt_now.day,
+                                  dt_now.hour + dt_now.minute / 60.0)
         transit_moon, _ = get_planet_longitude_and_speed(jd_now, PLANETS["Moon"])
         tara = calculate_tara_bala(natal_moon, transit_moon)
         py_verdict = "YES" if tara["status"] == "Go" else ("WAIT" if tara["status"] == "Stop" else "PROCEED CAUTIOUSLY")
