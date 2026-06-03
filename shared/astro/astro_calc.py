@@ -1,13 +1,13 @@
 import re
 import math
 import json
-import swisseph as swe
 from functools import lru_cache
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from geopy.geocoders import Photon
 from timezonefinder import TimezoneFinder
 from shared.astro.constants import *
+from shared.astro import ephemeris  # the swappable ephemeris adapter (Skyfield default)
 
 def safe_json(text_response, fallback_dict):
     try:
@@ -91,31 +91,17 @@ _CHOG_TIP = {
 
 
 def _jd_ut_to_local(jd_ut, tz_name):
-    """Swiss-Ephemeris UT Julian Day → tz-aware local datetime."""
-    y, m, day, hour = swe.revjul(jd_ut, swe.GREG_CAL)
-    total_sec = int(round(hour * 3600))
-    h, rem = divmod(total_sec, 3600)
-    mi, s = divmod(rem, 60)
-    base = datetime(y, m, day, 0, 0, tzinfo=ZoneInfo("UTC"))
-    return (base + timedelta(hours=h, minutes=mi, seconds=s)).astimezone(ZoneInfo(tz_name))
+    """UT Julian Day → tz-aware local datetime (engine-independent calendar math)."""
+    return ephemeris.jd_to_utc(jd_ut).astimezone(ZoneInfo(tz_name))
 
 
 def sun_rise_set(d, lat, lon, tz_name):
     """Sunrise, sunset and the NEXT day's sunrise for a date+location.
-    Returns three tz-aware local datetimes: (sunrise, sunset, next_sunrise)."""
-    jd_midnight, _, _ = local_to_julian_day(d, time(0, 0), tz_name)
-    geopos = (lon, lat, 0.0)
+    Returns three tz-aware local datetimes: (sunrise, sunset, next_sunrise).
 
-    def _event(jd_start, rsmi):
-        _, tret = swe.rise_trans(jd_start, swe.SUN, rsmi, geopos)
-        return tret[0]
-
-    jd_rise = _event(jd_midnight, swe.CALC_RISE)
-    jd_set = _event(jd_midnight, swe.CALC_SET)
-    jd_next_rise = _event(jd_set, swe.CALC_RISE)
-    return (_jd_ut_to_local(jd_rise, tz_name),
-            _jd_ut_to_local(jd_set, tz_name),
-            _jd_ut_to_local(jd_next_rise, tz_name))
+    Delegates to the ephemeris adapter (Skyfield: validated to ≤21s vs Swiss
+    Ephemeris's standard upper-limb-with-refraction definition)."""
+    return ephemeris.sun_rise_set(d, lat, lon, tz_name)
 
 
 def _hm(dt): return dt.strftime("%H:%M")
@@ -211,10 +197,9 @@ _SANDHI_ORB_DEG = 1.0
 
 
 def _moon_lon_sidereal(dt_utc):
-    jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day,
-                    dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0)
-    res, _ = swe.calc_ut(jd, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
-    return float(res[0]) % 360
+    jd = ephemeris.julday(dt_utc.year, dt_utc.month, dt_utc.day,
+                          dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0)
+    return ephemeris.planet_lon(jd, "Moon")
 
 
 def chandra_sandhi_window(d, tz_name, orb_deg=_SANDHI_ORB_DEG):
@@ -224,7 +209,7 @@ def chandra_sandhi_window(d, tz_name, orb_deg=_SANDHI_ORB_DEG):
 
     Returns a display-ready dict (24h HH:MM local) or {"present": False}.
     """
-    swe.set_sid_mode(swe.SIDM_LAHIRI)  # match the app's sign assignments (Lahiri)
+    # (Adapter is always Lahiri-sidereal; no global state to set.)
     lz = ZoneInfo(tz_name)
     day_start = datetime(d.year, d.month, d.day, 0, 0, tzinfo=lz)
 
@@ -270,43 +255,43 @@ def chandra_sandhi_window(d, tz_name, orb_deg=_SANDHI_ORB_DEG):
 
 def next_eclipse(d, tz_name="UTC", lat=None, lon=None, horizon_days=30):
     """Soonest upcoming solar OR lunar eclipse on/after date `d` (whichever is
-    sooner). Pure Swiss-Ephemeris (global search). `present` is True only if the
-    eclipse falls within `horizon_days` (else the app hides the card).
+    sooner). Delegates to the ephemeris adapter — Skyfield default (eclipse
+    DATES are exact vs Swiss Ephemeris). `present` is True only if the eclipse
+    falls within `horizon_days` (else the app hides the card).
 
     Sutak (traditional): begins ~12h before a solar / ~9h before a lunar eclipse.
     """
-    jd_start = swe.julday(d.year, d.month, d.day, 0.0)
+    ev = ephemeris.next_eclipse(d, horizon_days=horizon_days)
+    if not ev["type"]:
+        # No eclipse in search horizon — return a safe "hide the card" payload.
+        return {"present": False, "type": None, "date": None,
+                "days_until": None, "sutak_start": None, "sutak_note": "",
+                "why": "", "sanskrit": ""}
 
-    # Solar (global). ifltype=0 → any eclipse type; backward=False → forward search.
-    _, t_sol = swe.sol_eclipse_when_glob(jd_start, swe.FLG_SWIEPH, 0, False)
-    jd_sol = t_sol[0]
-    # Lunar (global). pyswisseph names this lun_eclipse_when; some builds add _glob.
-    _lun_fn = getattr(swe, "lun_eclipse_when_glob", None) or swe.lun_eclipse_when
-    _, t_lun = _lun_fn(jd_start, swe.FLG_SWIEPH, 0, False)
-    jd_lun = t_lun[0]
-
-    if jd_sol <= jd_lun:
-        jd_max, etype, sanskrit, sutak_hours = jd_sol, "Surya Grahan", "सूर्य ग्रहण", 12
+    if ev["type"] == "Surya Grahan":
+        sanskrit = "सूर्य ग्रहण"
         why = ("A solar eclipse is coming up — traditionally a time to pause new "
                "beginnings, keep things low-key and turn inward.")
     else:
-        jd_max, etype, sanskrit, sutak_hours = jd_lun, "Chandra Grahan", "चन्द्र ग्रहण", 9
+        sanskrit = "चन्द्र ग्रहण"
         why = ("A lunar eclipse is coming up — emotions can run high, so it's a time "
                "for rest, reflection and gentle routines.")
 
-    ecl_local = _jd_ut_to_local(jd_max, tz_name)
-    days_until = (ecl_local.date() - d).days
-    present = 0 <= days_until <= horizon_days
-
-    sutak_start = ecl_local - timedelta(hours=sutak_hours)
+    # Eclipse date from the adapter is UTC. Anchor sutak window to local-midnight
+    # of that date so the time-of-day label stays meaningful even though we don't
+    # carry the eclipse maximum's HH:MM through the adapter (day-level UI only).
+    ecl_local_midnight = datetime(ev["date"].year, ev["date"].month, ev["date"].day,
+                                  tzinfo=ZoneInfo(tz_name))
+    sutak_start = ecl_local_midnight - timedelta(hours=ev["sutak_hours"])
     return {
-        "present": present,
-        "type": etype,
-        "date": ecl_local.date().isoformat(),
-        "days_until": days_until,
+        "present": ev["present"],
+        "type": ev["type"],
+        "date": ev["date"].isoformat(),
+        "days_until": ev["days_until"],
         "sutak_start": sutak_start.strftime("%Y-%m-%d %H:%M"),
         "sutak_note": (f"Sutak (the caution period) traditionally begins about "
-                       f"{sutak_hours} hours before, around {sutak_start.strftime('%d %b %H:%M')}."),
+                       f"{ev['sutak_hours']} hours before, around "
+                       f"{sutak_start.strftime('%d %b %H:%M')}."),
         "why": why,
         "sanskrit": sanskrit,
     }
@@ -325,19 +310,18 @@ def get_western_sign(month,day):
 
 
 def get_western_transits_today():
-    """Calculates live Tropical (Western) transits safely without altering Vedic settings."""
+    """Live Tropical (Western) transits via the ephemeris adapter (Skyfield)."""
     dt_now = datetime.now(ZoneInfo("UTC"))
-    jd = swe.julday(dt_now.year, dt_now.month, dt_now.day, dt_now.hour + dt_now.minute / 60.0)
-    
+    jd = ephemeris.julday(dt_now.year, dt_now.month, dt_now.day,
+                          dt_now.hour + dt_now.minute / 60.0)
+
     western_pos = {}
-    for pname, pid in PLANETS.items():
-        # Using swe.FLG_SWIEPH without the Sidereal flag calculates Tropical
-        res, _ = swe.calc_ut(jd, pid, swe.FLG_SWIEPH)
-        lon = float(res[0]) % 360
+    for pname in PLANETS:
+        lon = ephemeris.planet_lon_tropical(jd, pname)
         sidx = int(lon // 30) % 12
         western_pos[pname] = SIGNS[sidx]
-        
-    return western_pos    
+
+    return western_pos
 
 
 def geocode_place(pt):
@@ -353,53 +337,80 @@ def geocode_place(pt):
 def timezone_for_latlon(lat,lon): return TimezoneFinder().timezone_at(lat=lat,lng=lon)
 
 
-def local_to_julian_day(d,t,tz_name):
-    lz=ZoneInfo(tz_name); dtl=datetime.combine(d,t).replace(tzinfo=lz)
-    dtu=dtl.astimezone(ZoneInfo("UTC"))
-    return swe.julday(dtu.year,dtu.month,dtu.day,dtu.hour+dtu.minute/60+dtu.second/3600),dtl,dtu
+def local_to_julian_day(d, t, tz_name):
+    """Local (date+time, tz) → (UT Julian Day, local datetime, UTC datetime).
+    Pure calendar math via the ephemeris adapter's julday helper."""
+    lz = ZoneInfo(tz_name)
+    dtl = datetime.combine(d, t).replace(tzinfo=lz)
+    dtu = dtl.astimezone(ZoneInfo("UTC"))
+    jd = ephemeris.julday(dtu.year, dtu.month, dtu.day,
+                          dtu.hour + dtu.minute / 60 + dtu.second / 3600)
+    return jd, dtl, dtu
 
 
-def get_lagna_and_cusps(jd,lat,lon):
-    f=swe.FLG_SWIEPH|swe.FLG_SIDEREAL; cusps,ascmc=swe.houses_ex(jd,lat,lon,b"O",f); return float(ascmc[0])%360,cusps
+def get_lagna_and_cusps(jd, lat, lon, mode="lahiri"):
+    """(sidereal Lagna longitude, whole-sign cusps) — Vedic main chart.
+    Whole-sign houses are the locked convention (see docs/ephemeris-decision.md);
+    Placidus is exposed separately via get_placidus_cusps for the KP toggle.
+    `mode` selects the ayanamsha (default lahiri)."""
+    asc = ephemeris.ascendant(jd, lat, lon, mode=mode)
+    cusps = ephemeris.houses(jd, lat, lon, system="whole_sign", mode=mode)
+    return asc % 360, cusps
 
 
-def get_planet_longitude_and_speed(jd,pid):
-    f=swe.FLG_SWIEPH|swe.FLG_SIDEREAL|swe.FLG_SPEED; res,_=swe.calc_ut(jd,pid,f); return float(res[0])%360,float(res[3])
+def get_planet_longitude_and_speed(jd, planet, mode="lahiri"):
+    """(sidereal longitude deg, speed deg/day). `planet` is a NAME string
+    ("Moon", "Mars", ...) per the post-migration constants.PLANETS values.
+    `mode` selects the ayanamsha (default lahiri)."""
+    return ephemeris.planet_lon_speed(jd, planet, mode=mode)
 
 
-def get_planet_lon_lat(jd,pid):
-    f=swe.FLG_SWIEPH|swe.FLG_SIDEREAL|swe.FLG_SPEED; res,_=swe.calc_ut(jd,pid,f)
-    return float(res[0])%360,float(res[1]),float(res[3])
+def get_planet_lon_lat(jd, planet, mode="lahiri"):
+    """(sidereal longitude, ecliptic latitude, speed). Used where the consumer
+    also needs ecliptic latitude (e.g. Graha Yuddha winner determination)."""
+    lon, spd = ephemeris.planet_lon_speed(jd, planet, mode=mode)
+    lat = ephemeris.planet_lat(jd, planet)
+    return lon, lat, spd
 
 
-def get_rahu_longitude(jd):
-    res,_=swe.calc_ut(jd,swe.TRUE_NODE,swe.FLG_SWIEPH|swe.FLG_SIDEREAL); return float(res[0])%360
+def get_rahu_longitude(jd, mode="lahiri"):
+    """Sidereal Rahu longitude — MEAN node (locked Vedic convention).
+    Previously used TRUE_NODE; unified to MEAN to match scoring.py and the
+    ephemeris-decision.md convention. Ketu = +180. `mode` selects the ayanamsha."""
+    return ephemeris.node_lon(jd, mode=mode)
 
 
-def get_placidus_cusps(jd,lat,lon):
-    cusps,_=swe.houses_ex(jd,lat,lon,b"P",swe.FLG_SWIEPH|swe.FLG_SIDEREAL); return cusps
+def get_placidus_cusps(jd, lat, lon, mode="lahiri"):
+    """12 sidereal Placidus house cusps — used by the KP sub-lord computation
+    (Vedic default chart stays whole-sign). Validated to 0.00\" vs SE.
+    `mode` selects the ayanamsha (default lahiri)."""
+    return ephemeris.houses(jd, lat, lon, system="placidus", mode=mode)
 
 
 def get_live_cosmic_weather():
-    dt_now=datetime.now(ZoneInfo("UTC"))
-    jd=swe.julday(dt_now.year,dt_now.month,dt_now.day,dt_now.hour+dt_now.minute/60.0)
-    moon_lon,_=swe.calc_ut(jd,swe.MOON,swe.FLG_SWIEPH|swe.FLG_SIDEREAL)
-    sun_lon,_=swe.calc_ut(jd,swe.SUN,swe.FLG_SWIEPH|swe.FLG_SIDEREAL)
-    moon_sidx=sign_index_from_lon(moon_lon[0]); sun_sidx=sign_index_from_lon(sun_lon[0])
-    nak,_,_=nakshatra_info(moon_lon[0]); panch=get_panchanga(sun_lon[0],moon_lon[0],dt_now)
-    retrogrades=[]
+    """Snapshot of today's sky for the daily cosmic-weather card."""
+    dt_now = datetime.now(ZoneInfo("UTC"))
+    jd = ephemeris.julday(dt_now.year, dt_now.month, dt_now.day,
+                          dt_now.hour + dt_now.minute / 60.0)
+    moon_lon = ephemeris.planet_lon(jd, "Moon")
+    sun_lon = ephemeris.planet_lon(jd, "Sun")
+    moon_sidx = sign_index_from_lon(moon_lon); sun_sidx = sign_index_from_lon(sun_lon)
+    nak, _, _ = nakshatra_info(moon_lon); panch = get_panchanga(sun_lon, moon_lon, dt_now)
+    retrogrades = []
     for pname in ["Mars","Mercury","Jupiter","Venus","Saturn"]:
-        _,spd=get_planet_longitude_and_speed(jd,PLANETS[pname])
-        if spd<0: retrogrades.append(pname)
-    nature_type="Mixed (Mishra)"; advice=NAK_ADVICE["Mixed (Mishra)"]
-    for nt,naks in NAK_NATURES.items():
-        if nak in naks: nature_type=nt; advice=NAK_ADVICE[nt]; break
-    all_pos={}
-    for pname,pid in PLANETS.items():
-        lon,_=get_planet_longitude_and_speed(jd,pid); all_pos[pname]=sign_name(sign_index_from_lon(lon))
-    r_lon,_=swe.calc_ut(jd,swe.TRUE_NODE,swe.FLG_SWIEPH|swe.FLG_SIDEREAL)
-    all_pos["Rahu"]=sign_name(sign_index_from_lon(float(r_lon[0])%360))
-    all_pos["Ketu"]=sign_name(sign_index_from_lon((float(r_lon[0])+180)%360))
+        _, spd = get_planet_longitude_and_speed(jd, pname)
+        if spd < 0: retrogrades.append(pname)
+    nature_type = "Mixed (Mishra)"; advice = NAK_ADVICE["Mixed (Mishra)"]
+    for nt, naks in NAK_NATURES.items():
+        if nak in naks: nature_type = nt; advice = NAK_ADVICE[nt]; break
+    all_pos = {}
+    for pname in PLANETS:
+        lon, _ = get_planet_longitude_and_speed(jd, pname)
+        all_pos[pname] = sign_name(sign_index_from_lon(lon))
+    # Rahu/Ketu — MEAN node (unified Vedic convention)
+    r_lon = get_rahu_longitude(jd)
+    all_pos["Rahu"] = sign_name(sign_index_from_lon(r_lon))
+    all_pos["Ketu"] = sign_name(sign_index_from_lon((r_lon + 180) % 360))
     return {"moon_sign":sign_name(moon_sidx),"sun_sign":sign_name(sun_sidx),"nakshatra":nak,
             "tithi":panch["tithi"],"yoga":panch["yoga"],"retrogrades":retrogrades,
             "nature":nature_type,"advice":advice,"all_pos":all_pos}
@@ -462,19 +473,25 @@ def get_mutual_aspects(ls,planet_data,r_lon,k_lon):
 
 
 def detect_graha_yuddha(jd_ut, planet_data):
-    eligible=["Mars","Mercury","Jupiter","Venus","Saturn"]
-    plist=list(eligible); wars=[]
-    for i,p1 in enumerate(plist):
+    """Planetary war detection — within 0.5° → use ecliptic LATITUDE to pick
+    the winner (the body higher above the ecliptic wins; classical Vedic rule)."""
+    eligible = ["Mars","Mercury","Jupiter","Venus","Saturn"]
+    plist = list(eligible); wars = []
+    for i, p1 in enumerate(plist):
         for p2 in plist[i+1:]:
-            l1=planet_data[p1][0]; l2=planet_data[p2][0]
-            diff=abs(l1-l2); diff=min(diff,360-diff)
-            if diff<=0.5:
+            l1 = planet_data[p1][0]; l2 = planet_data[p2][0]
+            diff = abs(l1 - l2); diff = min(diff, 360 - diff)
+            if diff <= 0.5:
                 try:
-                    res1,_=swe.calc_ut(jd_ut,PLANETS[p1],swe.FLG_SWIEPH|swe.FLG_SIDEREAL); lat1=float(res1[1])
-                    res2,_=swe.calc_ut(jd_ut,PLANETS[p2],swe.FLG_SWIEPH|swe.FLG_SIDEREAL); lat2=float(res2[1])
-                    winner=p1 if lat1>lat2 else p2; loser=p2 if lat1>lat2 else p1
-                except: winner=p1 if l1>l2 else p2; loser=p2 if l1>l2 else p1
-                wars.append((winner,loser,round(diff,3)))
+                    lat1 = ephemeris.planet_lat(jd_ut, p1)
+                    lat2 = ephemeris.planet_lat(jd_ut, p2)
+                    winner = p1 if lat1 > lat2 else p2
+                    loser  = p2 if lat1 > lat2 else p1
+                except Exception:
+                    # Lon-only fallback (last-ditch — should never trigger in practice)
+                    winner = p1 if l1 > l2 else p2
+                    loser  = p2 if l1 > l2 else p1
+                wars.append((winner, loser, round(diff, 3)))
     return wars
 
 
@@ -961,10 +978,10 @@ def detect_yogas(ls,moon_sidx,planet_data,r_lon,k_lon):
 
 
 def calculate_sade_sati(natal_moon_sidx):
-    utc=datetime.now(ZoneInfo("UTC"))
-    jd=swe.julday(utc.year,utc.month,utc.day,utc.hour+utc.minute/60.0)
-    res,_=swe.calc_ut(jd,swe.SATURN,swe.FLG_SWIEPH|swe.FLG_SIDEREAL)
-    sat_sidx=sign_index_from_lon(float(res[0])%360); diff=(sat_sidx-natal_moon_sidx)%12
+    utc = datetime.now(ZoneInfo("UTC"))
+    jd = ephemeris.julday(utc.year, utc.month, utc.day, utc.hour + utc.minute / 60.0)
+    sat_lon, _ = ephemeris.planet_lon_speed(jd, "Saturn")
+    sat_sidx = sign_index_from_lon(sat_lon); diff = (sat_sidx - natal_moon_sidx) % 12
     phases={11:"ACTIVE — Phase 1 (Rising)",0:"ACTIVE — Phase 2 (Peak — most intense)",1:"ACTIVE — Phase 3 (Setting)"}
     if diff in phases: return f"{phases[diff]}: Saturn in {sign_name(sat_sidx)}, natal Moon in {sign_name(natal_moon_sidx)}."
     return f"NOT ACTIVE (Saturn is {diff} signs from natal Moon in {sign_name(natal_moon_sidx)})."

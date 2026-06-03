@@ -1600,9 +1600,10 @@ def calculate_and_rank_profiles(profiles_dossiers, criteria):
       defensible stricter reading but is deferred to avoid false negatives on
       charts with partial KP data.
 
-    • Ayanamsa: Lahiri (SIDM_LAHIRI) is used throughout via the swe.set_sid_mode
-      call in ui_streamlit/app.py. No dual-ayanamsa plumbing is needed — the
-      KP offset (~5'7") is negligible at the heuristic precision this engine targets.
+    • Ayanamsa: Lahiri (Chitrapaksha) is the locked engine convention — set in
+      shared.astro.ephemeris (default Skyfield provider). No per-call setup is
+      needed. The KP offset (~5'7") is negligible at the heuristic precision
+      this engine targets.
 
     • The Overall composite assigns equal weight to every selected criterion.
       If "Hidden Pitfalls" is included alongside "Career Success", they contribute
@@ -2008,10 +2009,10 @@ def calculate_destiny_confirmation(prof_a, prof_b, jda, jdb, dos_a, dos_b):
         signal, exposed but not double-counted).
     """
     pla = {pn: get_planet_longitude_and_speed(jda, pid) for pn, pid in PLANETS.items()}
-    ra_a, _ = get_planet_longitude_and_speed(jda, swe.MEAN_NODE)
+    ra_a = get_rahu_longitude(jda)  # MEAN node via the ephemeris adapter
     pla["Rahu"] = (ra_a, 0); pla["Ketu"] = ((ra_a + 180) % 360, 0)
     plb = {pn: get_planet_longitude_and_speed(jdb, pid) for pn, pid in PLANETS.items()}
-    ra_b, _ = get_planet_longitude_and_speed(jdb, swe.MEAN_NODE)
+    ra_b = get_rahu_longitude(jdb)
     plb["Rahu"] = (ra_b, 0); plb["Ketu"] = ((ra_b + 180) % 360, 0)
 
     laga = sign_index_from_lon(get_lagna_and_cusps(jda, prof_a['lat'], prof_a['lon'])[0])

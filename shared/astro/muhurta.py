@@ -30,8 +30,6 @@ main lines; Sanskrit/technical terms live ONLY in `why` / `sanskrit`.
 
 from datetime import date as _date, timedelta
 
-import swisseph as swe
-
 from shared.astro.constants import PLANETS, NAKSHATRAS, NAK_NATURES
 from shared.astro.astro_calc import (
     local_to_julian_day, get_planet_longitude_and_speed, get_panchanga,
@@ -199,7 +197,7 @@ def plan_muhurta(event_type: str, start_date, end_date, lat: float, lon: float,
     Returns { event_type, event_label, range, found, message, recommendations:[
     { date, start, end, score, reason, why, sanskrit, ...debug } ] }.
     """
-    swe.set_sid_mode(swe.SIDM_LAHIRI)  # match the app's sign/nakshatra assignments
+    # (Ephemeris adapter is always Lahiri-sidereal — no global state to set.)
 
     rules = _EVENT_RULES.get((event_type or "").lower(), _EVENT_RULES["general"])
     label = rules["label"]

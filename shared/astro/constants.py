@@ -1,18 +1,21 @@
-import swisseph as swe
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
          "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"]
 
-PLANETS = {"Sun":swe.SUN,"Moon":swe.MOON,"Mars":swe.MARS,"Mercury":swe.MERCURY,
-           "Jupiter":swe.JUPITER,"Venus":swe.VENUS,"Saturn":swe.SATURN}
+# Planet IDs are NAME STRINGS — passed straight to shared.astro.ephemeris.
+# Historically these mapped to swisseph integer IDs (swe.SUN etc.); changed
+# to plain names when the engine moved off Swiss Ephemeris. All call sites
+# pass these values to ephemeris.planet_lon[_speed](jd, name) which take names.
+PLANETS = {"Sun":"Sun","Moon":"Moon","Mars":"Mars","Mercury":"Mercury",
+           "Jupiter":"Jupiter","Venus":"Venus","Saturn":"Saturn"}
 
 # Outer planets — modern additions (not part of classical Vedic 9-graha set).
 # Used for chart display (some apps include them) and Western appendix.
 # Yoga / dasha / dignity detection skips them automatically since they
 # aren't in DASHA_ORDER / SIGN_LORDS_MAP / OWN_SIGNS.
-OUTER_PLANETS = {"Uranus": swe.URANUS, "Neptune": swe.NEPTUNE, "Pluto": swe.PLUTO}
+OUTER_PLANETS = {"Uranus":"Uranus","Neptune":"Neptune","Pluto":"Pluto"}
 
 DIGNITIES = {"Sun":(0,6),"Moon":(1,7),"Mars":(9,3),"Mercury":(5,11),
              "Jupiter":(3,9),"Venus":(11,5),"Saturn":(6,0)}

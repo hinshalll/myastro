@@ -26,7 +26,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Optional, Literal
 from zoneinfo import ZoneInfo
 
-import swisseph as swe
+from shared.astro import ephemeris  # swappable ephemeris adapter (Skyfield default)
 
 from shared.astro.constants import (
     SIGNS, PLANETS, OUTER_PLANETS, SIGN_LORDS_MAP,
@@ -343,13 +343,12 @@ def _walk(obj, fn):
     return fn(obj)
 
 
-_AYANAMSHA_MAP = {
-    "lahiri":         swe.SIDM_LAHIRI,
-    "raman":          swe.SIDM_RAMAN,
-    "krishnamurti":   swe.SIDM_KRISHNAMURTI,
-    "yukteshwar":     swe.SIDM_YUKTESHWAR,
-    "fagan_bradley":  swe.SIDM_FAGAN_BRADLEY,
-}
+# Ayanamsha registry — only Lahiri is implemented on the free engine (validated
+# 0.00" vs Swiss Ephemeris). Others are kept as recognised names so user/UI input
+# doesn't crash; they currently fall back to Lahiri with a console note. Adding
+# Raman / KP / Yukteshwar / Fagan-Bradley to the free engine = ~5 lines each
+# (fixed J2000 anchor offset relative to Lahiri) — TODO post-launch.
+_AYANAMSHA_NAMES = {"lahiri", "raman", "krishnamurti", "yukteshwar", "fagan_bradley"}
 
 _DIGNITY_TABLE = {
     "Sun":     (0,  6,  [4],     4),
@@ -381,10 +380,18 @@ def _classify_dignity(planet: str, sign_idx: int) -> Optional[str]:
     return None
 
 
+def _normalize_ayanamsha(name: str) -> str:
+    """Canonical ayanamsha key. Unknown names fall back to lahiri (the locked
+    default). All five in _AYANAMSHA_NAMES are implemented on the free engine."""
+    name = (name or "lahiri").lower()
+    return name if name in _AYANAMSHA_NAMES else "lahiri"
+
+
 def _set_ayanamsha(name: str) -> float:
-    sid = _AYANAMSHA_MAP.get(name, swe.SIDM_LAHIRI)
-    swe.set_sid_mode(sid)
-    return float(swe.get_ayanamsa_ut(2451545.0))
+    """Return the J2000 ayanamsa value (degrees) for `name`. All five supported
+    ayanamshas are implemented on the free engine (frozen anchors + shared
+    precession). Unknown names fall back to lahiri."""
+    return ephemeris.ayanamsa(2451545.0, mode=_normalize_ayanamsha(name))
 
 
 def _apply_rectification(bd: BirthData) -> tuple[date, time]:
@@ -398,22 +405,25 @@ def _apply_rectification(bd: BirthData) -> tuple[date, time]:
 
 
 def compute_chart(bd: BirthData) -> KundliChart:
-    """Main entry point — build the full KundliChart from BirthData."""
-    ayan_value = _set_ayanamsha(bd.ayanamsha)
+    """Main entry point — build the full KundliChart from BirthData.
+    The whole chart is computed in bd.ayanamsha (any of the five supported
+    ayanamshas — default lahiri)."""
+    ayan = _normalize_ayanamsha(bd.ayanamsha)
+    ayan_value = _set_ayanamsha(ayan)
     eff_date, eff_time = _apply_rectification(bd)
     jd_ut, dt_local, dt_utc = local_to_julian_day(eff_date, eff_time, bd.tz)
 
     planet_data: dict[str, tuple[float, float]] = {}
     for pname, pid in PLANETS.items():
-        plon, pspd = get_planet_longitude_and_speed(jd_ut, pid)
+        plon, pspd = get_planet_longitude_and_speed(jd_ut, pid, mode=ayan)
         planet_data[pname] = (plon, pspd)
-    r_lon = get_rahu_longitude(jd_ut)
+    r_lon = get_rahu_longitude(jd_ut, mode=ayan)
     k_lon = (r_lon + 180.0) % 360
     # Outer planets — Uranus, Neptune, Pluto (modern additions)
     outer_data: dict[str, tuple[float, float]] = {}
     for pname, pid in OUTER_PLANETS.items():
         try:
-            plon, pspd = get_planet_longitude_and_speed(jd_ut, pid)
+            plon, pspd = get_planet_longitude_and_speed(jd_ut, pid, mode=ayan)
             outer_data[pname] = (plon, pspd)
         except Exception:
             pass  # Pluto pre-1900 may fail; skip silently
@@ -423,8 +433,8 @@ def compute_chart(bd: BirthData) -> KundliChart:
         **outer_data,
     }
 
-    lagna_lon, _ = get_lagna_and_cusps(jd_ut, bd.lat, bd.lon)
-    placidus_cusps = list(get_placidus_cusps(jd_ut, bd.lat, bd.lon))[:12]
+    lagna_lon, _ = get_lagna_and_cusps(jd_ut, bd.lat, bd.lon, mode=ayan)
+    placidus_cusps = list(get_placidus_cusps(jd_ut, bd.lat, bd.lon, mode=ayan))[:12]
     ls = sign_index_from_lon(lagna_lon)
 
     sun_lon = planet_data["Sun"][0]
@@ -1588,14 +1598,19 @@ def yoga_audit(chart) -> list[dict]:
 
 def _dt_to_jd(dt: datetime) -> float:
     dt_utc = dt.astimezone(ZoneInfo("UTC"))
-    return swe.julday(dt_utc.year, dt_utc.month, dt_utc.day,
-                      dt_utc.hour + dt_utc.minute / 60 + dt_utc.second / 3600)
+    return ephemeris.julday(dt_utc.year, dt_utc.month, dt_utc.day,
+                            dt_utc.hour + dt_utc.minute / 60 + dt_utc.second / 3600)
 
 
-def _sidereal_lon(jd: float, pid: int) -> float:
-    flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-    res, _ = swe.calc_ut(jd, pid, flags)
-    return float(res[0]) % 360
+def _sidereal_lon(jd: float, planet: str) -> float:
+    """Sidereal (Lahiri) longitude via the ephemeris adapter.
+    `planet` is a NAME string ('Saturn', 'Jupiter', 'Rahu', 'Ketu', ...).
+    Rahu/Ketu dispatch to the MEAN node (unified Vedic convention)."""
+    if planet == "Rahu":
+        return ephemeris.node_lon(jd)
+    if planet == "Ketu":
+        return (ephemeris.node_lon(jd) + 180.0) % 360.0
+    return ephemeris.planet_lon(jd, planet)
 
 
 def _sign_idx_of(lon: float) -> int:
@@ -1674,12 +1689,12 @@ def sade_sati_timeline(chart, years_back: int = 30, years_forward: int = 30) -> 
     # to pin the change date to ±1 day.
     cursor = start
     jd_prev = _dt_to_jd(cursor)
-    sign_prev = _sign_idx_of(_sidereal_lon(jd_prev, swe.SATURN))
+    sign_prev = _sign_idx_of(_sidereal_lon(jd_prev, "Saturn"))
     changes: list[tuple[datetime, int, int]] = []
     while cursor < end:
         next_cursor = cursor + timedelta(days=30)
         jd_now = _dt_to_jd(next_cursor)
-        sign_now = _sign_idx_of(_sidereal_lon(jd_now, swe.SATURN))
+        sign_now = _sign_idx_of(_sidereal_lon(jd_now, "Saturn"))
         if sign_now != sign_prev:
             lo, hi = cursor, next_cursor
             # Bisect to ±1 day
@@ -1688,7 +1703,7 @@ def sade_sati_timeline(chart, years_back: int = 30, years_forward: int = 30) -> 
                     break
                 mid = lo + (hi - lo) / 2
                 jd_mid = _dt_to_jd(mid)
-                s_mid = _sign_idx_of(_sidereal_lon(jd_mid, swe.SATURN))
+                s_mid = _sign_idx_of(_sidereal_lon(jd_mid, "Saturn"))
                 if s_mid == sign_prev:
                     lo = mid
                 else:
@@ -1746,14 +1761,16 @@ def _twelve_month_forecast(chart) -> dict:
     natal_lagna_sign = chart.lagna.sign_index
     natal_moon_sign = chart.planets["Moon"].sign_index
 
-    targets = {"Saturn": PLANETS["Saturn"], "Jupiter": PLANETS["Jupiter"],
-               "Rahu": swe.TRUE_NODE}
+    # Rahu is "Rahu" (a NAME string) here — _sidereal_lon / _find_sign_changes
+    # dispatch it via the adapter's MEAN node (unified Vedic convention; matches
+    # scoring.py and the rest of the codebase).
+    targets = {"Saturn": "Saturn", "Jupiter": "Jupiter", "Rahu": "Rahu"}
     current_transit: dict[str, dict] = {}
     sign_changes: dict[str, list] = {}
 
     jd_now = _dt_to_jd(now)
-    for name, pid in targets.items():
-        lon = _sidereal_lon(jd_now, pid)
+    for name, planet_id in targets.items():
+        lon = _sidereal_lon(jd_now, planet_id)
         sidx = _sign_idx_of(lon)
         current_transit[name] = {
             "sign": SIGNS[sidx], "sign_index": sidx, "longitude": lon,
@@ -1762,7 +1779,7 @@ def _twelve_month_forecast(chart) -> dict:
             "sign_lord": SIGN_LORDS_MAP[sidx],
         }
         sign_changes[name] = []
-        for dc, fs, ts in _find_sign_changes(pid, now, end):
+        for dc, fs, ts in _find_sign_changes(planet_id, now, end):
             sign_changes[name].append({
                 "date": dc, "from": SIGNS[fs], "to": SIGNS[ts],
                 "to_house_from_lagna": _house_from(natal_lagna_sign, ts),
@@ -2230,11 +2247,9 @@ def _find_solar_return(chart, year: int) -> datetime:
 
     def sun_lon_at(dt):
         utc = dt.astimezone(ZoneInfo("UTC"))
-        jd = swe.julday(utc.year, utc.month, utc.day,
-                        utc.hour + utc.minute / 60 + utc.second / 3600)
-        flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-        res, _ = swe.calc_ut(jd, swe.SUN, flags)
-        return float(res[0]) % 360
+        jd = ephemeris.julday(utc.year, utc.month, utc.day,
+                              utc.hour + utc.minute / 60 + utc.second / 3600)
+        return ephemeris.planet_lon(jd, "Sun")
 
     def diff(dt):
         d = (sun_lon_at(dt) - target + 180) % 360 - 180
@@ -2388,16 +2403,16 @@ RULERS = {"Aries":"Mars","Taurus":"Venus","Gemini":"Mercury","Cancer":"Moon",
           "Pisces":"Jupiter/Neptune"}
 
 
-def _tropical_long(jd: float, pid: int) -> tuple[float, float]:
-    flags = swe.FLG_SWIEPH | swe.FLG_SPEED
-    res, _ = swe.calc_ut(jd, pid, flags)
-    return float(res[0]) % 360, float(res[3])
+def _tropical_long(jd: float, planet: str) -> tuple[float, float]:
+    """(tropical longitude, speed) — Western chart helper via adapter (Skyfield).
+    Validated to ≤2.1\" vs Swiss Ephemeris."""
+    return ephemeris.planet_lon_speed_tropical(jd, planet)
 
 
 def _tropical_lagna(jd: float, lat: float, lon: float) -> float:
-    flags = swe.FLG_SWIEPH
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b"P", flags)
-    return float(ascmc[0]) % 360
+    """Tropical (apparent of-date) Ascendant — Western chart helper.
+    Validated to 0.01\" vs Swiss Ephemeris."""
+    return ephemeris.ascendant_tropical(jd, lat, lon)
 
 
 def _aspect_between(a, b, orb_luminary=8.0, orb_other=6.0, is_luminary=False):
@@ -2416,8 +2431,8 @@ def _build_western(chart) -> dict:
     bd = chart.birth_data
     tropical_positions: dict[str, dict] = {}
     longs: dict[str, float] = {}
-    for pname, pid in PLANETS.items():
-        lon, spd = _tropical_long(jd, pid)
+    for pname in PLANETS:
+        lon, spd = _tropical_long(jd, pname)
         sign_idx = int(lon // 30) % 12
         sign = TROPICAL_SIGNS[sign_idx]
         tropical_positions[pname] = {
@@ -2427,8 +2442,9 @@ def _build_western(chart) -> dict:
             "speed": spd, "is_retrograde": spd < 0 and pname not in ("Sun","Moon"),
         }
         longs[pname] = lon
-    res, _ = swe.calc_ut(jd, swe.TRUE_NODE, swe.FLG_SWIEPH)
-    rahu_lon = float(res[0]) % 360
+    # Rahu — MEAN node (unified Vedic convention; was TRUE_NODE prior to the
+    # ephemeris-decision.md migration).
+    rahu_lon = ephemeris.node_lon_tropical(jd)
     ketu_lon = (rahu_lon + 180.0) % 360
     for pname, plon in (("Rahu", rahu_lon), ("Ketu", ketu_lon)):
         sign_idx = int(plon // 30) % 12

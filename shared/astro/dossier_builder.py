@@ -1,10 +1,10 @@
 import json
-import swisseph as swe
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 from shared.astro.constants import *
 from shared.astro.astro_calc import *
 from shared.astro.scoring import *
+from shared.astro import ephemeris
 
 def generate_astrology_dossier(profile,include_d60=False,compact=False):
     lat,lon,tz_name=profile['lat'],profile['lon'],profile['tz']
@@ -242,7 +242,7 @@ def generate_astrology_dossier(profile,include_d60=False,compact=False):
 def get_gochara_overlay(profile):
     """Live transit vs natal chart overlay."""
     dt_now=datetime.now(ZoneInfo("UTC"))
-    jd_now=swe.julday(dt_now.year,dt_now.month,dt_now.day,dt_now.hour+dt_now.minute/60.0)
+    jd_now=ephemeris.julday(dt_now.year,dt_now.month,dt_now.day,dt_now.hour+dt_now.minute/60.0)
     prof_date=date.fromisoformat(profile['date']) if isinstance(profile['date'],str) else profile['date']
     prof_time=(datetime.strptime(profile['time'],"%H:%M").time() if isinstance(profile['time'],str) else profile['time'])
     jd_natal,dt_local,_=local_to_julian_day(prof_date,prof_time,profile['tz'])
