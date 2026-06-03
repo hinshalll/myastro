@@ -1,10 +1,27 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-03 — Ephemeris adapter integrated; runtime is Swiss-Ephemeris-free.
+**Last updated:** 2026-06-03 — Supabase data-layer foundation wired (client + auth + `/me` CRUD).
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
+
+### Recent changes (2026-06-03) — Supabase data-layer foundation (the keystone)
+- **`shared/db/` — the Streamlit-free data layer.** `secrets.py` (env→secrets.toml, never
+  hardcoded), `supabase_client.py` (service client = service_role, **server-only**, bypasses
+  RLS; user client = anon key + the user's JWT so **RLS enforces owner-only**; JWT verification;
+  CRUD for profiles/checkins/journal/streaks), `cache.py` (`cached_daily` + `cached_chart`).
+  supabase-py is lazily imported so the backend boots even before the lib/keys exist.
+- **`features/me/` — first feature on the live DB.** JWT-gated `/me/*`: `GET/POST /me/profiles`,
+  `PUT/DELETE /me/profiles/{id}`, `GET/POST /me/checkins` (POST upserts + bumps the check-in
+  streak), `GET/POST /me/journal`, `GET /me/streaks/{kind}`. `auth.get_current_user` verifies
+  the Supabase JWT and yields a user-scoped client (reusable by future features). Mounted at
+  `/me` in `fastapi_main.py`.
+- **Schema hardened** (`supabase/schema.sql`): added the **Diyas** currency (`coin_wallets` +
+  signed-ledger `coin_transactions`, server-write-only), `referrals`, `gifts`, `ad_rewards`
+  (dedup-safe), `app_users.depth_mode`, auto-`updated_at` triggers. `supabase>=2.7` added to
+  requirements. **Owner still to do:** create the live Supabase project + paste the 3 keys.
+- **Out of scope** (later sessions): Pattern-Engine correlation, social graph, payment/IAP.
 
 ### Recent changes (2026-06-03) — free Skyfield ephemeris wired in (SE-free runtime)
 - **The whole app now gets every celestial number from the adapter `shared.astro.ephemeris`**
@@ -225,7 +242,8 @@ features/                       ← ALL user-visible features. One folder each.
   palmistry/                    (AI-first multi-capture VLM palm reading)
   face_reading/                 (Single-call VLM face reading; Face Mesh; optional kundli)
   tarot/                        (Three-Card, Yes/No, Celtic Cross, Birth Card)
-  vault/                        (Saved profiles CRUD + import/export)
+  vault/                        (Saved profiles CRUD + import/export — client-side storage)
+  me/                           (Authenticated user data on Supabase: profiles/checkins/journal/streaks + JWT auth)
 
 shared/                         ← Backend plumbing shared by every feature.
   astro/                        free Skyfield ephemeris (adapter) + dasha + scoring + chart compute
@@ -246,6 +264,10 @@ shared/                         ← Backend plumbing shared by every feature.
     deepseek_client.py          DeepSeek adapter (OpenAI-compatible, same interface)
     knowledge.py                rag_context (Qdrant retrieval)
     prompts.py                  Oracle prompts + GUARDRAILS (only cross-cutting bits)
+  db/                           Supabase data layer (Streamlit-free)
+    secrets.py                  Supabase creds — env first, then .streamlit/secrets.toml
+    supabase_client.py          service + user(RLS) clients, JWT verify, CRUD (profiles/checkins/journal/streaks)
+    cache.py                    cached_daily + cached_chart helpers (cost rule)
   pdf/                          WeasyPrint + premium themes + PDF helpers
     themes.py                   Premium palette dicts (classic_vedic, ganesha, krishna, ...)
     charts.py                   SVG renderers — North / South / East Indian + dispatcher
@@ -321,7 +343,16 @@ features/<feature>/
 - Profile CRUD + import/export JSON + ⭐ default profile
 - Pure CRUD, no AI
 - Schema: name, date, time (24h HH:MM), place, lat, lon, tz, gender, exact_time
-- Storage: browser localStorage in Streamlit; per-user DB in mobile app
+- Storage: browser localStorage in Streamlit. **The persisted, authenticated equivalent for
+  the mobile app is `features/me` (`/me/profiles`, Supabase + RLS).**
+
+### 3b. me — `features/me/` (Supabase-backed, the data-layer foundation)
+- JWT-gated per-user CRUD: profiles, check-ins (Pattern Engine input), journal (the Mirror),
+  streaks. `POST /me/checkins` upserts the day's check-in **and** bumps the check-in streak.
+- Auth: `Authorization: Bearer <Supabase JWT>` → `auth.get_current_user` verifies + yields a
+  user-scoped client; **Postgres RLS enforces owner-only**.
+- Data layer: `shared/db/` (service + user clients, CRUD, cache helpers). No AI.
+- See `features/me/README.md`. Out of scope (later): correlation logic, social, payments.
 
 ### 4. numerology — `features/numerology/`
 - Two systems: Western (Pythagorean) + Indian/Vedic (Chaldean)
@@ -451,8 +482,10 @@ features/<feature>/
   - `/kundli/*`       (3)  compute, free-reading, premium-pdf
   - `/palmistry/*`    (2)  scan, read
   - `/face_reading/*` (1)  read (photo; optional kundli cross-ref)
-  - `/vault/*`        (4)  CRUD + default
+  - `/vault/*`        (4)  CRUD + default (client-side storage)
   - `/oracle/*`       (6)  deep-analysis, matchmaking, marriage, gochara, compare, prashna
+  - `/me/*`           (7)  profiles (GET/POST/PUT/DELETE), checkins (GET/POST), journal
+                            (GET/POST), streaks (GET) — **Supabase-backed, JWT-gated, RLS**
   - Plus `/docs` (Swagger) + `/redoc` (ReDoc) auto-generated by FastAPI.
 
 ## Why this layout is better for a vibe coder

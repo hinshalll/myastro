@@ -284,10 +284,15 @@ also what *builds the moat* (gate the inputs and the moat never forms). You char
 layer on top.
 
 **Only two currencies:**
-1. **Coins** (pay-as-you-go). Every paid report/feature is priced in coins. Get coins by:
-   **buying** (direct profit), **earning** via daily/streak rewards, or **watching a rewarded
-   ad** (the advertiser pays for the coins → free coins become revenue-positive). Big reports
-   cost many coins (so they're still a real purchase, in your currency).
+1. **Coins — shown in-app as "Diyas" 🪔** (pay-as-you-go). The lamp metaphor is deliberate:
+   disciplined practice (check-ins, mantras, meditation, streaks) *kindles* Diyas, which maps
+   to the Vedic idea that sadhana lights one's inner light (jyoti) — earning feels earned, not
+   gamey. Every paid report/feature is priced in Diyas. Get them by: **buying** (direct profit),
+   **earning** via daily/streak/practice rewards, **watching a rewarded ad** (the advertiser
+   pays → free coins become revenue-positive), **referrals**, or **gifts**. Big reports cost
+   many Diyas (still a real purchase, in your currency). *"Diyas" is a UI label only; the DB
+   tables stay neutral (`coin_wallets`/`coin_transactions`) so it can be renamed without a
+   migration.*
 2. **Myastro+ subscription** — unlimited AI actions + the always-on companion + deep insights
    + **ad-free**. ₹49/wk · ₹199/mo · ₹999/yr. Push annual. **7-day free trial.**
 
@@ -380,16 +385,21 @@ Apple/Google require **in-app digital goods to use their IAP** (you generally ca
 coins/subscriptions through Razorpay inside the app). Design coin/plan economics around the
 IAP cut (~15% small-business). This is a real constraint, not optional.
 
-### 9.5 Data model (Supabase) — schema exists in `supabase/schema.sql`, NOT yet created in a live DB
-**Status:** the SQL is written (17 tables, RLS) but no Supabase project has run it, and there's
-no Python client/wiring yet. **First build step = review/harden the schema, create the project,
-run it, wire a client + auth.** Existing tables: `app_users`, `profiles`, `connections`,
-`checkins`, `patterns`, `journal_entries`, `streaks`, `subscriptions`, `purchases`, `groups` +
-`group_members`, `ritual_journeys`, `rewards`, `ai_conversations`, `cached_daily`,
-`cached_chart`, `usage_counters`.
-**Schema additions needed for this plan:** a **coin wallet + ledger** (balance + transactions:
-earned/bought/spent/ad-reward), **referrals**, **gifts**, **ad-reward tracking**, and a
-**depth_mode** field (in `app_users.settings`).
+### 9.5 Data model (Supabase) — schema + Python client + auth + core CRUD WIRED (foundation done)
+**Status (2026-06):** the schema (`supabase/schema.sql`) is hardened and the **data-layer
+foundation is built** — `shared/db/` (Streamlit-free client: service + user/RLS clients, JWT
+verification, CRUD, cache helpers) + `features/me/` (`/me/*` endpoints, JWT-gated). *Remaining
+owner step:* create the live Supabase project + paste keys (`.env` / `.streamlit/secrets.toml`).
+Tables: `app_users`, `profiles`, `connections`, `checkins`, `patterns`, `journal_entries`,
+`streaks`, `subscriptions`, `purchases`, `groups` + `group_members`, `ritual_journeys`,
+`rewards`, `ai_conversations`, `cached_daily`, `cached_chart`, `usage_counters`.
+**Additions made (done):** `coin_wallets` + `coin_transactions` (the **in-app currency, shown
+as "Diyas" 🪔** — balance + append-only signed ledger: earned/bought/spent/ad-reward/gift/
+referral; **server-side writes only** so a client can't mint currency), `referrals`, `gifts`,
+`ad_rewards` (rewarded-video, dedup-safe), and a **`depth_mode`** column on `app_users`
+(`simple`/`full`, §6.7). Table names stay neutral ("Diyas" is a UI label only → renamable
+without a migration). **Out of scope (later sessions):** Pattern-Engine correlation, social
+graph, payment/IAP processing.
 
 ### 9.6 Mapping: backend → mobile
 | Backend | Mobile home |

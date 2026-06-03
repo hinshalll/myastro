@@ -232,11 +232,11 @@ to `chart.interpretations`. Imported lazily so `/kundli/compute` stays light.
 
 ---
 
-## 3. The data layer — FULL SCHEMA DESIGNED, NOT WIRED (task #12 half-done)
+## 3. The data layer — SCHEMA + CLIENT + AUTH + CORE CRUD WIRED (foundation done)
 
-The **complete Supabase schema exists** as `supabase/schema.sql` (Postgres + Supabase Auth +
-RLS on every table; design ref = `MOBILE_APP_BLUEPRINT.md §8.4`). It's far more than a stub —
-it anticipates the whole product. Tables:
+The **Supabase schema** lives in `supabase/schema.sql` (Postgres + Supabase Auth + RLS on
+every user table; design ref = `MOBILE_APP_BLUEPRINT.md §8.4 / §9.5`). It now also has a
+**working Python data layer, JWT auth, and core CRUD endpoints** on top of it. Tables:
 - **`app_users`** — extends `auth.users` (language, Expo `push_token`, settings jsonb).
 - **`profiles`** — self + saved people (`source` = self/friend/manual, `relation_tag`,
   `birth_time_known`, `exact_time` → the 3-tier model).
@@ -254,14 +254,34 @@ it anticipates the whole product. Tables:
   generation read by everyone in the same state), `cached_chart` (per-profile, keyed incl.
   `precision` so unknown→exact recomputes once), `usage_counters` (freemium soft caps per
   user/day/kind).
-- A trigger auto-creates an `app_users` row on signup.
+- **Currency + growth (added 2026-06):** `coin_wallets` + `coin_transactions` (the **"Diyas"**
+  in-app currency — balance + append-only signed ledger: earned/bought/ad/spent/gift/referral;
+  writes server-side only so no client can mint Diyas), `referrals`, `gifts`, `ad_rewards`
+  (rewarded-video tracking, `UNIQUE(network, ssv_id)` blocks double-claims). `app_users` gained
+  a **`depth_mode`** column (`simple`/`full`, blueprint §6.7).
+- A trigger auto-creates an `app_users` row on signup; `set_updated_at()` stamps mutable rows.
 
-But there is **no Python client and no API wiring**: zero `supabase` references in any `.py`,
-no `shared/db/` package. Nothing reads or writes these tables yet. **The schema is the plan;
-the integration is unbuilt.** Consequence: the Pattern Engine, journaling, streaks, social
-connections, groups, subscriptions, and caching all have designed tables but **no working
-backend.** Profiles today live client-side only (browser localStorage on web). ⚠️ The
-service_role key is server-only — never ship it to the app; the app uses the anon key + RLS.
+### 3.1 The Python data layer — `shared/db/` (Streamlit-free)
+- `secrets.py` — reads `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` from
+  **env first, then `.streamlit/secrets.toml`**. Never hardcodes.
+- `supabase_client.py` — **service client** (service_role, bypasses RLS, **server-only**) +
+  **user client** (anon key + the user's JWT, so RLS applies as that user) +
+  `get_user_id_from_token` (verifies the JWT against Supabase Auth) + CRUD for
+  **profiles / checkins / journal_entries / streaks** (streak increment is calendar-aware).
+  supabase-py is imported lazily so the backend still boots before the lib is installed.
+- `cache.py` — `get/set_cached_daily` and `get/set_cached_chart` (the cost rule, §8/§9.3).
+
+### 3.2 Auth + endpoints — `features/me/`
+The first feature that reads/writes the live DB. Per-feature pattern (schemas/service/api) +
+`auth.py`. Mounted at **`/me`** in `fastapi_main.py`. Every route requires
+`Authorization: Bearer <Supabase JWT>`; `get_current_user` verifies it and yields a
+**user-scoped** client (RLS enforces owner-only). Routes: `GET/POST /me/profiles`,
+`PUT/DELETE /me/profiles/{id}`, `GET/POST /me/checkins` (POST upserts + bumps the check-in
+streak), `GET/POST /me/journal`, `GET /me/streaks/{kind}`.
+
+⚠️ The service_role key is **server-only** — never ship it to the app; the app uses the anon
+key + RLS. **Out of scope for this foundation** (later sessions): Pattern Engine correlation
+logic, social-graph features, payment/IAP processing.
 
 ---
 
@@ -330,9 +350,14 @@ features) → ONE Gemini VLM call. JSON knowledge base, **no RAG**. Optional kun
 Pose-pitch gating; line-based reading excluded for accuracy.
 
 ### 4.10 vault — `GET/POST /{user_id}` + `POST /{user_id}/default/{idx}`
-Profile CRUD + dedupe. Storage: browser localStorage (web) / per-user DB (mobile, once the
-data layer is wired). Profile schema: `{name, date(YYYY-MM-DD), time(HH:MM), place, lat, lon,
-tz, gender, exact_time}` (+ `birth_time_known` for the unknown-time tier). No AI.
+Profile CRUD + dedupe. Storage: browser localStorage (web) / in-memory (legacy). Profile
+schema: `{name, date(YYYY-MM-DD), time(HH:MM), place, lat, lon, tz, gender, exact_time}` (+
+`birth_time_known` for the unknown-time tier). No AI. **For the mobile app, the persisted,
+authenticated equivalent is `features/me` (`/me/profiles`, Supabase + RLS) — see §3.2.**
+
+### 4.11 me — `/me/*` (authenticated user data; Supabase + RLS)
+The data-layer foundation. JWT-gated CRUD for profiles / check-ins / journal / streaks; POST
+`/me/checkins` also bumps the check-in streak. See §3.1–3.2 and `features/me/README.md`.
 
 ---
 
@@ -355,9 +380,9 @@ chart, chapters, past-date, patterns, year, purpose, reading, widget, settings.
 | Grounded AI companion ("it knows my chart") | **Built** — consultation `/ask` + dossier+Atlas |
 | Daily loop (hero, week, timing, decide) | **Built** — dashboard free endpoints |
 | Relationship daily weather | **Built** — `/relationship-weather` |
-| Persistence / data layer (Supabase) | **Full schema only** — `supabase/schema.sql` (17 tables incl. checkins/patterns/connections/groups/streaks/subscriptions/caches + RLS); no Python client or wiring (task #12 half-done) |
-| Pattern Engine (mood ↔ planets over time) | **Schema only** — `checkins` + `patterns` tables designed for it; no client, no endpoints, no correlation code |
-| Journaling / mantra | **Not built** — no endpoints (mockup screens only); `journal_entries` table designed |
+| Persistence / data layer (Supabase) | **Foundation built** — schema (+ Diyas wallet/ledger, referrals, gifts, ad_rewards, depth_mode) + `shared/db/` Python client + JWT auth + `/me` CRUD (profiles/checkins/journal/streaks) + cache helpers. *Live DB project + keys still to be provisioned by the owner.* |
+| Pattern Engine (mood ↔ planets over time) | **Input plumbing built** — `checkins` save/list via `/me/checkins` (+ streak); **correlation code still out of scope** (later session) |
+| Journaling / mantra | **Journal built** — `/me/journal` save/list (the Mirror's store); AI reflections later. Mantra/practice still mockup |
 | Proof / Karmic Audit (back-test past events) | **Engine partial** — `rectify()` + Event Timing Atlas exist; no user-facing flow or endpoint (task #16) |
 | Rituals / calm CHANI-style space | **Mockup screens + `ritual_journeys` table** — no backend feed/endpoints |
 | Social People (friends/share/family grid) | **Schema only** — `connections` + `groups` tables designed; only one-shot matchmaking + daily weather endpoints exist (task #17) |
@@ -373,9 +398,9 @@ Then wire it all into the mobile mockup and re-aim presentation.
 ## 7. Known doc/staleness flags (verify before trusting)
 - `FEATURE_SPEC.md` "Future work" still says **Flutter/Next.js** — actual app is React
   Native/Expo. Stale.
-- Task list shows Supabase (#12) "in progress" — accurate but partial: the **full schema
-  exists** (`supabase/schema.sql`, 17 tables + RLS), but **no Python client / no endpoints**
-  use it yet.
+- Supabase data layer (#12): the **foundation is now built** — schema + `shared/db/` client +
+  JWT auth + `/me` CRUD + cache helpers. Remaining: the owner must create the live Supabase
+  project + paste keys; and Pattern-Engine correlation / social / payments are later sessions.
 - RAG vectors need ONNX re-ingest (task #9) before hybrid search is fully consistent.
 
 ## 8. Verified endpoint inventory (ground truth, from `@router` decorators)
