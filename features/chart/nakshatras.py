@@ -10,6 +10,14 @@ sources; the deity/symbol/ruler facts match the engine's own
 
 Keys EXACTLY match shared.astro.constants.NAKSHATRAS (so the Moon's `nakshatra`
 field looks up directly).
+
+Provenance: all 27 personality reads were cross-checked (2026-06) against multiple
+reputable Vedic sources (indastro, GaneshaSpeaks, Prokerala, PanchangBodh,
+AstroSight, freevedicastro, anytimeastro) and confirmed faithful to the classical
+nature of each star. One deliberate voice choice: Ardra — some older texts give it
+a harsh moral read ("irritable, troublesome"); we keep the faithful Rudra storm →
+renewal / depth essence but drop the judgmental tone, per the warm, gentle-guidance
+rule (blueprint §2). Nature stays accurate; the voice stays kind.
 """
 from __future__ import annotations
 
