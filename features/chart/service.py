@@ -82,17 +82,18 @@ def interpret(profile: dict) -> dict:
         asc_sign = chart.lagna.sign
         asc_lord = chart.lagna.lord
         asc_lord_house = P[asc_lord].house if asc_lord in P else None
-        body = (f"{_frame('identity', asc_sign)} Underneath that, what really fuels you "
-                f"is being {_pre(sun_sign)}.")
+        body = (f"{_frame('identity', asc_sign)} But that's mostly the surface. Underneath, "
+                f"what actually drives you is being {_pre(sun_sign)} — and people who only meet "
+                "the outer version of you tend to miss that quieter core.")
         if asc_lord_house:
-            body += f" And your path keeps pulling you toward {M.HOUSE_LIFE[asc_lord_house]}."
+            body += f" Bit by bit, your life keeps pulling you toward {M.HOUSE_LIFE[asc_lord_house]}."
         sanskrit = f"लग्न {M.SIGN_SANSKRIT.get(asc_sign,'')} · सूर्य {M.SIGN_SANSKRIT.get(sun_sign,'')}"
         why = (f"Your rising sign (Ascendant) is {asc_sign}; your Sun is in {sun_sign}"
                + (f"; your Ascendant ruler {asc_lord} sits in the area of {_house_short(asc_lord_house)}."
                   if asc_lord_house else "."))
     else:
-        body = (f"At your core, you're {_pre(sun_sign)}. There's also a quieter, more "
-                f"feeling side to you that runs {_pre(moon_sign)}.")
+        body = (f"At your core, you're {_pre(sun_sign)}. But there's a quieter, more "
+                f"private side that runs {_pre(moon_sign)} — and not everyone gets to see it.")
         sanskrit = f"सूर्य {M.SIGN_SANSKRIT.get(sun_sign,'')} · चन्द्र {M.SIGN_SANSKRIT.get(moon_sign,'')}"
         why = (f"Your Sun is in {sun_sign} and your Moon in {moon_sign}. (Without an exact "
                "birth time, your rising sign and houses can't be pinned down — these read "
@@ -101,9 +102,9 @@ def interpret(profile: dict) -> dict:
 
     # 2. Your inner world — Moon.
     mh = P["Moon"].house
-    body = _frame("emotion", moon_sign)
-    if time_known:
-        body += f" You feel most settled when life is centred around {M.HOUSE_LIFE[mh]}."
+    body = _frame("emotion", moon_sign) + " More than anything, you need to feel safe and settled"
+    body += (f", and that comes when life is centred on {M.HOUSE_LIFE[mh]}." if time_known
+             else " — and you protect that more carefully than people realise.")
     cards.append(_card("Your inner world", body,
                        f"चन्द्र {M.SIGN_SANSKRIT.get(moon_sign,'')}",
                        f"Your Moon — the heart and mind — is in {moon_sign}"
@@ -127,7 +128,7 @@ def interpret(profile: dict) -> dict:
 
     # 5. Your drive — Mars.
     ma = P["Mars"]; mah = ma.house
-    body = _frame("drive", ma.sign)
+    body = _frame("drive", ma.sign) + " Once you're genuinely committed to something, you're hard to stop."
     if time_known:
         body += f" That energy goes mostly into {M.HOUSE_LIFE[mah]}."
     cards.append(_card("Your drive", body,
@@ -138,9 +139,10 @@ def interpret(profile: dict) -> dict:
     # 6. Where you grow — Saturn (gentle growth edge; only meaningful with houses).
     if time_known:
         sa = P["Saturn"]; sah = sa.house
-        body = (f"The part of life that asks the most patience from you is {M.HOUSE_LIFE[sah]}. "
-                "It can bring some delay or self-doubt early on — but it's also exactly where "
-                "you slowly become unshakeable.")
+        body = (f"If one part of life has asked more patience from you than feels quite fair, it's "
+                f"{M.HOUSE_LIFE[sah]}. There can be some delay or self-doubt here, especially early "
+                "on — but this is exactly where you slowly turn into someone genuinely unshakeable. "
+                "The hard bit isn't a flaw in you; it's where you're being built.")
         cards.append(_card("Where you grow", body,
                            f"शनि {M.SIGN_SANSKRIT.get(sa.sign,'')}",
                            f"Saturn — patience and mastery — sits in the area of {_house_short(sah)}."))
@@ -154,11 +156,9 @@ def interpret(profile: dict) -> dict:
     # 9. Highlights — notable gifts (yogas) + gentle growth areas (doshas).
     highlights = _highlights(chart)
 
-    # Headline — an evocative one-liner (contrast outside vs inside when we can).
-    if time_known:
-        headline = f"You come across as {_pre(chart.lagna.sign)}, but inside you run {_pre(moon_sign)}."
-    else:
-        headline = f"At your core, {_pre(sun_sign)} — with a {_pre(moon_sign)} heart."
+    # Headline — a natural one-liner that names the outer/inner tension, varied in
+    # shape so different charts don't all read from the same template.
+    headline = _headline(chart, time_known, sun_sign, moon_sign)
 
     precision_note = None
     if not time_known:
@@ -175,6 +175,29 @@ def interpret(profile: dict) -> dict:
         "highlights": highlights,
         "precision_note": precision_note,
     }
+
+
+def _headline(chart, time_known, sun_sign, moon_sign) -> str:
+    """A natural, non-templated one-liner. Names the outer-vs-inner tension (the
+    'mask' you show vs the self that runs you — really Ascendant vs Moon), in one
+    of a few shapes chosen deterministically so charts don't all read alike. When
+    outer and inner match, it flips to a warm 'you're all of a piece' line."""
+    outer = chart.lagna.sign if time_known else sun_sign
+    o, i = _pre(outer), _pre(moon_sign)
+    o1, i1 = o.split(",")[0], i.split(",")[0]      # lead adjective of each
+    if outer == moon_sign:
+        return (f"You're {o} — and more all-of-a-piece than most: what people see really is "
+                "what's underneath.")
+    variants = [
+        f"On the surface you're {o1}, but the part that actually runs you is {i1} — and most "
+        "people only ever meet the surface.",
+        f"You read as {o1} to the world, while underneath, something {i1} is quietly in charge.",
+        f"Two speeds live in you — the {o1} one everyone notices, and the {i1} one that's "
+        "really driving.",
+    ]
+    base = chart.planets["Moon"].sign_index + (
+        chart.lagna.sign_index if time_known else chart.planets["Sun"].sign_index)
+    return variants[base % len(variants)]
 
 
 def _highlights(chart) -> list[dict]:
@@ -216,7 +239,7 @@ def _highlights(chart) -> list[dict]:
 def _birth_star(chart) -> dict:
     """The Moon's nakshatra as a warm 'your birth star' card. Moon-based, so it's
     reliable at every birth-time tier (it doesn't need the Ascendant)."""
-    from features.chart.nakshatras import NAKSHATRA
+    from features.chart.nakshatras import NAKSHATRA, NAK_SHADOW
 
     moon = chart.planets["Moon"]
     nak = moon.nakshatra
@@ -224,9 +247,13 @@ def _birth_star(chart) -> dict:
     if not info:                                  # safety net — never crash on a name mismatch
         return _card("Your birth star", f"Your birth star is {nak}.",
                      nak, f"Your Moon is in the nakshatra {nak}.")
+    body = info["body"]
+    shadow = NAK_SHADOW.get(nak)                   # the gently-defused 'flip side'
+    if shadow:
+        body = f"{body} {shadow}"
     return _card(
         f"Your birth star · {nak}",
-        info["body"],
+        body,
         f"{info['dev']} · {info['ruler']}",
         f"Your Moon sits in {nak} (symbol: {info['symbol']}; guided by {info['deity']}; "
         f"ruling planet {info['ruler']}).",

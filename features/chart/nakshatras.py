@@ -21,6 +21,40 @@ rule (blueprint §2). Nature stays accurate; the voice stays kind.
 """
 from __future__ import annotations
 
+# The gently-defused "flip side" of each star — the hard trait framed as the
+# understandable shadow of a strength, so nobody's offended but they still feel
+# seen (the "defuse, don't omit" rule). Appended to the birth-star card as one
+# warm line. Faithful to each star's classical shadow.
+NAK_SHADOW: dict[str, str] = {
+    "Ashwini": "The flip side: you can leap before you look, and lose interest once the first rush wears off.",
+    "Bharani": "The flip side: you can take on far more than anyone should have to, and find it hard to let things go.",
+    "Krittika": "The flip side: that honesty can cut sharper than you mean it to — people sometimes need the gentler version of the truth.",
+    "Rohini": "The flip side: you can dig your heels in, and hold onto comfort — or people — a little too tightly.",
+    "Mrigashira": "The flip side: the searching never quite switches off, so it can be hard to feel that what you already have is enough.",
+    "Ardra": "The flip side: the big feelings can swing fast, and you tend to be hardest on yourself in the middle of the storm.",
+    "Punarvasu": "The flip side: you can spread yourself thin — always ready to start again instead of finishing.",
+    "Pushya": "The flip side: you give so much you forget yourself, and looking after people can quietly tip into controlling them.",
+    "Ashlesha": "The flip side: reading people so well, you can hold on too tight to the ones you're afraid of losing.",
+    "Magha": "The flip side: pride can creep in, and it's easy to lean on the past when it's really time to build the future.",
+    "Purva Phalguni": "The flip side: comfort is easy to over-love, and rest can quietly slide into putting things off.",
+    "Uttara Phalguni": "The flip side: you give a lot, and it stings more than you let show when it goes unnoticed.",
+    "Hasta": "The flip side: that clever mind can overthink, and you can fuss at the details until they fray.",
+    "Chitra": "The flip side: you like to be admired, and you can mind how things look more than you'd care to admit.",
+    "Swati": "The flip side: independence can tip into keeping people at arm's length, and you can second-guess your own calls.",
+    "Vishakha": "The flip side: so set on the goal, you can forget to enjoy where you already are.",
+    "Anuradha": "The flip side: you lean hard on the people you love, and feel it deeply when a bond wobbles.",
+    "Jyeshtha": "The flip side: carrying so much can leave you feeling alone in it — it's okay to let others hold some of the weight too.",
+    "Mula": "The flip side: getting to the truth can mean tearing things up, and your words can land sharper than you intend.",
+    "Purva Ashadha": "The flip side: that conviction can harden into stubbornness when you're sure you're right.",
+    "Uttara Ashadha": "The flip side: you take it all on yourself, and can be slow to ask for the help you'd give anyone else in a heartbeat.",
+    "Shravana": "The flip side: taking everything in, you can overthink it — and stay in your head past the point where it helps.",
+    "Dhanishta": "The flip side: always driving forward, you can run right past your own feelings, and sometimes other people's.",
+    "Shatabhisha": "The flip side: the privacy you love can tip into shutting people out exactly when you most need them.",
+    "Purva Bhadrapada": "The flip side: the intensity can turn inward as worry, and 'all or nothing' can wear you out.",
+    "Uttara Bhadrapada": "The flip side: holding it all calmly inside, you can bottle things up far longer than is good for you.",
+    "Revati": "The flip side: you give and give, and quietly ache when it isn't given back.",
+}
+
 NAKSHATRA: dict[str, dict] = {
     "Ashwini": {
         "body": "You move fast and start things others only think about — quick, brave, and a little impatient. There's a natural healer in you: when something's wrong, your instinct is to rush in and fix it.",

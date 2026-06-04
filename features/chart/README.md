@@ -24,7 +24,7 @@ Every card is `{ title, body, sanskrit, why }`:
 ```jsonc
 { "profile": {…kundli shape, lat/lon…} }
 → { "ok":true,
-    "headline":"You come across as curious and quick, but inside you run restless and meaning-seeking.",
+    "headline":"On the surface you're curious, but the part that actually runs you is steadier than most people ever see.",
     "core":[
       { "title":"You at the core", "body":"…warm, no jargon…", "sanskrit":"लग्न मिथुन · सूर्य वृषभ", "why":"…plain…" },
       { "title":"Your inner world", … }, { "title":"How you love", … },
