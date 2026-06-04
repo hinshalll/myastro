@@ -8,6 +8,7 @@ from geopy.geocoders import Photon
 from timezonefinder import TimezoneFinder
 from shared.astro.constants import *
 from shared.astro import ephemeris  # the swappable ephemeris adapter (Skyfield default)
+from shared.astro import config as astro_config  # backend toggles (KP on/off, node type)
 
 def safe_json(text_response, fallback_dict):
     try:
@@ -2036,6 +2037,33 @@ def get_kp_sub_lord_score(house_idx, placidus_cusps, planet_data, r_lon, k_lon, 
     deny_match = len(sigs & deny_houses)
     score += (req_match * 15)
     score -= (deny_match * 15)
+    return max(0, min(100, score))
+
+
+def house_promise_score(house_idx, placidus_cusps, planet_data, r_lon, k_lon, ls,
+                        required_houses, deny_houses):
+    """House 'promise' toward required vs deny houses, 0-100 — METHOD follows the
+    backend toggle (shared.astro.config.kp_enabled()), so disabling KP never
+    removes a calculation, it swaps the method to classical Parashari:
+
+      * KP ON  -> the Placidus cusp SUB-LORD is the deciding planet (KP Paddhati).
+      * KP OFF -> the TRADITIONAL Parashari bhava lord (whole-sign house lord) is
+                  the deciding planet.
+
+    Both feed the SAME significator-vs-required/deny scoring on the SAME 0-100
+    scale, so every downstream scorer (compare rankings, destiny, karmic burden)
+    keeps the same shape — only the lordship source changes."""
+    if astro_config.kp_enabled():
+        return get_kp_sub_lord_score(house_idx, placidus_cusps, planet_data,
+                                     r_lon, k_lon, ls, required_houses, deny_houses)
+    # Parashari fallback: the bhava lord = sign lord of the whole-sign house.
+    deciding = SIGN_LORDS_MAP[(ls + house_idx - 1) % 12]
+    sigs = get_planet_house_significations(
+        deciding, ls,
+        {pn: (plon, 0) for pn, (plon, pspd) in planet_data.items()
+         if pn not in ["Rahu", "Ketu"]},
+        r_lon, k_lon)
+    score = 50 + len(sigs & required_houses) * 15 - len(sigs & deny_houses) * 15
     return max(0, min(100, score))
 
 

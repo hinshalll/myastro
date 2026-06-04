@@ -25,10 +25,14 @@
 > (osculating) node is now implemented on the free engine** (`ephem_skyfield.true_node_*`,
 > validated ~48" vs SE TRUE_NODE — far below any nakshatra boundary) and reachable via
 > `node_lon(..., node_type="true")` or `NODE_TYPE=true`; it is opt-in, not the default.
-> (b) `kp_enabled()` — KP/Placidus surfacing, default **OFF** (whole-sign is the app default).
-> The KP math always stays in the engine; the dossier's KP sections are opt-in via
-> `generate_astrology_dossier(..., include_kp=True)`, which the deep readings (deep-analysis,
-> matchmaking, marriage, prashna, consultation) pass explicitly so they are not degraded.
+> (b) `kp_enabled()` — KP vs traditional METHOD, default **OFF** (whole-sign Parashari is the
+> app default). Disabling KP never removes a feature — it **swaps the method to classical
+> Parashari**: (i) the numeric scorers (compare rankings, destiny, karmic burden) go through
+> `astro_calc.house_promise_score`, which uses the **bhava lord** (Parashari) when OFF and the
+> **Placidus cusp sub-lord** (KP) when ON — same 0-100 scale, same downstream shape; (ii) the
+> dossier's explicit KP sections appear only when ON, while its always-present Parashari
+> material (dasha, Event Timing Atlas, D9, ashtakavarga, yogas) carries every reading when OFF.
+> The KP math always stays in the engine. One flag flips the whole app between methods.
 
 **Plain-English summary:** Build the **free Skyfield + JPL engine** as the **shipping engine
 now**, and validate it to **~99.9% practical parity with Swiss Ephemeris**. We keep

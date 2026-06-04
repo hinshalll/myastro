@@ -8,11 +8,14 @@ from shared.astro import ephemeris
 from shared.astro import config as astro_config
 
 def generate_astrology_dossier(profile,include_d60=False,compact=False,include_kp=None):
-    # KP (Placidus cusps / sub-lord) sections are OPT-IN. include_kp=None falls back
-    # to the backend default (shared.astro.config.kp_enabled(), default OFF). Deep
-    # readings that rely on KP timing (marriage, matchmaking, prashna, consultation,
-    # deep-analysis) pass include_kp=True explicitly. The KP MATH always stays in the
-    # engine; this only controls whether the KP sections are written into the dossier.
+    # KP (Placidus cusp sub-lord) sections follow the SINGLE backend toggle
+    # shared.astro.config.kp_enabled() (default OFF) unless a caller forces include_kp.
+    # KP OFF => the dossier carries only its always-present classical Parashari material
+    # (house rulership, Vimshottari dasha, Event Timing Atlas, D9, ashtakavarga, yogas),
+    # so every reading still works via TRADITIONAL methods. KP ON => the KP cusp / promise
+    # / marriage-timing sections are added on top. No feature is removed either way — the
+    # method swaps. The numeric scorers swap in lockstep via astro_calc.house_promise_score
+    # (Parashari bhava lord when OFF, KP cusp sub-lord when ON).
     show_kp = astro_config.kp_enabled() if include_kp is None else bool(include_kp)
     lat,lon,tz_name=profile['lat'],profile['lon'],profile['tz']
     name,place_text=profile['name'],profile['place']

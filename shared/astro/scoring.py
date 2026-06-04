@@ -233,8 +233,8 @@ def calculate_wealth_score(dossier, profile=None):
         (varga_sign_strength(f, "D9", "Jupiter"), 0.5),
     ])
     kp = score_positive([
-        (get_kp_sub_lord_score(2,  placidus_cusps, planet_data, r_lon, k_lon, ls, {2, 11}, {6, 8, 12}), 1.4),
-        (get_kp_sub_lord_score(11, placidus_cusps, planet_data, r_lon, k_lon, ls, {2, 11}, {6, 8, 12}), 1.0),
+        (house_promise_score(2,  placidus_cusps, planet_data, r_lon, k_lon, ls, {2, 11}, {6, 8, 12}), 1.4),
+        (house_promise_score(11, placidus_cusps, planet_data, r_lon, k_lon, ls, {2, 11}, {6, 8, 12}), 1.0),
     ])
 
     # Yogas — expanded dict now includes the previously-undetected Akhand
@@ -394,7 +394,7 @@ def calculate_relationship_score(dossier, profile=None):
     
     structural = score_positive([(get_bhava_bala(7, ls, planet_data, f, lagna_lon, jd_ut), 2.5), (get_bhava_bala(2, ls, planet_data, f, lagna_lon, jd_ut), 1.2), (get_bhava_bala(4, ls, planet_data, f, lagna_lon, jd_ut), 1.0), (get_bhava_bala(5, ls, planet_data, f, lagna_lon, jd_ut), 0.9), (get_bhava_bala(8, ls, planet_data, f, lagna_lon, jd_ut), 0.9), (sav_norm(f["sav"].get(7)), 1.2)])
     karaka = score_positive([(get_p_str("Venus", planet_data, ls, f, lagna_lon, jd_ut), 1.8), (get_p_str("Jupiter", planet_data, ls, f, lagna_lon, jd_ut), 1.1), (get_p_str("Moon", planet_data, ls, f, lagna_lon, jd_ut), 1.1), (get_p_str(dk, planet_data, ls, f, lagna_lon, jd_ut), 1.0), (varga_sign_strength(f, "D9", "Venus"), 1.2), (varga_sign_strength(f, "D9", "Jupiter"), 0.8), (varga_sign_strength(f, "D9", dk), 0.9)])
-    kp = get_kp_sub_lord_score(7, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,7,11}, {1,6,10})
+    kp = house_promise_score(7, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,7,11}, {1,6,10})
     yoga = topic_yoga_score(f, {"Malavya Yoga": 7, "Gajakesari Yoga": 5, "Raja Yoga": 2}, planet_data, ls, lagna_lon, jd_ut)
     yoga = _lagna_scaled(yoga, get_bhava_bala(1, ls, planet_data, f, lagna_lon, jd_ut))
 
@@ -473,7 +473,7 @@ def calculate_career_score(dossier, profile=None):
     h6_weight = 0.5 if h7_bala > get_bhava_bala(6, ls, planet_data, f, lagna_lon, jd_ut) else 1.1
     structural = score_positive([(get_bhava_bala(10, ls, planet_data, f, lagna_lon, jd_ut), 2.7), (get_bhava_bala(6, ls, planet_data, f, lagna_lon, jd_ut), h6_weight), (get_bhava_bala(11, ls, planet_data, f, lagna_lon, jd_ut), 1.4), (get_bhava_bala(2, ls, planet_data, f, lagna_lon, jd_ut), 0.8), (get_bhava_bala(9, ls, planet_data, f, lagna_lon, jd_ut), 0.8), (get_bhava_bala(1, ls, planet_data, f, lagna_lon, jd_ut), 0.5), (al10_score, 1.5), (sav_norm(f["sav"].get(10)), 1.2), (sav_norm(f["sav"].get(6)), 0.8)])
     karaka = score_positive([(get_p_str("Sun", planet_data, ls, f, lagna_lon, jd_ut), 1.2), (get_p_str("Saturn", planet_data, ls, f, lagna_lon, jd_ut), 1.3), (get_p_str("Mercury", planet_data, ls, f, lagna_lon, jd_ut), 1.0), (get_p_str("Mars", planet_data, ls, f, lagna_lon, jd_ut), 0.8), (get_p_str(amk, planet_data, ls, f, lagna_lon, jd_ut), 1.6), (varga_sign_strength(f, "D10", amk), 1.5), (varga_sign_strength(f, "D10", "Sun"), 0.8), (varga_sign_strength(f, "D10", "Saturn"), 0.8)])
-    kp = score_positive([(get_kp_sub_lord_score(10, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,6,10,11}, {5,8,12}), 1.7), (get_kp_sub_lord_score(6, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,6,10,11}, {5,8,12}), 0.8)])
+    kp = score_positive([(house_promise_score(10, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,6,10,11}, {5,8,12}), 1.7), (house_promise_score(6, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,6,10,11}, {5,8,12}), 0.8)])
     yoga = topic_yoga_score(f, {"Dharma-Karma Adhipati Yoga": 10, "Raja Yoga": 7, "Ruchaka Yoga": 6, "Shasha Yoga": 6, "Bhadra Yoga": 5, "Hamsa Yoga": 3, "Neecha Bhanga Raja Yoga": 5, "Viparita Raja Yoga": 3}, planet_data, ls, lagna_lon, jd_ut)
     yoga = _lagna_scaled(yoga, get_bhava_bala(1, ls, planet_data, f, lagna_lon, jd_ut))
     placement = topic_house_connection(f, ["Sun", "Saturn", "Mercury", "Mars", amk], {1, 6, 10, 11})
@@ -585,7 +585,7 @@ def calculate_health_score(dossier, profile=None):
     lagna_lord = f["house_lords"].get(1, {}).get("planet")
     structural = score_positive([(get_bhava_bala(1, ls, planet_data, f, lagna_lon, jd_ut), 2.6), (get_bhava_bala(8, ls, planet_data, f, lagna_lon, jd_ut), 1.5), (get_bhava_bala(3, ls, planet_data, f, lagna_lon, jd_ut), 0.9), (get_bhava_bala(6, ls, planet_data, f, lagna_lon, jd_ut), 0.9), (sav_norm(f["sav"].get(1)), 1.0)])
     karaka = score_positive([(get_p_str(lagna_lord, planet_data, ls, f, lagna_lon, jd_ut), 1.8), (get_p_str("Sun", planet_data, ls, f, lagna_lon, jd_ut), 1.1), (get_p_str("Moon", planet_data, ls, f, lagna_lon, jd_ut), 1.2), (get_p_str("Saturn", planet_data, ls, f, lagna_lon, jd_ut), 1.1), (varga_sign_strength(f, "D9", lagna_lord), 0.8), (varga_sign_strength(f, "D12", lagna_lord), 0.3)])
-    kp = score_positive([(get_kp_sub_lord_score(1, placidus_cusps, planet_data, r_lon, k_lon, ls, {1,11}, {2,7}), 1.1), (100 - get_kp_sub_lord_score(6, placidus_cusps, planet_data, r_lon, k_lon, ls, {1,11}, {2,7}) + 40, 0.7), (get_kp_sub_lord_score(8, placidus_cusps, planet_data, r_lon, k_lon, ls, {1,11}, {2,7}), 0.7)])
+    kp = score_positive([(house_promise_score(1, placidus_cusps, planet_data, r_lon, k_lon, ls, {1,11}, {2,7}), 1.1), (100 - house_promise_score(6, placidus_cusps, planet_data, r_lon, k_lon, ls, {1,11}, {2,7}) + 40, 0.7), (house_promise_score(8, placidus_cusps, planet_data, r_lon, k_lon, ls, {1,11}, {2,7}), 0.7)])
     _yoga_h = topic_yoga_score(f, {"Hamsa Yoga": 5, "Gajakesari Yoga": 5, "Adhi Yoga": 3}, planet_data, ls, lagna_lon, jd_ut)
     _yoga_h = _lagna_scaled(_yoga_h, get_bhava_bala(1, ls, planet_data, f, lagna_lon, jd_ut))
     protection = benefic_support(f, {1, 6, 8}) + _yoga_h
@@ -661,7 +661,7 @@ def calculate_luck_score(dossier, profile=None):
     ninth_lord = f["house_lords"].get(9, {}).get("planet")
     structural = score_positive([(get_bhava_bala(9, ls, planet_data, f, lagna_lon, jd_ut), 2.6), (get_bhava_bala(5, ls, planet_data, f, lagna_lon, jd_ut), 1.7), (get_bhava_bala(11, ls, planet_data, f, lagna_lon, jd_ut), 1.0), (get_bhava_bala(1, ls, planet_data, f, lagna_lon, jd_ut), 0.8), (sav_norm(f["sav"].get(9)), 1.2), (sav_norm(f["sav"].get(5)), 0.8)])
     karaka = score_positive([(get_p_str("Jupiter", planet_data, ls, f, lagna_lon, jd_ut), 1.7), (get_p_str(ninth_lord, planet_data, ls, f, lagna_lon, jd_ut), 1.4), (varga_sign_strength(f, "D9", "Jupiter"), 1.0), (varga_sign_strength(f, "D9", ninth_lord), 1.0), (get_p_str("Sun", planet_data, ls, f, lagna_lon, jd_ut), 0.5)])
-    kp = score_positive([(get_kp_sub_lord_score(9, placidus_cusps, planet_data, r_lon, k_lon, ls, {9,11}, {6,8,12}), 1.4), (get_kp_sub_lord_score(11, placidus_cusps, planet_data, r_lon, k_lon, ls, {9,11}, {6,8,12}), 0.8)])
+    kp = score_positive([(house_promise_score(9, placidus_cusps, planet_data, r_lon, k_lon, ls, {9,11}, {6,8,12}), 1.4), (house_promise_score(11, placidus_cusps, planet_data, r_lon, k_lon, ls, {9,11}, {6,8,12}), 0.8)])
     yoga = topic_yoga_score(f, {"Lakshmi Yoga": 9, "Gajakesari Yoga": 7, "Hamsa Yoga": 6, "Raja Yoga": 6, "Adhi Yoga": 4}, planet_data, ls, lagna_lon, jd_ut)
     yoga = _lagna_scaled(yoga, get_bhava_bala(1, ls, planet_data, f, lagna_lon, jd_ut))
     placement = topic_house_connection(f, ["Jupiter", ninth_lord, "Sun"], {1, 5, 9, 11})
@@ -768,9 +768,9 @@ def calculate_hidden_pitfalls_score(dossier, profile=None):
         if varga_sign_strength(f, "D9", planet) <= 32: burden += 4
         if varga_sign_strength(f, "D30", planet) <= 32: burden += 5
 
-    if get_kp_sub_lord_score(2, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,11}, {6,8,12}) < 40: burden += 3
-    if get_kp_sub_lord_score(7, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,7,11}, {1,6,10}) < 40: burden += 3
-    if get_kp_sub_lord_score(10, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,6,10,11}, {5,8,12}) < 40: burden += 3
+    if house_promise_score(2, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,11}, {6,8,12}) < 40: burden += 3
+    if house_promise_score(7, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,7,11}, {1,6,10}) < 40: burden += 3
+    if house_promise_score(10, placidus_cusps, planet_data, r_lon, k_lon, ls, {2,6,10,11}, {5,8,12}) < 40: burden += 3
 
     if planet_house(f, "Rahu") in {1, 2, 4, 7, 10}: burden += 7
     if planet_house(f, "Ketu") in {1, 2, 4, 7, 10}: burden += 5

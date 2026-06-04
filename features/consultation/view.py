@@ -78,7 +78,7 @@ def show_consultation_room():
             res_ph = st.empty()
             with st.spinner("Consulting books..."):
                 # 1. Build the dossier (now includes EVENT TIMING ATLAS).
-                dos      = generate_astrology_dossier(dp, include_kp=True)
+                dos      = generate_astrology_dossier(dp)
                 transits = get_gochara_overlay(dp)
 
                 # 2. Classify intent and compose the system prompt with overlay.

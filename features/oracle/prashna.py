@@ -76,7 +76,7 @@ def show_prashna():
             "place": pn, "lat": p_lat, "lon": p_lon, "tz": p_tz,
         }
         with st.spinner("Casting chart..."):
-            dos = generate_astrology_dossier(prof, include_kp=True)
+            dos = generate_astrology_dossier(prof)
         st.session_state.prashna_question = question
         st.session_state.prashna_dos      = dos
         st.session_state.prashna_prompt   = build_prashna_prompt(question, dos)
