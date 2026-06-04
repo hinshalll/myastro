@@ -6,7 +6,7 @@ HOW TO USE (for non-coders):
 1. To switch ANY task to a different model, edit its LADDER in TASK_LADDERS
    below. The first name is the primary; the rest are fallbacks tried in order
    only when the one above runs out of free quota. Examples of model names:
-       "gemini-3.1-flash-lite-preview"   -> runs on Gemini
+       "gemini-3.1-flash-lite"           -> runs on Gemini
        "deepseek-v4-flash"               -> runs on DeepSeek
        "gemma-4-31b-it"                  -> runs on Gemma (free, lighter)
    The provider is auto-detected from the name. You never touch any other file.
@@ -33,22 +33,29 @@ import time as _time
 #    and so on. The LAST rung is always DeepSeek — paid, but it never runs dry,
 #    so the app can never go fully down.
 #
+#    THE ONLY 4 MODELS WE USE (chosen for their RPM + RPD free-tier limits):
+#      • gemini-3.1-flash-lite   — smart, free (primary brain for smart tasks)
+#      • gemma-4-31b-it          — free, lighter, higher limits (light-task lead)
+#      • gemma-4-26b-a4b-it      — free, lightest (deeper light-task fallback)
+#      • deepseek-v4-flash       — paid net, never runs dry (last rung everywhere)
+#
 #    TWO-TIER RULE (decided for Myastro):
 #      • SMART tasks  → lead with Gemini, fall to DeepSeek.   NO Gemma.
-#      • LIGHT tasks  → lead with Gemma,  fall to DeepSeek.   NO Gemini.
+#      • LIGHT tasks  → lead with Gemma (31b → 26b), fall to DeepSeek.  NO Gemini.
 #        Gemma is wired and ready, but NOTHING is routed to it until we test its
 #        quality on that task and approve it — we never gamble accuracy. To make
-#        a task LIGHT later, just rewrite its ladder, e.g.:
-#            "some_light_task": ["gemma-4-31b-it", "deepseek-v4-flash"],
+#        a task LIGHT later, rewrite its ladder, e.g.:
+#            "some_light_task": ["gemma-4-31b-it", "gemma-4-26b-a4b-it", "deepseek-v4-flash"],
 TASK_LADDERS: dict[str, list[str]] = {
-    "default": ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "deepseek-v4-flash"],  # tarot, numerology, horoscopes, dashboard
-    "chat":    ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "deepseek-v4-flash"],  # consultation room (streaming)
-    "json":    ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "deepseek-v4-flash"],  # structured JSON (kundli content)
-    "agent":   ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "deepseek-v4-flash"],  # oracle parallel expert agents
-    # Vision = palm/face photos. DeepSeek's PUBLIC API does not yet document image
-    # input, so vision stays Gemini-only (two Gemini vision models for headroom).
-    # When DeepSeek officially ships vision, add "deepseek-v4-flash" as the tail.
-    "vision":  ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash"],
+    "default": ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # tarot, numerology, horoscopes, dashboard
+    "chat":    ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # consultation room (streaming)
+    "json":    ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # structured JSON (kundli content)
+    "agent":   ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # oracle parallel expert agents
+    # Vision = palm/face photos. CONFIRMED 2026-06-05: DeepSeek V4 Flash's chat
+    # endpoint rejects image payloads (HTTP 400) — it has no vision. So vision is
+    # Gemini-only. The DeepSeek adapter can still encode images (future-ready);
+    # when DeepSeek officially ships vision, add "deepseek-v4-flash" as the tail.
+    "vision":  ["gemini-3.1-flash-lite"],
 }
 
 # Primary model per task (first rung) — kept as MODELS for backward-compat with

@@ -19,7 +19,6 @@ from shared.ai.gemini_client import get_ai_model_by_name
 from shared.ai import config
 from features.face_reading.prompts import build_face_reading_prompt
 
-MODEL_NAME = "gemini-3.1-flash-lite-preview"
 _CROP_ORDER = ["forehead", "eyes", "nose", "mouth_chin"]
 
 
@@ -128,10 +127,12 @@ def read_face(enhanced_face, region_crops: dict, metrics: dict, quality_metrics:
             response = model.generate_content(images + [prompt])
             if response and response.text:
                 config.note_success(model_name)
+                print(f"[face_reading] vision model used: {model_name}")
                 break
         except Exception as e:
             last_err = e
             config.note_failure(model_name, str(e))
+            print(f"[face_reading] vision model {model_name} failed: {type(e).__name__}: {str(e)[:140]}")
             continue
             
     if response is None or not response.text:

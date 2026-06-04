@@ -20,7 +20,7 @@ Free-tier rate-limit handling:
     Flip RESPECT_FREE_TIER_LIMITS=False when you move to a paid API — waits
     skip; premium kundli finishes faster.
 
-Cost (gemini-3.1-flash-lite-preview, $0.10/M in, $0.40/M out):
+Cost (gemini-3.1-flash-lite, $0.10/M in, $0.40/M out):
     Free  : ~0.5K input + 3K output    ≈ ₹0.10 / kundli
     Premium: ~1K input + 12K output    ≈ ₹0.40-0.55 / kundli
 
@@ -338,7 +338,10 @@ def generate_kundli_content(
 
     facts = _extract_facts(chart, years_ahead=3)
     word_count = WORD_COUNT[tier]
-    model_chain = [model_name, "gemini-3.1-flash", "gemini-2.5-flash"]
+    # Use the configured 'json' ladder (Gemini → DeepSeek), honouring any override.
+    model_chain = config.usable_models(
+        [model_name] + [m for m in config.ladder_for("json") if m != model_name]
+    )
     out: dict = {}
 
     # ── CALL 1 — General life topics (always runs) ──────────────────────

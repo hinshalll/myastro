@@ -673,15 +673,17 @@ def _scan_palm_internal(
             if config.detect_provider(_m) == "gemini":
                 model = get_ai_model_for_json(_m, _PHASE_A_SYSTEM_RULES, temperature=0.0)
             else:
-                model = get_ai_model_by_name(_m)
+                model = get_ai_model_by_name(_m, _PHASE_A_SYSTEM_RULES)
             response_a = model.generate_content(images + [prompt_a])
             text_a = response_a.text or ""
             if text_a:
                 config.note_success(_m)
+                print(f"[palmistry] Phase A vision model used: {_m}")
                 break
         except Exception as e:
             last_err = e
             config.note_failure(_m, str(e))
+            print(f"[palmistry] vision model {_m} failed: {type(e).__name__}: {str(e)[:140]}")
             continue
     if not text_a:
         return {
