@@ -1,10 +1,29 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-03 — Supabase data-layer foundation wired (client + auth + `/me` CRUD).
+**Last updated:** 2026-06-04 — People tab shared-day readings (`/people/couple-week`, `/people/family-grid`).
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
+
+### Recent changes (2026-06-04) — People tab: couple 7-day forecast + family grid
+- **New feature `features/people/`** (mounted at `/people`) — two pure-math, AI-free readings
+  that span **2+ charts at once**, extending the single-day `/dashboard/relationship-weather`:
+  - **`POST /people/couple-week`** — the next-N-days (default 7) "weather" between two people,
+    a rail for the People tab (mirrors `/dashboard/week`). Input `{ profile_a, profile_b,
+    start_date?, days? }` (both `/kundli/compute` shape). Each day = the FULL
+    `daily_relationship_weather` + a coarse `band` (good/neutral/difficult) + `is_today`; the
+    durable **baseline** ("how the two mesh") is lifted once into a top-level `baseline` block.
+    New `weekly_relationship_weather` in `shared/astro/relationship_weather.py`.
+  - **`POST /people/family-grid`** — today's state for several saved people at a glance. Input
+    `{ people:[{name, profile, relation_tag?}], viewer?, date? }`. Each row = that person's own
+    `daily_moon_forecast` (their day); pass `viewer` (your chart) and each row also gets
+    `together` — the relationship-weather tone between you and them. Read on ONE shared
+    calendar day so the cells line up.
+  - **Both:** Moon-based → work at **every birth-time tier** (noon placeholder per person);
+    **stateless** (the app passes the people it already has, no JWT); deterministic. Glue only —
+    all calc goes through `shared/astro/`. Warm/plain primary text, Sanskrit only in
+    `why`/`sanskrit`, gentle guidance never fate (blueprint §2).
 
 ### Recent changes (2026-06-03) — Supabase data-layer foundation (the keystone)
 - **`shared/db/` — the Streamlit-free data layer.** `secrets.py` (env→secrets.toml, never

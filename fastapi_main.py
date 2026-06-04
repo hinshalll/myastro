@@ -50,6 +50,8 @@ URL map
     /me/checkins                 GET/POST  (POST upserts + bumps the check-in streak)
     /me/journal                  GET/POST
     /me/streaks/{kind}           GET
+    /people/couple-week          POST  features/people/api.py  (2-chart 7-day weather)
+    /people/family-grid          POST                          (today's grid, several people)
     /docs                        Interactive Swagger UI (built into FastAPI)
 
 Auth note
@@ -169,6 +171,7 @@ _FEATURES = [
     ("vault",        "features.vault.api"),
     ("oracle",       "features.oracle.api"),   # /deep-analysis, /matchmaking, /marriage, /gochara, /compare, /prashna
     ("me",           "features.me.api"),       # authenticated user data: profiles/checkins/journal/streaks (Supabase + RLS)
+    ("people",       "features.people.api"),   # /couple-week, /family-grid — shared-day readings across 2+ charts (pure math)
 ]
 
 for prefix, module_path in _FEATURES:

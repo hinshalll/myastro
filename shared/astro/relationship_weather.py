@@ -41,7 +41,7 @@ Framing rule (blueprint §2): warm, plain, beginner-friendly. No jargon in the
 main lines; Sanskrit/technical terms live ONLY in `why` / `sanskrit`.
 """
 
-from datetime import date as _date, time as _time, datetime
+from datetime import date as _date, time as _time, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from shared.astro.astro_calc import (
@@ -49,7 +49,7 @@ from shared.astro.astro_calc import (
 )
 # Reuse the forecast helpers (same Moon-longitude logic + unknown-time fallback).
 from shared.astro.forecast import (
-    _natal_moon_lon, _transit_moon_lon, _NAK_DEVANAGARI,
+    _natal_moon_lon, _transit_moon_lon, _NAK_DEVANAGARI, _band,
 )
 
 
@@ -235,3 +235,43 @@ def daily_relationship_weather(profile_a: dict, profile_b: dict, on_date=None) -
         "tara_b_quality": qb,
         "day_state": state,
     }
+
+
+def weekly_relationship_weather(profile_a: dict, profile_b: dict,
+                                start_date=None, days: int = 7) -> dict:
+    """`days` consecutive daily relationship-weather readings between two people,
+    for the People tab's "next 7 days together" rail. Each entry is the full
+    daily_relationship_weather plus a coarse `band` (good/neutral/difficult) for
+    the rail colour and an `is_today` flag.
+
+    Pure math + lookup, no AI, no new deps — just the single-day reading run over
+    a span. The durable BASELINE ("how the two of you mesh") is identical every
+    day, so we also lift it to a top-level `baseline` block for the rail header
+    instead of repeating it on every card. Works at every birth-time tier (an
+    unknown birth time uses a noon placeholder per person, as in the single-day
+    reading). `start_date`: None → today in profile_a's tz (falls back to
+    profile_b's). Deterministic for the same two profiles + span.
+    """
+    tz = profile_a.get("tz") or profile_b.get("tz")
+    today = datetime.now(ZoneInfo(tz)).date()
+    if start_date is None:
+        start_date = today
+    elif isinstance(start_date, str):
+        start_date = _date.fromisoformat(start_date)
+
+    out = []
+    for i in range(max(1, days)):
+        d = start_date + timedelta(days=i)
+        w = daily_relationship_weather(profile_a, profile_b, d)
+        w["band"] = _band(w["score"])
+        w["is_today"] = (d == today)
+        out.append(w)
+
+    # The baseline is the same across the span — surface it once for the header.
+    first = out[0]
+    baseline = {
+        "score": first["baseline_score"],
+        "rashi_relation": first["rashi_relation"],
+        "bond": _RASHI_FLAVOUR[first["moon_sign_distance"]]["bond"],
+    }
+    return {"start_date": start_date.isoformat(), "baseline": baseline, "days": out}

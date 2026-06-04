@@ -310,6 +310,19 @@ logic, social-graph features, payment/IAP processing.
     (Chandra Sandhi + eclipse) · `/decide-quick` (Tara-Bala-only instant yes/no, no AI).
 - See §1.5 for the math behind the free ones.
 
+### 4.2a people — "You & People" shared-day readings (Streamlit-free, pure math)
+- **FastAPI (`features/people/api.py`) — 2 routes, both FREE/no-AI**, extending the single-day
+  `/dashboard/relationship-weather` to span 2+ charts:
+  - `/couple-week` — next-N-days (default 7) weather between two people (the People-tab rail).
+    Input `{ profile_a, profile_b, start_date?, days? }`; each day = full
+    `daily_relationship_weather` + `band` + `is_today`, with the durable `baseline` lifted once.
+  - `/family-grid` — today's state for several saved people (`{ people:[{name,profile,
+    relation_tag?}], viewer?, date? }`). Each row = that person's `daily_moon_forecast`; pass
+    `viewer` and each row also gets the `together` tone between you and them.
+- **Engine:** glue only — `service.py` loops over people; all calc goes through
+  `shared/astro/` (`weekly_relationship_weather`/`daily_relationship_weather` +
+  `daily_moon_forecast`). Moon-based → every birth-time tier; stateless (no JWT); deterministic.
+
 ### 4.3 kundli — the flagship chart (free in-app) + premium PDF
 - **Streamlit:** full scrollable free chart (D1 SVG, Panchanga, Avakahada, planetary
   positions, Vimshottari MD/AD, Sade Sati, Shadbala, SAV, Bhava Bala, remedies, Manglik,
@@ -379,13 +392,13 @@ chart, chapters, past-date, patterns, year, purpose, reading, widget, settings.
 |---|---|
 | Grounded AI companion ("it knows my chart") | **Built** — consultation `/ask` + dossier+Atlas |
 | Daily loop (hero, week, timing, decide) | **Built** — dashboard free endpoints |
-| Relationship daily weather | **Built** — `/relationship-weather` |
+| Relationship daily weather | **Built** — `/relationship-weather` (single day) + `/people/couple-week` (7-day rail) |
 | Persistence / data layer (Supabase) | **Foundation built** — schema (+ Diyas wallet/ledger, referrals, gifts, ad_rewards, depth_mode) + `shared/db/` Python client + JWT auth + `/me` CRUD (profiles/checkins/journal/streaks) + cache helpers. *Live DB project + keys still to be provisioned by the owner.* |
 | Pattern Engine (mood ↔ planets over time) | **Input plumbing built** — `checkins` save/list via `/me/checkins` (+ streak); **correlation code still out of scope** (later session) |
 | Journaling / mantra | **Journal built** — `/me/journal` save/list (the Mirror's store); AI reflections later. Mantra/practice still mockup |
 | Proof / Karmic Audit (back-test past events) | **Engine partial** — `rectify()` + Event Timing Atlas exist; no user-facing flow or endpoint (task #16) |
 | Rituals / calm CHANI-style space | **Mockup screens + `ritual_journeys` table** — no backend feed/endpoints |
-| Social People (friends/share/family grid) | **Schema only** — `connections` + `groups` tables designed; only one-shot matchmaking + daily weather endpoints exist (task #17) |
+| Social People (friends/share/family grid) | **Family grid built** — `/people/family-grid` (several people's day at a glance, + your shared tone). Friends/share/`connections`+`groups` social graph still schema-only (later session) |
 
 **Bottom line:** the **compute engine + the read-only daily/chart/oracle endpoints are real
 and strong.** What's genuinely missing is everything **stateful**: the Supabase schema is
@@ -415,3 +428,5 @@ Then wire it all into the mobile mockup and re-aim presentation.
 - **face_reading:** `/read`
 - **dashboard:** `/data` · `/forecast` · `/week` · `/relationship-weather` · `/day-alerts` ·
   `/muhurta` · `/decide-quick` · `/timing` · `/decide`
+- **people:** `/couple-week` · `/family-grid`
+- **me:** `/profiles` · `/profiles/{id}` · `/checkins` · `/journal` · `/streaks/{kind}` (JWT)
