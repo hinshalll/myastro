@@ -438,14 +438,15 @@ horoscopes, numerology, tarot, palm, face, vault, `/ask`), AI config, ONNX re-in
   2×2 contrasts over check-ins × Moon state) + ✅ **Day-1 mirror** (`/companion/micro-insight`)
   + ✅ streaks (`/me/streaks`) + ✅ Mirror journal store (`/me/journal`) + ✅ **family grid** &
   **couple 7-day forecast** (`/people/*`). *Companion long-memory + Practice progress still open.*
-- **(C partial) Pure-compute endpoints** — ✅ **the Proof back-test** (`/companion/proof`).
-  *Year in Review, Your Purpose, festival/Panchanga calendar still open.*
+- **(C partial) Pure-compute endpoints** — ✅ **the Proof back-test** (`/companion/proof`),
+  ✅ **Your Purpose** (`/reflect/purpose`), ✅ **Year in Review / Cosmic Wrapped** (`/reflect/year`).
+  *Festival/Panchanga calendar + the plain-English chart-interpretation layer still open.*
 
 **Not done:**
 - **(B rest)** — Companion conversational long-memory, Practice/ritual progress, the social
   graph proper (connections/groups, friend requests, sharing).
-- **(C rest)** — Your Purpose (soul/career blueprint), Year in Review (Cosmic Wrapped),
-  festival/Panchanga calendar, plain-English chart-interpretation layer.
+- **(C rest)** — festival/Panchanga calendar, the plain-English chart-interpretation layer
+  (the "front room" — task #18, the big static-meaning build).
 - **(D) Infra/integrations** — notifications/push + scheduler, **payments (IAP) + coin/sub
   logic**, shareable card rendering, caching (app + API), usage limits.
 - **(E) Compliance** — DPDP/GDPR, account deletion/export, journal privacy.

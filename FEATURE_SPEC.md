@@ -1,10 +1,30 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-04 — Companion payoffs (`/companion/micro-insight`, `/patterns`, `/proof`).
+**Last updated:** 2026-06-04 — Reflective readings (`/reflect/purpose`, `/reflect/year`).
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
+
+### Recent changes (2026-06-04) — big-picture reflective readings: Your Purpose + Year in Review
+- **New feature `features/reflect/`** (mounted at `/reflect`) — two pure-math, AI-free readings
+  that step back from the daily loop to the whole life / whole year. Both stateless,
+  deterministic (cache-friendly), need a profile with lat/lon; unknown birth time → midday
+  estimate + a `precision_note`; missing lat/lon → 422.
+  - **`POST /reflect/purpose`** — **Your Purpose**: a soul/career blueprint from the
+    **Atmakaraka** (Jaimini soul-planet → core desire + karma + the house it works through),
+    the **10th house + its lord** (career/karma + where the lord sits), the **D10 Dashamsha**
+    (career chart flavour), and the **dharma trikona** (1/5/9). Returns { soul, calling,
+    career_chart, dharma, headline, summary, why, sanskrit, precision_note }.
+  - **`POST /reflect/year`** — **Year in Review ("Cosmic Wrapped")**: a shareable recap from
+    the **Varshaphala** (Tajik annual chart — Muntha spotlight + solar return), the **dasha
+    chapter** running across the year (sub-period shift noted), and the year's **slow transits**
+    (Jupiter's gift, Saturn's lesson). Includes a punchy `share_text` for the Wrapped card.
+  - **Engine reuse:** `compute_chart` + `compute_varshaphala` (`shared/astro/kundli.py`) +
+    `build_vimshottari_timeline` + the slow-transit helpers from `shared/astro/retrospect.py`.
+    Meanings are a finite, classically-sourced static table (`features/reflect/meanings.py`):
+    Jaimini AK natures, the 12-house bhava life-areas, the 12 sign temperaments. Warm/plain,
+    Sanskrit only in `sanskrit`/`why`, a compass not a cage — gentle guidance never fate (§2).
 
 ### Recent changes (2026-06-04) — the Companion's payoffs: Pattern Engine + The Proof
 - **New feature `features/companion/`** (mounted at `/companion`) — three pure-math, AI-free

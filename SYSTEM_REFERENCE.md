@@ -337,6 +337,18 @@ logic, social-graph features, payment/IAP processing.
   mirror + the Pattern Engine's per-day state. Stats live in `service.py` (plain proportions).
   `list_patterns`/`save_pattern` added to `shared/db/supabase_client.py`. Moon-based → every tier.
 
+### 4.2c reflect — big-picture readings (Your Purpose + Year in Review, pure math)
+- **FastAPI (`features/reflect/api.py`) — 2 routes, both FREE/no-AI, stateless + deterministic:**
+  - `/purpose` — **Your Purpose**: soul/career blueprint from the Atmakaraka (soul planet),
+    10th house + lord, D10 Dashamsha, and dharma trikona (1/5/9).
+  - `/year` — **Year in Review ("Cosmic Wrapped")**: from the Varshaphala (Muntha + solar
+    return), the year's dasha chapter, and its slow transits (Jupiter gift / Saturn lesson).
+    Includes a `share_text` for the shareable card.
+- **Engine reuse:** `compute_chart` + `compute_varshaphala` (`kundli.py`) + `build_vimshottari_timeline`
+  + the slow-transit helpers from `retrospect.py`. Meanings = a finite, classically-sourced static
+  table (`features/reflect/meanings.py`: Jaimini AK natures, 12-house life-areas, 12 sign styles).
+  Needs lat/lon (houses/D10); unknown birth time → midday estimate + precision note.
+
 ### 4.3 kundli — the flagship chart (free in-app) + premium PDF
 - **Streamlit:** full scrollable free chart (D1 SVG, Panchanga, Avakahada, planetary
   positions, Vimshottari MD/AD, Sade Sati, Shadbala, SAV, Bhava Bala, remedies, Manglik,
@@ -445,4 +457,5 @@ Then wire it all into the mobile mockup and re-aim presentation.
   `/muhurta` · `/decide-quick` · `/timing` · `/decide`
 - **people:** `/couple-week` · `/family-grid`
 - **companion:** `/micro-insight` · `/patterns` (JWT) · `/proof`
+- **reflect:** `/purpose` · `/year`
 - **me:** `/profiles` · `/profiles/{id}` · `/checkins` · `/journal` · `/streaks/{kind}` (JWT)

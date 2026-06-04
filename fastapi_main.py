@@ -55,6 +55,8 @@ URL map
     /companion/micro-insight     POST  features/companion/api.py  (Day-1 mirror)
     /companion/patterns          GET                              (Pattern Engine; JWT required)
     /companion/proof             POST                             ("why did that happen?" past date)
+    /reflect/purpose             POST  features/reflect/api.py  (soul/career blueprint)
+    /reflect/year                POST                          (Year in Review — Cosmic Wrapped)
     /docs                        Interactive Swagger UI (built into FastAPI)
 
 Auth note
@@ -176,6 +178,7 @@ _FEATURES = [
     ("me",           "features.me.api"),       # authenticated user data: profiles/checkins/journal/streaks (Supabase + RLS)
     ("people",       "features.people.api"),   # /couple-week, /family-grid — shared-day readings across 2+ charts (pure math)
     ("companion",    "features.companion.api"), # /micro-insight, /patterns (JWT), /proof — the Companion's payoffs (pure math)
+    ("reflect",      "features.reflect.api"),   # /purpose, /year — big-picture soul/career blueprint + Cosmic Wrapped (pure math)
 ]
 
 for prefix, module_path in _FEATURES:
