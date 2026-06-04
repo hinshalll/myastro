@@ -17,18 +17,18 @@ from __future__ import annotations
 # ── The 12 signs as a warm core temperament. Faithful to SIGN_QUALITIES.nature,
 #    written as a plain phrase that can follow "you're …" / "you come across as …".
 SIGN_ESSENCE: dict[str, str] = {
-    "Aries":       "bold, direct, and quick to act — you'd rather start than sit and wait",
-    "Taurus":      "steady, patient, and grounded — you like things solid, comfortable, and built to last",
-    "Gemini":      "curious, quick, and talkative — your mind is always moving and reaching for the next thing",
-    "Cancer":      "caring and deeply feeling — you lead with your heart and look after your own",
-    "Leo":         "warm, proud, and generous — you're meant to be seen, and you shine when you are",
-    "Virgo":       "precise, helpful, and sharp-eyed — you notice the details everyone else misses",
-    "Libra":       "fair, charming, and people-minded — you're at your best in balance and good company",
-    "Scorpio":     "intense, private, and all-or-nothing — you feel everything deeply, even when you don't show it",
-    "Sagittarius": "open, restless, and meaning-seeking — you need room to roam and a bigger picture to believe in",
-    "Capricorn":   "disciplined, ambitious, and patient — you play the long game and earn what you get",
-    "Aquarius":    "original, independent, and a little against the grain — you think for yourself",
-    "Pisces":      "gentle, imaginative, and compassionate — you feel the world more than you ever let on",
+    "Aries":       "bold, fast, and a little impatient — you'd rather act and apologise than sit around waiting",
+    "Taurus":      "steady, sensual, and quietly stubborn — you like things solid, comfortable, and done on your own timeline",
+    "Gemini":      "curious, quick, and easily bored — your attention moves on the second something stops being interesting",
+    "Cancer":      "warm, sensitive, and a little guarded — you feel everything, and you protect your people fiercely",
+    "Leo":         "proud, warm, and built to be seen — you give generously, and you notice when it isn't noticed back",
+    "Virgo":       "sharp-eyed, useful, and quietly hard on yourself — you catch the flaw nobody else does, your own included",
+    "Libra":       "charming, fair-minded, and happiest in good company — you'd rather find the balance than win the fight",
+    "Scorpio":     "intense, private, and all-or-nothing — you don't do shallow, and you don't forget",
+    "Sagittarius": "restless, open, and allergic to being boxed in — you need room to roam and a reason bigger than yourself",
+    "Capricorn":   "disciplined, ambitious, and in it for the long game — you'd rather earn it slowly than be handed it",
+    "Aquarius":    "original, independent, and a bit of a contrarian — you think for yourself, even when going along would be easier",
+    "Pisces":      "gentle, imaginative, and deeply absorbent — you feel the room before anyone's said a word",
 }
 
 # Sanskrit (Devanagari) sign names — for the `sanskrit` field only.

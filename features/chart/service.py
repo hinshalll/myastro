@@ -282,7 +282,7 @@ def houses(profile: dict) -> dict:
     for h in range(1, 13):
         hi = chart.houses[h]
         body = (f"This is the part of your life about {M.HOUSE_LIFE[h]}. "
-                f"With {hi.sign} here, you tend to approach it in a {_pre(hi.sign)} way.")
+                f"With {hi.sign} here, it tends to play out in true {hi.sign} style — {_pre(hi.sign)}.")
         occ = [p for p in hi.occupants if p in M.PLANET_FLAVOUR]
         if len(occ) == 1:
             body += f" {occ[0]} sits here, adding {M.PLANET_FLAVOUR[occ[0]]} quality."
