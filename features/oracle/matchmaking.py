@@ -126,7 +126,7 @@ def _run_matchmaking(profiles, d60s):
     )
     st.info("📖 Generating compatibility reading...")
     try:
-        result = generate_content_with_fallback(final, knowledge_files=None)
+        result = generate_content_with_fallback(final, knowledge_files=None, task="agent")
     except Exception as e:
         result = f"⚠️ Reading paused ({str(e)[:100]}). Please try again in ~1 minute."
 

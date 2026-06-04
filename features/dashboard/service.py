@@ -31,7 +31,7 @@ def fetch_data(prof_json: str, today_str: str) -> dict:
     dos = generate_astrology_dossier(prof, False, compact=True)
     transits = get_gochara_overlay(prof)
     prompt = build_data_prompt(dos, transits, prof["name"].split()[0])
-    res = generate_content_with_fallback(prompt, knowledge_files=None)
+    res = generate_content_with_fallback(prompt, knowledge_files=None, task="micro")
     return _safe_json(res, {
         "GREETING": f"Welcome back, {prof['name'].split()[0]}. The cosmic connection is catching its breath, but your tools are ready below.",
         "ENERGY":   "Mixed",
@@ -63,7 +63,7 @@ RESPOND ONLY IN VALID JSON FORMAT. NO MARKDOWN:
             "Do not invent meanings outside them.</RULES>\n\n"
             + json_prompt
         )
-    res = generate_content_with_fallback(json_prompt, knowledge_files=None)
+    res = generate_content_with_fallback(json_prompt, knowledge_files=None, task="micro")
     return _safe_json(res, {
         "MEANING": "Trust the process unfolding today.",
         "ACTION":  "Observe before making any sudden moves.",

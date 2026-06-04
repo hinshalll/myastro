@@ -209,13 +209,15 @@ to `chart.interpretations`. Imported lazily so `/kundli/compute` stays light.
 
 ## 2. The AI layer — `shared/ai/`
 
-- **`config.py` — THE ONE FILE to change models.** Per-task **ladders** in `TASK_LADDERS`
-  (`default / chat / json / agent / vision`). **Two-tier rule:** SMART tasks lead with Gemini
-  → fall to DeepSeek (no Gemma); LIGHT tasks would lead with Gemma → DeepSeek (none assigned
-  yet — Gemma is opt-in only after a quality test, never gamble accuracy). `deepseek-v4-flash`
-  is the last rung of every text ladder: the paid net that never runs dry. **Vision = Gemini-only**
-  (DeepSeek's public API doesn't document image input yet). Provider auto-detected from the
-  model-name prefix. `model_for(task)` = primary; `ladder_for(task)` = full ladder.
+- **`config.py` — THE ONE FILE to change models.** Per-task **ladders** in `TASK_LADDERS`.
+  **Three intelligence tiers** + vision:
+    - **Intelligence** (`chat`, `agent`, `json`): `gemini-3.1-flash-lite → deepseek-v4-flash`. No Gemma.
+    - **Less-dumb readings** (`default` = tarot, numerology, horoscope readings, gochara): `gemma-4-31b-it → deepseek-v4-flash`.
+    - **Dumbest / high-volume** (`micro` = dashboard tiles, daily horoscope, daily-card blurb): `gemma-4-26b-a4b-it → gemma-4-31b-it → deepseek-v4-flash` (climbs FREE Gemmas before paying).
+    - **Vision** (palm/face): `gemini-3.1-flash-lite → gemini-2.5-flash → gemma-4-31b-it` — all free; DeepSeek has **no vision** (confirmed HTTP 400 on images).
+  Oracle endpoints pass `task="agent"`; dashboard/daily-horoscope pass `task="micro"`. `deepseek-v4-flash`
+  is the paid net on text ladders. Provider auto-detected from name prefix. `model_for(task)` = primary;
+  `ladder_for(task)` = full ladder.
 - **Circuit breaker (in `config.py`):** `note_failure / note_success / is_cooling /
   usable_models`. On a quota/429 error a model is skipped for `COOLDOWN_SECONDS` (180s) so
   failover to DeepSeek is **instant** (no wasted retry); it re-probes and returns to free

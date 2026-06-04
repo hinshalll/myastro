@@ -45,7 +45,7 @@ def generate_western_forecast(sun_sign: str, today_str: str) -> str:
 
     prompt = build_western_prompt(sun_sign, today_str, "\n".join(lines))
     try:
-        return generate_content_with_fallback(prompt, knowledge_files=None)
+        return generate_content_with_fallback(prompt, knowledge_files=None, task="micro")
     except Exception:
         return _FALLBACK
 
@@ -89,6 +89,9 @@ def generate_vedic_forecast(prof_json: str, timeframe: str, today_str: str) -> s
 
     prompt = build_vedic_prompt(rashi, timeframe, transit_data, knowledge_ctx)
     try:
-        return generate_content_with_fallback(prompt, knowledge_files=None)
+        return generate_content_with_fallback(
+            prompt, knowledge_files=None,
+            task=("micro" if timeframe == "Daily" else "default"),
+        )
     except Exception:
         return _FALLBACK

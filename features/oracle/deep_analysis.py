@@ -110,7 +110,7 @@ def _run_deep_analysis(prof, d60):
     time_module.sleep(3)
     st.info("📖 Writing your full reading...")
     try:
-        result = generate_content_with_fallback(final, knowledge_files=None)
+        result = generate_content_with_fallback(final, knowledge_files=None, task="agent")
     except Exception as e:
         result = (
             f"⚠️ Reading generation paused ({str(e)[:100]}). "

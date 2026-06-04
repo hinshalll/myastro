@@ -20,8 +20,7 @@ if router is not None:
         from shared.ai import config
         from shared.ai.knowledge import rag_context
 
-        _chat = config.model_for("chat")
-        chat_models = config.usable_models([_chat] + [m for m in FREE_MODELS if m != _chat])
+        chat_models = config.usable_models(config.ladder_for("chat"))
 
         dossier = generate_astrology_dossier(req.profile)
         transits = get_gochara_overlay(req.profile)

@@ -128,8 +128,7 @@ def show_consultation_room():
                 # 6. Model call with fallback ladder (Gemini → DeepSeek) + breaker.
                 full_txt = ""
                 success  = False
-                _chat = config.model_for("chat")
-                for m_id in config.usable_models([_chat] + [m for m in FREE_MODELS if m != _chat]):
+                for m_id in config.usable_models(config.ladder_for("chat")):
                     full_txt = ""   # reset so a mid-stream failure never concatenates partials
                     try:
                         model    = get_ai_model_by_name(

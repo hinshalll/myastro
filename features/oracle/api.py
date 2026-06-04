@@ -95,7 +95,7 @@ if router is not None:
 
         synth_prompt = build_master_synthesizer_prompt(
             dossier, p_notes, t_notes, k_notes, kp_mode=use_kp)
-        reading = generate_content_with_fallback(synth_prompt)
+        reading = generate_content_with_fallback(synth_prompt, task="agent")
         return DeepAnalysisResponse(
             reading=reading,
             notes={"parashari": p_notes, "timing": t_notes,
@@ -173,7 +173,7 @@ if router is not None:
             compatibility_index=float(
                 (compat.get("score", 0) if isinstance(compat, dict) else compat) or 0
             ),
-            reading=generate_content_with_fallback(prompt),
+            reading=generate_content_with_fallback(prompt, task="agent"),
         )
 
     # ─── /marriage ───────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ if router is not None:
         return MarriageResponse(
             promise_score=float(dest.get("score", dest.get("promise_score", 0)) or 0),
             timing_windows=list(dest.get("timing_windows", []) or []),
-            reading=generate_content_with_fallback(prompt),
+            reading=generate_content_with_fallback(prompt, task="agent"),
         )
 
     # ─── /gochara ────────────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ if router is not None:
         ctx = _rag("gochara transit current planetary activation",
                    ("bphs2.md", "htrh2.md"), 10)
         prompt = build_transit_prompt(dossier, overlay, knowledge_context=ctx)
-        return GocharaResponse(reading=generate_content_with_fallback(prompt))
+        return GocharaResponse(reading=generate_content_with_fallback(prompt, task="agent"))
 
     # ─── /compare ────────────────────────────────────────────────────────────
     @router.post("/compare", response_model=CompareResponse)
@@ -240,7 +240,7 @@ if router is not None:
         prompt = build_comparison_prompt(dossiers, req.criteria, knowledge_context=ctx)
         return CompareResponse(
             rankings=rankings if isinstance(rankings, list) else [rankings],
-            reading=generate_content_with_fallback(prompt),
+            reading=generate_content_with_fallback(prompt, task="agent"),
         )
 
     # ─── /prashna ────────────────────────────────────────────────────────────
@@ -281,5 +281,5 @@ if router is not None:
         prompt = build_prashna_prompt(req.question, dossier, knowledge_context=ctx)
         return PrashnaResponse(
             verdict=str(verdict),
-            reading=generate_content_with_fallback(prompt),
+            reading=generate_content_with_fallback(prompt, task="agent"),
         )

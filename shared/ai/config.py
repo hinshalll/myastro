@@ -33,29 +33,31 @@ import time as _time
 #    and so on. The LAST rung is always DeepSeek — paid, but it never runs dry,
 #    so the app can never go fully down.
 #
-#    THE ONLY 4 MODELS WE USE (chosen for their RPM + RPD free-tier limits):
-#      • gemini-3.1-flash-lite   — smart, free (primary brain for smart tasks)
-#      • gemma-4-31b-it          — free, lighter, higher limits (light-task lead)
-#      • gemma-4-26b-a4b-it      — free, lightest (deeper light-task fallback)
-#      • deepseek-v4-flash       — paid net, never runs dry (last rung everywhere)
+#    THE MODELS WE USE (chosen for their RPM + RPD free-tier limits):
+#      • gemini-3.1-flash-lite   — smartest free model (intelligence tier)
+#      • gemma-4-31b-it          — free, capable (less-dumb readings tier)
+#      • gemma-4-26b-a4b-it      — free, lightest, highest limits (micro tier)
+#      • gemma-4-31b-it          — also serves as the free VISION fallback
+#      • gemini-2.5-flash        — VISION-only middle fallback (no other use)
+#      • deepseek-v4-flash       — PAID net, never runs dry (last rung on text)
 #
-#    TWO-TIER RULE (decided for Myastro):
-#      • SMART tasks  → lead with Gemini, fall to DeepSeek.   NO Gemma.
-#      • LIGHT tasks  → lead with Gemma (31b → 26b), fall to DeepSeek.  NO Gemini.
-#        Gemma is wired and ready, but NOTHING is routed to it until we test its
-#        quality on that task and approve it — we never gamble accuracy. To make
-#        a task LIGHT later, rewrite its ladder, e.g.:
-#            "some_light_task": ["gemma-4-31b-it", "gemma-4-26b-a4b-it", "deepseek-v4-flash"],
+#    THREE-TIER RULE by how much intelligence a task needs:
+#      • INTELLIGENCE  → gemini-3.1-flash-lite → deepseek.  (NO Gemma — quality.)
+#      • LESS-DUMB     → gemma-4-31b-it → deepseek.         (readings: tarot etc.)
+#      • DUMBEST/HIGH-VOLUME → gemma-4-26b-a4b-it → gemma-4-31b-it → deepseek.
+#        (cheap tasks climb the FREE Gemma tiers before ever paying DeepSeek.)
+#    Vision is special: DeepSeek can't see, so its ladder is all-free Gemini→Gemma.
 TASK_LADDERS: dict[str, list[str]] = {
-    "default": ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # tarot, numerology, horoscopes, dashboard
+    # ── INTELLIGENCE (Gemini → DeepSeek; never Gemma) ──
     "chat":    ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # consultation room (streaming)
-    "json":    ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # structured JSON (kundli content)
-    "agent":   ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # oracle parallel expert agents
-    # Vision = palm/face photos. CONFIRMED 2026-06-05: DeepSeek V4 Flash's chat
-    # endpoint rejects image payloads (HTTP 400) — it has no vision. So vision is
-    # Gemini-only. The DeepSeek adapter can still encode images (future-ready);
-    # when DeepSeek officially ships vision, add "deepseek-v4-flash" as the tail.
-    "vision":  ["gemini-3.1-flash-lite"],
+    "agent":   ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # oracle agents + deep readings/synthesis
+    "json":    ["gemini-3.1-flash-lite", "deepseek-v4-flash"],  # structured JSON (kundli content/narrative)
+    # ── LESS-DUMB readings (Gemma-31b → DeepSeek) ──
+    "default": ["gemma-4-31b-it", "deepseek-v4-flash"],         # tarot, numerology, horoscope readings, gochara
+    # ── DUMBEST / high-volume (climb free Gemmas → DeepSeek) ──
+    "micro":   ["gemma-4-26b-a4b-it", "gemma-4-31b-it", "deepseek-v4-flash"],  # dashboard tiles, daily blurbs
+    # ── VISION (palm/face). DeepSeek has no vision (HTTP 400 on images), so all free. ──
+    "vision":  ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemma-4-31b-it"],
 }
 
 # Primary model per task (first rung) — kept as MODELS for backward-compat with

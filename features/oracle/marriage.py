@@ -88,7 +88,7 @@ def _run_marriage_matrix(profiles, d60s):
         knowledge_context=match_ctx,
     )
     st.info("📖 Generating Destiny Marriage Matrix...")
-    result = generate_content_with_fallback(final, knowledge_files=None)
+    result = generate_content_with_fallback(final, knowledge_files=None, task="agent")
     if result:
         st.session_state[f"oracle_{_MISSION_KEY}_history"] = [
             {"role":"user",  "display":"💞 Destiny Marriage Matrix", "parts":[final]},

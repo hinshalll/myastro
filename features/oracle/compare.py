@@ -107,7 +107,7 @@ def _run_compare(profiles, d60s, selected_criteria):
     final = build_comparison_prompt(pairs, selected_criteria, knowledge_context=compare_ctx)
     st.info("📖 Comparing profiles...")
     try:
-        result = generate_content_with_fallback(final, knowledge_files=None)
+        result = generate_content_with_fallback(final, knowledge_files=None, task="agent")
     except Exception as e:
         result = f"⚠️ Reading paused ({str(e)[:100]}). Please try again in ~1 minute."
 
