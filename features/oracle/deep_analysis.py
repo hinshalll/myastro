@@ -23,7 +23,7 @@ from features.oracle._shared import (
     generate_astrology_dossier,
     build_topic_query, rag_context_cached,
     build_agent_parashari_prompt, build_agent_timing_prompt, build_agent_kp_prompt,
-    build_master_synthesizer_prompt,
+    build_agent_house_promise_prompt, build_master_synthesizer_prompt,
     FREE_MODELS, agent_worker, generate_content_with_fallback,
     render_profile_form, resolve_profile,
     render_chat_history, render_pdf_download,
@@ -72,6 +72,12 @@ def _run_deep_analysis(prof, d60):
         "Use only data present in the dossier.</MATH_LOCK>"
     )
 
+    # Third lens follows the KP toggle: KP cusp specialist when ON, classical
+    # Parashari bhava-promise specialist when OFF (the feature never disappears).
+    from shared.astro import config as astro_config
+    use_kp = astro_config.kp_enabled()
+    third_books = ("bphs1.md", "kp3.md") if use_kp else ("bphs1.md", "htrh2.md")
+
     # Fetch RAG contexts for all 3 agents concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
         f_ctx_p = ex.submit(rag_context_cached,
@@ -81,9 +87,12 @@ def _run_deep_analysis(prof, d60):
             build_topic_query(topic="timing", dossier=dossier),
             ("bphs2.md", "kp3.md"), 10)
         f_ctx_k = ex.submit(rag_context_cached,
-            build_topic_query(topic="kp", dossier=dossier),
-            ("bphs1.md", "kp3.md"), 8)
+            build_topic_query(topic=("kp" if use_kp else "parashari"), dossier=dossier),
+            third_books, 8)
         ctx_p, ctx_t, ctx_k = f_ctx_p.result(), f_ctx_t.result(), f_ctx_k.result()
+
+    third_prompt = (build_agent_kp_prompt(dossier, knowledge_context=ctx_k) if use_kp
+                    else build_agent_house_promise_prompt(dossier, knowledge_context=ctx_k))
 
     # Run 3 AI agents concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
@@ -94,12 +103,10 @@ def _run_deep_analysis(prof, d60):
         f_t = executor.submit(agent_worker,
             build_agent_timing_prompt(dossier, knowledge_context=ctx_t),
             [], _agent, expert_rules)
-        f_k = executor.submit(agent_worker,
-            build_agent_kp_prompt(dossier, knowledge_context=ctx_k),
-            [], _agent, expert_rules)
+        f_k = executor.submit(agent_worker, third_prompt, [], _agent, expert_rules)
         p_notes, t_notes, k_notes = f_p.result(), f_t.result(), f_k.result()
 
-    final = build_master_synthesizer_prompt(dossier, p_notes, t_notes, k_notes)
+    final = build_master_synthesizer_prompt(dossier, p_notes, t_notes, k_notes, kp_mode=use_kp)
     time_module.sleep(3)
     st.info("📖 Writing your full reading...")
     try:

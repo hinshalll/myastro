@@ -64,16 +64,24 @@ if router is not None:
     @router.post("/deep-analysis", response_model=DeepAnalysisResponse)
     def deep_analysis(req: DeepAnalysisRequest) -> DeepAnalysisResponse:
         from shared.astro.dossier_builder import generate_astrology_dossier
+        from shared.astro import config as astro_config
         from shared.ai.gemini_client import agent_worker, generate_content_with_fallback
         from shared.ai import config
         from shared.ai.prompts import (
             build_agent_parashari_prompt, build_agent_timing_prompt,
-            build_agent_kp_prompt, build_master_synthesizer_prompt,
+            build_agent_kp_prompt, build_agent_house_promise_prompt,
+            build_master_synthesizer_prompt,
         )
 
         prof = _parse_profile(req.profile)
         dossier = generate_astrology_dossier(prof, req.include_d60)
         expert_rules = "You are an expert agent providing concise observations."
+
+        # Third agent follows the KP toggle: KP cusp specialist when ON, classical
+        # Parashari bhava-promise specialist when OFF. The feature never disappears.
+        use_kp = astro_config.kp_enabled()
+        third_prompt = (build_agent_kp_prompt(dossier) if use_kp
+                        else build_agent_house_promise_prompt(dossier))
 
         # Three parallel agents
         _agent = config.model_for("agent")
@@ -82,15 +90,16 @@ if router is not None:
                             [], _agent, expert_rules)
             f_t = ex.submit(agent_worker, build_agent_timing_prompt(dossier),
                             [], _agent, expert_rules)
-            f_k = ex.submit(agent_worker, build_agent_kp_prompt(dossier),
-                            [], _agent, expert_rules)
+            f_k = ex.submit(agent_worker, third_prompt, [], _agent, expert_rules)
             p_notes, t_notes, k_notes = f_p.result(), f_t.result(), f_k.result()
 
-        synth_prompt = build_master_synthesizer_prompt(dossier, p_notes, t_notes, k_notes)
+        synth_prompt = build_master_synthesizer_prompt(
+            dossier, p_notes, t_notes, k_notes, kp_mode=use_kp)
         reading = generate_content_with_fallback(synth_prompt)
         return DeepAnalysisResponse(
             reading=reading,
-            notes={"parashari": p_notes, "timing": t_notes, "kp": k_notes},
+            notes={"parashari": p_notes, "timing": t_notes,
+                   ("kp" if use_kp else "bhava_promise"): k_notes},
         )
 
     # ─── /matchmaking ────────────────────────────────────────────────────────

@@ -31,6 +31,7 @@ from shared.astro.scoring import calculate_destiny_confirmation, calculate_compa
 from shared.ai.gemini_client import FREE_MODELS, agent_worker, generate_content_with_fallback
 from shared.ai.prompts import (
     build_agent_parashari_prompt, build_agent_timing_prompt, build_agent_kp_prompt,
+    build_agent_house_promise_prompt,
     build_master_synthesizer_prompt, build_transit_prompt, build_prashna_prompt,
     build_matchmaking_prompt, build_destiny_confirmation_prompt, build_comparison_prompt,
 )

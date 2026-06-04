@@ -1766,6 +1766,12 @@ def extract_kp_promise(dossier_text, house_number):
     match = re.search(pattern, dossier_text)
     if match:
         return kp_score_from_verdict(match.group(1))
+    if not astro_config.kp_enabled():
+        # KP is OFF by design → don't go neutral; give the TRADITIONAL Parashari
+        # promise from the house's classical strength (lord + SAV + base + placement)
+        # mapped to the same 0/1/2/3 verdict scale the KP path returns.
+        hs = house_score(facts, house_number)   # 15..95
+        return 3 if hs >= 68 else 2 if hs >= 55 else 1 if hs >= 42 else 0
     import sys
     print(f"[extract_kp_promise] WARNING: no KP promise found for H{house_number} "
           f"— dossier may be malformed or KP section missing.", file=sys.stderr)

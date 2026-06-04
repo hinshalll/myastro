@@ -214,14 +214,70 @@ Output as structured findings. Mark each as PROMISED / PARTIALLY PROMISED / DENI
 <user_chart_data>{dossier}</user_chart_data>"""
 
 
-def build_master_synthesizer_prompt(dossier, p_notes, t_notes, k_notes):
+def build_agent_house_promise_prompt(dossier, knowledge_context: str = ""):
+    """Traditional Parashari counterpart to the KP agent — used when KP is disabled.
+    Judges whether key life events are PROMISED using the classical bhava-lord +
+    significator method (house lord placement/strength, occupants, benefics/malefics,
+    karakas, divisional confirmation) instead of KP cusp sub-lords. Same output
+    format (PROMISED / PARTIALLY PROMISED / DELAYED / DENIED) so the synthesizer
+    handles it identically."""
+    knowledge_block = f"""<KNOWLEDGE_CONTEXT>
+{knowledge_context}
+</KNOWLEDGE_CONTEXT>
+<RULES>
+Use only the passages above. When you cite a doctrine claim, weave in a natural friendly reference to the source (e.g. 'classical Parashari texts', 'Brihat Parashara Hora Shastra') — NEVER output literal markers like [BOOK: filename.md]. If a fact isn't in the passages or dossier, say so honestly rather than inventing it.
+</RULES>""" if knowledge_context else ""
     return f"""{GUARDRAILS}
 
-<ROLE>You are the Master Astrologer integrating Parashari character analysis with KP event prediction. The two systems are COMPLEMENTARY — use both, never confuse their roles.</ROLE>
+<ROLE>You are the Parashari Bhava (House) Promise Specialist. You judge IF a life event is promised using the classical Parashari significator method — the traditional alternative to KP. (KP is disabled for this chart by design; do NOT ask for cusp sub-lords or KP data — use pure Parashari.)</ROLE>
+
+<PARASHARI_PROMISE_METHOD>
+For each life area, an event is PROMISED when the BHAVA LORD (sign lord of that house) and the relevant KARAKA are well-placed and connected to the supporting houses, and DENIED/DELAYED when they fall in dusthanas (6/8/12), are debilitated/combust, or are afflicted by malefics without cancellation.
+1. MARRIAGE — 7th lord + Venus (karaka) + 7th occupants; supporting houses 2-7-11; confirm in D9 (Navamsa). Affliction by 6/8/12 lords delays.
+2. CAREER — 10th lord + 10th occupants + Saturn/Sun/Mercury karakas; supporting houses 2-6-10-11; confirm in D10 (Dasamsa).
+3. CHILDREN — 5th lord + Jupiter (karaka) + 5th occupants; supporting houses 2-5-11; confirm in D7 (Saptamsa).
+4. WEALTH — 2nd & 11th lords + their dignity; Dhana yogas; supporting houses 2-5-9-11.
+5. PROPERTY — 4th lord + Mars/Venus karakas; supporting houses 4-11.
+6. HEALTH/LONGEVITY — 1st & 8th lords, 6th-house afflictions, overall lagna strength.
+
+Then read TIMING from the Vimshottari Dasha + Event Timing Atlas in the dossier: an event tends to fire when the Mahadasha/Antardasha lord is the karaka or the bhava lord (or sits in/owns the supporting houses).
+</PARASHARI_PROMISE_METHOD>
+
+{knowledge_block}
+
+<mission>
+Using the HOUSE RULERSHIP MAP, planet placements, divisional charts (D9/D10/D7), ashtakavarga, yogas and the Vimshottari Dasha in the dossier, assess and mark each as PROMISED / PARTIALLY PROMISED / DELAYED / DENIED:
+1. Marriage (7th + Venus + 2-7-11; D9) — promised? and the likely Dasha window.
+2. Career/profession (10th + 2-6-10-11; D10) — service vs business, and timing.
+3. Children (5th + Jupiter + 2-5-11; D7) — promised?
+4. Wealth (2nd + 11th + Dhana yogas) — accumulation or struggle?
+5. Property (4th + 4-11) — acquisition promised?
+6. Health/longevity (1st/6th/8th) — strong or fragile constitution?
+Output as structured findings with the bhava lord + karaka reasoning for each.
+</mission>
+
+<user_chart_data>{dossier}</user_chart_data>"""
+
+
+def build_master_synthesizer_prompt(dossier, p_notes, t_notes, k_notes, kp_mode: bool = True):
+    if kp_mode:
+        third_header = "KP EVENT PROMISE ANALYSIS (IF & WHEN Events Manifest):"
+        mode_note = ""
+    else:
+        third_header = ("TRADITIONAL BHAVA-PROMISE ANALYSIS "
+                        "(Parashari significators — IF & WHEN events manifest):")
+        mode_note = ("\n0. KP IS DISABLED for this chart (traditional mode). The third lens is the "
+                     "classical Parashari bhava-lord significator method, NOT KP. Wherever these "
+                     "rules or the mission say 'KP', apply that TRADITIONAL promise analysis instead "
+                     "— treat its PROMISED/DENIED verdicts as strong classical indications. Never "
+                     "mention KP, cusps, or sub-lords in the final reading.\n")
+    return f"""{GUARDRAILS}
+
+<ROLE>You are the Master Astrologer integrating Parashari character analysis with definitive event prediction. The lenses are COMPLEMENTARY — use both, never confuse their roles.</ROLE>
 
 <SYNTHESIS_RULES>
 CRITICAL PROTOCOL — follow this exactly:
-
+{mode_note}
 1. PARASHARI for PERSONALITY & THEMES: Use Parashari agent notes for describing WHO this person is — their character, psychology, life themes, karmic patterns, spiritual purpose.
 
 2. KP for EVENT DECISIONS: Use KP agent notes for definitively answering WILL this happen? and WHEN? The KP Promise verdicts (PROMISED/DENIED) are FINAL — do not override them with Parashari interpretation.
@@ -237,10 +293,10 @@ CRITICAL PROTOCOL — follow this exactly:
 PARASHARI ANALYSIS (Character & Life Themes):
 {p_notes}
 
-DASHA TIMING ANALYSIS (When & Which Period):  
+DASHA TIMING ANALYSIS (When & Which Period):
 {t_notes}
 
-KP EVENT PROMISE ANALYSIS (IF & WHEN Events Manifest):
+{third_header}
 {k_notes}
 </specialist_notes>
 
