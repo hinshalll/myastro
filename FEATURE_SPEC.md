@@ -1,10 +1,27 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-04 — Reflective readings (`/reflect/purpose`, `/reflect/year`).
+**Last updated:** 2026-06-04 — Chart interpretation layer started (`/chart/interpret`, slice 1/4).
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
+
+### Recent changes (2026-06-04) — plain-English chart interpretation ("front room"), slice 1/4
+- **New feature `features/chart/`** (mounted at `/chart`) — turns the raw chart into **warm,
+  jargon-free meanings any first-time user understands**. Every card is `{ title, body,
+  sanskrit, why }`: the `body` is plain English (no jargon), the Sanskrit/technical detail
+  lives only in `sanskrit`/`why` (behind a "why?" reveal). Classical substance is verified +
+  reused from the engine (`kundli_text.py` atoms, cross-checked BPHS/Phaladeepika/Saravali);
+  this is the human voice over it. No live AI — static atoms (`meanings.py`: 12 signs, 12
+  houses, 9 planets, warm) **composed** into sentences (`service.py`), the same approach
+  `kundli_text.py` uses. Deterministic per profile (cache-friendly).
+- **`POST /chart/interpret`** (slice 1) — the curated "front room" hero cards: *You at the
+  core* (Ascendant + Sun), *Your inner world* (Moon), *How you love* (Venus), *How you think*
+  (Mercury), *Your drive* (Mars), *Where you grow* (Saturn), + *The season you're in* (current
+  Mahadasha theme) + a one-line headline. Exact birth time → rising sign + houses; unknown
+  time → Sun/Moon sign reads + a precision note; needs lat/lon (else 422).
+- **Slices to come (task #18):** 2) 27 nakshatras, 3) dasha themes + key yogas/doshas, 4)
+  `/chart/houses` + `/chart/planets` deep-dives.
 
 ### Recent changes (2026-06-04) — big-picture reflective readings: Your Purpose + Year in Review
 - **New feature `features/reflect/`** (mounted at `/reflect`) — two pure-math, AI-free readings

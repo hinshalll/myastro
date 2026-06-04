@@ -458,4 +458,5 @@ Then wire it all into the mobile mockup and re-aim presentation.
 - **people:** `/couple-week` · `/family-grid`
 - **companion:** `/micro-insight` · `/patterns` (JWT) · `/proof`
 - **reflect:** `/purpose` · `/year`
+- **chart:** `/interpret` (warm front-room cards; `/houses` + `/planets` planned)
 - **me:** `/profiles` · `/profiles/{id}` · `/checkins` · `/journal` · `/streaks/{kind}` (JWT)

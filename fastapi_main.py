@@ -57,6 +57,7 @@ URL map
     /companion/proof             POST                             ("why did that happen?" past date)
     /reflect/purpose             POST  features/reflect/api.py  (soul/career blueprint)
     /reflect/year                POST                          (Year in Review — Cosmic Wrapped)
+    /chart/interpret             POST  features/chart/api.py  (plain-English chart "front room")
     /docs                        Interactive Swagger UI (built into FastAPI)
 
 Auth note
@@ -179,6 +180,7 @@ _FEATURES = [
     ("people",       "features.people.api"),   # /couple-week, /family-grid — shared-day readings across 2+ charts (pure math)
     ("companion",    "features.companion.api"), # /micro-insight, /patterns (JWT), /proof — the Companion's payoffs (pure math)
     ("reflect",      "features.reflect.api"),   # /purpose, /year — big-picture soul/career blueprint + Cosmic Wrapped (pure math)
+    ("chart",        "features.chart.api"),     # /interpret — plain-English chart "front room" (warm cards, no AI)
 ]
 
 for prefix, module_path in _FEATURES:
