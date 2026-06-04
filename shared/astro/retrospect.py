@@ -217,12 +217,13 @@ def explain_past_date(profile: dict, on_date, event: str | None = None) -> dict:
     # 3. Stitch into a warm story. (Build the day plainly — %-d isn't portable.)
     when = f"{on_date.day} {on_date.strftime('%B %Y')}"
 
+    md_lead = md_info["theme"].split("—")[0].strip()
+    ad_lead = ad_info["theme"].split("—")[0].strip()
     if md == ad:
-        chapter = f"you were in your {md_info['word']} chapter ({md} period) — {md_info['theme']}"
+        chapter = f"you were deep in a {md} chapter — {md_lead}"
     else:
-        chapter = (f"you were in your {md_info['word']} chapter ({md} period), in its "
-                   f"{ad_info['word']} sub-stretch ({ad}) — {md_info['theme']}, "
-                   f"coloured by {ad_info['theme']}")
+        chapter = (f"you were in a {md} chapter, moving through its {ad} sub-period — "
+                   f"{md_lead}, with a thread of {ad_lead}")
 
     story_bits = [f"Around {when}, {chapter}."]
     if transits:

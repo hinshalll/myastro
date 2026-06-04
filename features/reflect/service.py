@@ -105,10 +105,12 @@ def purpose(profile: dict) -> dict:
     # 4. Dharma trikona (1/5/9) — where your sense of meaning lives.
     trikona = {h: chart.houses[h].occupants for h in (1, 5, 9)}
     filled = [h for h in (1, 5, 9) if trikona[h]]
+    _dharma_word = {1: "who you are", 5: "creativity", 9: "meaning"}
     if filled:
-        areas = " and ".join(M.HOUSE_THROUGH[h].split(",")[0] for h in filled)
-        dharma_line = (f"Your sense of meaning gathers around {areas} — that's your dharma "
-                       "triangle (the 1st, 5th and 9th), the part of life that feels purposeful.")
+        parts = [_dharma_word[h] for h in filled]
+        areas = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+        dharma_line = (f"Your sense of purpose gathers around {areas} — that's your dharma "
+                       "triangle, the part of life that quietly gives everything else meaning.")
     else:
         dharma_line = ("Your sense of meaning isn't tied to one fixed area — it's something you "
                        "grow into across the 1st, 5th and 9th houses, your dharma triangle.")
@@ -222,11 +224,16 @@ def year_in_review(profile: dict, year: int | None = None) -> dict:
         share_bits.append("and Saturn taught me a few things")
     share_text = " ".join(share_bits) + f" — and the year shone its light on {M.HOUSE_THROUGH.get(muntha_house, 'my life').split(',')[0]}."
 
+    import re
+    def _clean(s: str) -> str:                       # drop classical parentheticals from warm text
+        s = re.sub(r"\s*\([^)]*\)", "", s).strip()
+        return s[0].upper() + s[1:] if s else s
+
     summary_bits = [chapter["line"], muntha["line"].capitalize() + "."]
     if gifts:
-        summary_bits.append(f"Underneath, {gifts[0]['meaning']}.")
+        summary_bits.append(_clean(gifts[0]["meaning"]) + ".")
     if lessons:
-        summary_bits.append(f"And {lessons[0]['meaning']}.")
+        summary_bits.append("Alongside it, " + re.sub(r"\s*\([^)]*\)", "", lessons[0]["meaning"]).strip() + ".")
     summary_bits.append("A year is a chapter, not a verdict — take from it what helps and leave the rest.")
     summary = " ".join(summary_bits)
 
