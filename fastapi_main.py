@@ -52,6 +52,9 @@ URL map
     /me/streaks/{kind}           GET
     /people/couple-week          POST  features/people/api.py  (2-chart 7-day weather)
     /people/family-grid          POST                          (today's grid, several people)
+    /companion/micro-insight     POST  features/companion/api.py  (Day-1 mirror)
+    /companion/patterns          GET                              (Pattern Engine; JWT required)
+    /companion/proof             POST                             ("why did that happen?" past date)
     /docs                        Interactive Swagger UI (built into FastAPI)
 
 Auth note
@@ -172,6 +175,7 @@ _FEATURES = [
     ("oracle",       "features.oracle.api"),   # /deep-analysis, /matchmaking, /marriage, /gochara, /compare, /prashna
     ("me",           "features.me.api"),       # authenticated user data: profiles/checkins/journal/streaks (Supabase + RLS)
     ("people",       "features.people.api"),   # /couple-week, /family-grid — shared-day readings across 2+ charts (pure math)
+    ("companion",    "features.companion.api"), # /micro-insight, /patterns (JWT), /proof — the Companion's payoffs (pure math)
 ]
 
 for prefix, module_path in _FEATURES:

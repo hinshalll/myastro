@@ -323,6 +323,20 @@ logic, social-graph features, payment/IAP processing.
   `shared/astro/` (`weekly_relationship_weather`/`daily_relationship_weather` +
   `daily_moon_forecast`). Moon-based → every birth-time tier; stateless (no JWT); deterministic.
 
+### 4.2b companion — the Companion's payoffs (Pattern Engine + The Proof, pure math)
+- **FastAPI (`features/companion/api.py`) — 3 routes, all FREE/no-AI:**
+  - `/micro-insight` (stateless) — the **Day-1 mirror**: today's check-in vs today's real Moon
+    transit → `match` = aligned/crosscurrent/neutral. Makes the mockup's `MIRROR` real.
+  - `/patterns` (**JWT**, reuses `features.me.auth`) — the **Pattern Engine**: reads check-ins
+    + the `self` profile, recomputes each day's Moon state, runs plain 2×2 proportion contrasts
+    (no ML). `<30` check-ins → progress; else template-sentence patterns (stored in `patterns`).
+  - `/proof` (stateless) — **"Why did that happen?"**: a PAST date → the Vimshottari MD/AD +
+    slow transits (Sade Sati etc.) running then. The trust-builder.
+- **Engine:** `shared/astro/retrospect.py` (`explain_past_date`, via `build_vimshottari_timeline`
+  at the past datetime + the ephemeris adapter) for Proof; `shared/astro/forecast.py` for the
+  mirror + the Pattern Engine's per-day state. Stats live in `service.py` (plain proportions).
+  `list_patterns`/`save_pattern` added to `shared/db/supabase_client.py`. Moon-based → every tier.
+
 ### 4.3 kundli — the flagship chart (free in-app) + premium PDF
 - **Streamlit:** full scrollable free chart (D1 SVG, Panchanga, Avakahada, planetary
   positions, Vimshottari MD/AD, Sade Sati, Shadbala, SAV, Bhava Bala, remedies, Manglik,
@@ -394,7 +408,8 @@ chart, chapters, past-date, patterns, year, purpose, reading, widget, settings.
 | Daily loop (hero, week, timing, decide) | **Built** — dashboard free endpoints |
 | Relationship daily weather | **Built** — `/relationship-weather` (single day) + `/people/couple-week` (7-day rail) |
 | Persistence / data layer (Supabase) | **Foundation built** — schema (+ Diyas wallet/ledger, referrals, gifts, ad_rewards, depth_mode) + `shared/db/` Python client + JWT auth + `/me` CRUD (profiles/checkins/journal/streaks) + cache helpers. *Live DB project + keys still to be provisioned by the owner.* |
-| Pattern Engine (mood ↔ planets over time) | **Input plumbing built** — `checkins` save/list via `/me/checkins` (+ streak); **correlation code still out of scope** (later session) |
+| Pattern Engine (mood ↔ planets over time) | **Built** — `GET /companion/patterns`: plain 2×2 proportion contrasts over your check-ins × each day's Moon state (no ML/AI); progress until 30 check-ins, then stored template patterns. Plus `/companion/micro-insight` (Day-1 mirror) |
+| Proof / Karmic Audit (back-test past events) | **Built** — `POST /companion/proof`: past date → Vimshottari MD/AD + slow transits (Sade Sati etc.) that were running then. `shared/astro/retrospect.py`. (Was: engine partial, no flow — task #16) |
 | Journaling / mantra | **Journal built** — `/me/journal` save/list (the Mirror's store); AI reflections later. Mantra/practice still mockup |
 | Proof / Karmic Audit (back-test past events) | **Engine partial** — `rectify()` + Event Timing Atlas exist; no user-facing flow or endpoint (task #16) |
 | Rituals / calm CHANI-style space | **Mockup screens + `ritual_journeys` table** — no backend feed/endpoints |
@@ -429,4 +444,5 @@ Then wire it all into the mobile mockup and re-aim presentation.
 - **dashboard:** `/data` · `/forecast` · `/week` · `/relationship-weather` · `/day-alerts` ·
   `/muhurta` · `/decide-quick` · `/timing` · `/decide`
 - **people:** `/couple-week` · `/family-grid`
+- **companion:** `/micro-insight` · `/patterns` (JWT) · `/proof`
 - **me:** `/profiles` · `/profiles/{id}` · `/checkins` · `/journal` · `/streaks/{kind}` (JWT)

@@ -431,19 +431,26 @@ graph, payment/IAP processing.
 ## 11. What's left on the backend (gap analysis)
 **Done:** the compute engine + read-only/AI endpoints (daily loop, kundli, oracle×6,
 horoscopes, numerology, tarot, palm, face, vault, `/ask`), AI config, ONNX re-ingest.
-**Not done:**
+**Done (since):**
 - **(A) Data layer keystone** — Supabase client + Auth + table read/write + schema additions
-  (§9.5). *Unblocks everything stateful.*
-- **(B) Stateful features (need A)** — Pattern Engine correlation, the Mirror journal,
-  Companion memory, streaks, Practice progress, social (connections/family grid/couple
-  multi-day forecast).
-- **(C) Pure-compute endpoints (no A needed, can parallelize)** — the Proof back-test, Year in
-  Review, Your Purpose, festival/Panchanga calendar.
+  (§9.5). ✅ *Unblocks everything stateful.*
+- **(B partial) Stateful payoffs** — ✅ **Pattern Engine** (`GET /companion/patterns`, plain
+  2×2 contrasts over check-ins × Moon state) + ✅ **Day-1 mirror** (`/companion/micro-insight`)
+  + ✅ streaks (`/me/streaks`) + ✅ Mirror journal store (`/me/journal`) + ✅ **family grid** &
+  **couple 7-day forecast** (`/people/*`). *Companion long-memory + Practice progress still open.*
+- **(C partial) Pure-compute endpoints** — ✅ **the Proof back-test** (`/companion/proof`).
+  *Year in Review, Your Purpose, festival/Panchanga calendar still open.*
+
+**Not done:**
+- **(B rest)** — Companion conversational long-memory, Practice/ritual progress, the social
+  graph proper (connections/groups, friend requests, sharing).
+- **(C rest)** — Your Purpose (soul/career blueprint), Year in Review (Cosmic Wrapped),
+  festival/Panchanga calendar, plain-English chart-interpretation layer.
 - **(D) Infra/integrations** — notifications/push + scheduler, **payments (IAP) + coin/sub
   logic**, shareable card rendering, caching (app + API), usage limits.
 - **(E) Compliance** — DPDP/GDPR, account deletion/export, journal privacy.
 
-**Build order:** A first → C in parallel → B → D → E.
+**Build order:** A first ✅ → C in parallel (in progress) → B (in progress) → D → E.
 
 ## 12. Deferred to v2 (do NOT build in v1)
 Cosmic Twins community + anonymous twin chat (need scale + moderation) · Temple/Tirtha

@@ -233,3 +233,25 @@ def increment_streak(client, user_id: str, kind: str = "checkin", today: Any = N
     }
     res = client.table("streaks").upsert(row, on_conflict="user_id,kind").execute()
     return res.data[0]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Patterns — the Pattern Engine's unlocked personal correlations
+# ─────────────────────────────────────────────────────────────────────────────
+
+def list_patterns(client, user_id: str, limit: int = 50) -> list[dict]:
+    res = (
+        client.table("patterns").select("*")
+        .eq("user_id", user_id).order("unlocked_at", desc=True).limit(limit).execute()
+    )
+    return res.data or []
+
+
+def save_pattern(client, user_id: str, pattern_text: str,
+                 evidence: Optional[dict] = None) -> dict:
+    """Insert one newly-unlocked pattern. The caller is responsible for dedup
+    (the Pattern Engine only saves a `kind` it hasn't stored before) — `evidence`
+    carries the `kind` + the supporting counts as jsonb."""
+    row = {"user_id": user_id, "pattern_text": pattern_text, "evidence": evidence}
+    res = client.table("patterns").insert(row).execute()
+    return res.data[0]

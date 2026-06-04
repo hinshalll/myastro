@@ -1,10 +1,36 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-04 — People tab shared-day readings (`/people/couple-week`, `/people/family-grid`).
+**Last updated:** 2026-06-04 — Companion payoffs (`/companion/micro-insight`, `/patterns`, `/proof`).
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
+
+### Recent changes (2026-06-04) — the Companion's payoffs: Pattern Engine + The Proof
+- **New feature `features/companion/`** (mounted at `/companion`) — three pure-math, AI-free
+  payoffs that make the app feel like it *knows you over time*:
+  - **`POST /companion/micro-insight`** (stateless) — the **Day-1 mirror**: reads today's
+    check-in against today's REAL Moon transit and says whether the felt mood runs WITH the
+    sky (`aligned`) or against it (`crosscurrent`). Makes the mockup's hardcoded `MIRROR`
+    real, from the very first check-in. Input `{ profile, mood?, energy?, clarity?, date? }`
+    (app vocab: mood calm/tender/sharp/heavy/wired, energy low/steady/bright/restless,
+    clarity rested/okay/tired/off).
+  - **`GET /companion/patterns`** (**JWT**) — the **Pattern Engine**: reads your check-ins +
+    `self` birth profile, recomputes each day's Moon state, and runs **plain 2×2 proportion
+    contrasts** (NO ML, NO AI). Below `30` check-ins → progress only; at/above → the strongest
+    correlation(s) (`energy_tara`, `mood_house`, `clarity_tara`), each a template sentence with
+    a `confidence` + `evidence` counts. Newly-unlocked kinds are stored in `patterns`. New
+    `list_patterns`/`save_pattern` in `shared/db/supabase_client.py`.
+  - **`POST /companion/proof`** (stateless) — **"Why did that happen?"**: given a PAST date,
+    the Vimshottari **Mahadasha/Antardasha** running then + the slow, era-defining transits
+    (Saturn/Jupiter/nodes over the birth Moon — Sade Sati etc.). The trust-builder. Input
+    `{ profile, date, event? }`; unknown birth time → a midday estimate + a `precision_note`.
+    New `shared/astro/retrospect.py` (`explain_past_date`), using `build_vimshottari_timeline`
+    at the past datetime + the ephemeris adapter for the slow transits.
+  - **All:** classically sourced (BPHS dasha-lord natures; Sade Sati = Saturn 12/1/2 from the
+    Moon, Dhaiya = 4th/8th; Jupiter benefic in 2/5/7/9/11 from the Moon; Chandra-gochara
+    auspiciousness). Moon-based → every birth-time tier; deterministic; warm/plain primary
+    text, Sanskrit only in `why`/`sanskrit`, gentle guidance never fate (blueprint §2).
 
 ### Recent changes (2026-06-04) — People tab: couple 7-day forecast + family grid
 - **New feature `features/people/`** (mounted at `/people`) — two pure-math, AI-free readings
