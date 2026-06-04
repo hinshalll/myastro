@@ -148,8 +148,11 @@ def interpret(profile: dict) -> dict:
     # 7. Your birth star — the Moon's nakshatra (the most personal signature).
     birth_star = _birth_star(chart)
 
-    # 8. The season you're in — current Vimshottari Mahadasha theme.
+    # 8. The season you're in — current Vimshottari Mahadasha + sub-period theme.
     current_chapter = _current_chapter(chart)
+
+    # 9. Highlights — notable gifts (yogas) + gentle growth areas (doshas).
+    highlights = _highlights(chart)
 
     # Headline — an evocative one-liner (contrast outside vs inside when we can).
     if time_known:
@@ -169,8 +172,45 @@ def interpret(profile: dict) -> dict:
         "core": cards,
         "birth_star": birth_star,
         "current_chapter": current_chapter,
+        "highlights": highlights,
         "precision_note": precision_note,
     }
+
+
+def _highlights(chart) -> list[dict]:
+    """Notable chart patterns as warm cards: gifts (yogas) first, then at most a
+    couple of gentle growth areas (doshas). Only patterns we have warm, reassuring
+    copy for are surfaced — the scarier-named ones are left to the deeper reading.
+    Deduped by canonical key. Each: { title, body, sanskrit, why, kind }."""
+    from features.chart.yogas import YOGA_WARM, DOSHA_WARM
+
+    gifts, growth, seen = [], [], set()
+
+    for y in getattr(chart, "yogas", []) or []:
+        name = y.name
+        if "Negative" in name:                    # handled as a growth area below
+            continue
+        for key, warm in YOGA_WARM.items():
+            if key in name and key not in seen:
+                seen.add(key)
+                gifts.append({"title": "A gift in your chart", "body": warm["body"],
+                              "sanskrit": warm["sanskrit"],
+                              "why": f"Your chart carries {name}.", "kind": "gift"})
+                break
+
+    for d in getattr(chart, "doshas", []) or []:
+        if not getattr(d, "present", False):
+            continue
+        for key, warm in DOSHA_WARM.items():
+            if key in d.name and key not in seen:
+                seen.add(key)
+                growth.append({"title": "A growth area", "body": warm["body"],
+                               "sanskrit": warm["sanskrit"],
+                               "why": f"Your chart carries {d.name}.", "kind": "growth"})
+                break
+
+    # Lead with gifts; keep the front room encouraging (cap growth at 2).
+    return gifts[:4] + growth[:2]
 
 
 def _birth_star(chart) -> dict:
@@ -202,11 +242,21 @@ def _current_chapter(chart) -> dict:
     moon_lon = chart.planets["Moon"].longitude
     now = datetime.now(dt_birth.tzinfo)
     di = build_vimshottari_timeline(dt_birth, moon_lon, now)
-    md = di["current_md"]
+    md, ad = di["current_md"], di["current_ad"]
     info = _DASHA_LORD.get(md, {"theme": md, "sanskrit": md})
+    ad_info = _DASHA_LORD.get(ad, {"theme": ad, "sanskrit": ad})
     until = di["md_end"].strftime("%b %Y") if di.get("md_end") else ""
-    body = (f"Right now you're moving through a {md} season — {info['theme']}."
-            + (f" It runs until around {until}." if until else ""))
-    return _card("The season you're in", body, f"{info['sanskrit']} महादशा",
-                 f"Your current Vimshottari Mahadasha is {md}"
-                 + (f", until about {until}." if until else "."))
+    ad_until = di["ad_end"].strftime("%b %Y") if di.get("ad_end") else ""
+
+    body = f"Right now you're moving through a {md} season — {info['theme']}."
+    if ad != md:
+        body += (f" Within it, you're in a {ad} phase right now"
+                 + (f" (until around {ad_until})" if ad_until else "")
+                 + f", which adds a flavour of {ad_info['theme'].split('—')[0].strip()}.")
+    if until:
+        body += f" The whole {md} season runs until around {until}."
+
+    why = (f"Your current Vimshottari period is {md} Mahadasha"
+           + (f" / {ad} Antardasha" if ad != md else "")
+           + (f", the {md} chapter running until about {until}." if until else "."))
+    return _card("The season you're in", body, f"{info['sanskrit']} महादशा", why)
