@@ -5,8 +5,15 @@ from shared.astro.constants import *
 from shared.astro.astro_calc import *
 from shared.astro.scoring import *
 from shared.astro import ephemeris
+from shared.astro import config as astro_config
 
-def generate_astrology_dossier(profile,include_d60=False,compact=False):
+def generate_astrology_dossier(profile,include_d60=False,compact=False,include_kp=None):
+    # KP (Placidus cusps / sub-lord) sections are OPT-IN. include_kp=None falls back
+    # to the backend default (shared.astro.config.kp_enabled(), default OFF). Deep
+    # readings that rely on KP timing (marriage, matchmaking, prashna, consultation,
+    # deep-analysis) pass include_kp=True explicitly. The KP MATH always stays in the
+    # engine; this only controls whether the KP sections are written into the dossier.
+    show_kp = astro_config.kp_enabled() if include_kp is None else bool(include_kp)
     lat,lon,tz_name=profile['lat'],profile['lon'],profile['tz']
     name,place_text=profile['name'],profile['place']
     prof_date=date.fromisoformat(profile['date']) if isinstance(profile['date'],str) else profile['date']
@@ -165,7 +172,7 @@ def generate_astrology_dossier(profile,include_d60=False,compact=False):
         ll_house=get_planet_house(h_lord,ls,planet_data,r_lon,k_lon)
         occ=", ".join(house_occupants[h]) if house_occupants[h] else "Empty"
         lines.append(f"  H{h:02d}({sign_name(h_sidx)}): Lord={h_lord}(H{ll_house}) | {occ}")
-    if not compact:
+    if not compact and show_kp:
         lines.append(f"\nKP PLACIDUS CUSPS (for timing/event promise only):")
         for h in range(1,13):
             clon=placidus_cusps[h-1]; csidx=sign_index_from_lon(clon)

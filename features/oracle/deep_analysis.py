@@ -64,7 +64,7 @@ def show_deep_analysis():
 
 def _run_deep_analysis(prof, d60):
     """Core engine call. Three concurrent agents → synthesizer → final result."""
-    dossier = generate_astrology_dossier(prof, d60)
+    dossier = generate_astrology_dossier(prof, d60, include_kp=True)
     st.info("🧠 Firing Parallel AI Agents (Takes ~20s)...")
     expert_rules = (
         "<ROLE>Elite Vedic Astrologer</ROLE>"

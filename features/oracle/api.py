@@ -72,7 +72,7 @@ if router is not None:
         )
 
         prof = _parse_profile(req.profile)
-        dossier = generate_astrology_dossier(prof, req.include_d60)
+        dossier = generate_astrology_dossier(prof, req.include_d60, include_kp=True)
         expert_rules = "You are an expert agent providing concise observations."
 
         # Three parallel agents
@@ -136,8 +136,8 @@ if router is not None:
         )
         canc = get_manglik_cancellation_verdict(ma_d, mb_d)
 
-        dos_a = generate_astrology_dossier(p_boy)
-        dos_b = generate_astrology_dossier(p_girl)
+        dos_a = generate_astrology_dossier(p_boy, include_kp=True)
+        dos_b = generate_astrology_dossier(p_girl, include_kp=True)
         koota, marital_a, marital_b, kp_a, kp_b = calculate_matchmaking_synastry(
             p_boy, p_girl, pla["Moon"][0], plb["Moon"][0], jda, jdb, dos_a, dos_b,
         )
@@ -178,8 +178,8 @@ if router is not None:
         p_a = _parse_profile(req.profile_a)
         p_b = _parse_profile(req.profile_b) if req.profile_b else None
 
-        dos_a = generate_astrology_dossier(p_a)
-        dos_b = generate_astrology_dossier(p_b) if p_b else ""
+        dos_a = generate_astrology_dossier(p_a, include_kp=True)
+        dos_b = generate_astrology_dossier(p_b, include_kp=True) if p_b else ""
         jda = _profile_jd(p_a)
         jdb = _profile_jd(p_b) if p_b else jda
         dest = calculate_destiny_confirmation(p_a, p_b, jda, jdb, dos_a, dos_b)
@@ -263,7 +263,7 @@ if router is not None:
             "time": now.strftime("%H:%M"),
             "place": place_label, "lat": lat, "lon": lon, "tz": tz,
         }
-        dossier = generate_astrology_dossier(prof)
+        dossier = generate_astrology_dossier(prof, include_kp=True)
         try:
             verdict = get_prashna_python_verdict(req.question, dossier)
         except Exception:

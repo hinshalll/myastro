@@ -25,7 +25,7 @@ import swisseph as swe
 from shared.astro.ephem_skyfield import (
     planet_sidereal_lon, ascendant_sidereal, whole_sign_house, mean_node_sidereal,
     planet_tropical_lon, planet_ecliptic_lat, tropical_ascendant,
-    tropical_placidus_cusps, mean_node_tropical, julday, jd_to_utc,
+    tropical_placidus_cusps, mean_node_tropical, true_node_sidereal, julday, jd_to_utc,
 )
 from shared.astro.kundli import (
     d1_si, d2_si, d3_si, d4_si, d7_si, d9_si, d10_si, d12_si,
@@ -98,6 +98,7 @@ def main(n=500, seed=98765):
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     maxpos = maxasc = maxnode = 0.0
     maxtrop = maxlat = maxtropasc = maxtropcusp = maxtropnode = 0.0
+    maxtruenode = 0.0
     sign_mm = nak_mm = asc_sign_mm = house_mm = total = 0
     trop_sign_mm = trop_asc_sign_mm = trop_cusp_sign_mm = 0
     vmm = {v[0]: 0 for v in VARGAS}
@@ -165,6 +166,10 @@ def main(n=500, seed=98765):
         mn = mean_node_sidereal(jd)
         sn, _ = swe.calc_ut(jd, swe.MEAN_NODE, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
         maxnode = max(maxnode, adiff(mn, sn[0]))
+        # ── Sidereal TRUE (osculating) node — opt-in toggle, not the default ──
+        tn = true_node_sidereal(jd)
+        stn, _ = swe.calc_ut(jd, swe.TRUE_NODE, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        maxtruenode = max(maxtruenode, adiff(tn, stn[0]))
         # ── Tropical mean node (Western Rahu) ──
         mnt = mean_node_tropical(jd)
         snt, _ = swe.calc_ut(jd, swe.MEAN_NODE, swe.FLG_SWIEPH)
@@ -177,7 +182,7 @@ def main(n=500, seed=98765):
         pn_mm += nakshatra_info(myl["Moon"])[0] != nakshatra_info(sel["Moon"])[0]
 
     print(f"=== Engine validation vs Swiss Ephemeris: {n} charts, {total} positions (seed {seed}) ===")
-    print(f"sidereal    : planet {maxpos:.2f}\"  ascendant {maxasc:.2f}\"  mean-node {maxnode:.2f}\"")
+    print(f"sidereal    : planet {maxpos:.2f}\"  ascendant {maxasc:.2f}\"  mean-node {maxnode:.2f}\"  true-node {maxtruenode:.2f}\" (opt-in toggle)")
     print(f"tropical    : planet {maxtrop:.2f}\"  ascendant {maxtropasc:.2f}\"  "
           f"mean-node {maxtropnode:.2f}\"  cusp {maxtropcusp:.2f}\"")
     print(f"ecliptic lat: planet {maxlat:.2f}\"  (used by Graha Yuddha)")

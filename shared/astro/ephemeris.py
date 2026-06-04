@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 
 from shared.astro import ephem_skyfield as _sky
+from shared.astro import config as _config
 
 _PROVIDER = os.environ.get("EPHEMERIS_PROVIDER", "skyfield").lower()
 
@@ -112,21 +113,35 @@ def planet_lon_speed_tropical(jd_ut: float, planet: str):
     return _sky.planet_tropical_lon_speed(jd_ut, planet)
 
 
-def node_lon(jd_ut: float, mode: str = DEFAULT_AYANAMSHA) -> float:
-    """Mean lunar node (Rahu), sidereal. Ketu = +180. (Convention: Mean node.)"""
+def node_lon(jd_ut: float, mode: str = DEFAULT_AYANAMSHA,
+             node_type: str | None = None) -> float:
+    """Lunar node (Rahu), sidereal. Ketu = +180.
+
+    node_type: 'mean' (default convention, matches Indian panchangs) or 'true'
+    (osculating). None -> the backend default from shared.astro.config.node_type()
+    (currently 'mean'). The frontend may hide the choice; the engine keeps both."""
+    nt = (node_type or _config.node_type()).lower()
     if _PROVIDER == "swisseph":
         swe = _swe(mode)
-        r, _ = swe.calc_ut(jd_ut, swe.MEAN_NODE, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        nid = swe.TRUE_NODE if nt == "true" else swe.MEAN_NODE
+        r, _ = swe.calc_ut(jd_ut, nid, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
         return r[0] % 360.0
+    if nt == "true":
+        return _sky.true_node_sidereal(jd_ut, mode)
     return _sky.mean_node_sidereal(jd_ut, mode)
 
 
-def node_lon_tropical(jd_ut: float) -> float:
-    """Mean lunar node (Rahu), tropical — for Western chart Rahu/Ketu."""
+def node_lon_tropical(jd_ut: float, node_type: str | None = None) -> float:
+    """Lunar node (Rahu), tropical — for Western chart Rahu/Ketu.
+    node_type: 'mean' (default) or 'true'. None -> config.node_type()."""
+    nt = (node_type or _config.node_type()).lower()
     if _PROVIDER == "swisseph":
         swe = _swe()
-        r, _ = swe.calc_ut(jd_ut, swe.MEAN_NODE, swe.FLG_SWIEPH)
+        nid = swe.TRUE_NODE if nt == "true" else swe.MEAN_NODE
+        r, _ = swe.calc_ut(jd_ut, nid, swe.FLG_SWIEPH)
         return r[0] % 360.0
+    if nt == "true":
+        return _sky.true_node_tropical(jd_ut)
     return _sky.mean_node_tropical(jd_ut)
 
 

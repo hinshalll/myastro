@@ -98,8 +98,8 @@ def _run_matchmaking(profiles, d60s):
     )
     canc = get_manglik_cancellation_verdict(ma_d, mb_d)
 
-    dos_a = generate_astrology_dossier(p_boy,  d60s[profiles.index(p_boy)])
-    dos_b = generate_astrology_dossier(p_girl, d60s[profiles.index(p_girl)])
+    dos_a = generate_astrology_dossier(p_boy,  d60s[profiles.index(p_boy)], include_kp=True)
+    dos_b = generate_astrology_dossier(p_girl, d60s[profiles.index(p_girl)], include_kp=True)
     koota_data, marital_a, marital_b, kp_a, kp_b = calculate_matchmaking_synastry(
         p_boy, p_girl, ma, mb, jda, jdb, dos_a, dos_b,
     )

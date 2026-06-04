@@ -73,8 +73,8 @@ def _run_marriage_matrix(profiles, d60s):
     jda, _, _ = local_to_julian_day(parse_date(p_boy),  parse_time(p_boy),  p_boy["tz"])
     jdb, _, _ = local_to_julian_day(parse_date(p_girl), parse_time(p_girl), p_girl["tz"])
 
-    dos_a = generate_astrology_dossier(p_boy,  d60s[pb_idx])
-    dos_b = generate_astrology_dossier(p_girl, d60s[pg_idx])
+    dos_a = generate_astrology_dossier(p_boy,  d60s[pb_idx], include_kp=True)
+    dos_b = generate_astrology_dossier(p_girl, d60s[pg_idx], include_kp=True)
     dest_data = calculate_destiny_confirmation(p_boy, p_girl, jda, jdb, dos_a, dos_b)
 
     # Marriage/Jaimini classical passages for the AI to cite

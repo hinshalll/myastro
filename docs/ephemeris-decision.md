@@ -18,6 +18,17 @@
 > `requirements-dev.txt` (dev validation reference only); the Docker image bakes in `de440s.bsp`
 > and excludes the old `ephe/` SE data. Dual-provider chart compare (skyfield vs swisseph) =
 > 0 sign/nakshatra/house mismatches across all 5 ayanamshas. FastAPI endpoints smoke-tested.
+>
+> **TOGGLES (task #22, kept BACKEND-side on purpose — the frontend may hide them; the engine
+> keeps the capability).** Centralised in `shared/astro/config.py`, env-overridable:
+> (a) `node_type()` — Rahu/Ketu model, default **mean** (matches Indian panchangs). **True
+> (osculating) node is now implemented on the free engine** (`ephem_skyfield.true_node_*`,
+> validated ~48" vs SE TRUE_NODE — far below any nakshatra boundary) and reachable via
+> `node_lon(..., node_type="true")` or `NODE_TYPE=true`; it is opt-in, not the default.
+> (b) `kp_enabled()` — KP/Placidus surfacing, default **OFF** (whole-sign is the app default).
+> The KP math always stays in the engine; the dossier's KP sections are opt-in via
+> `generate_astrology_dossier(..., include_kp=True)`, which the deep readings (deep-analysis,
+> matchmaking, marriage, prashna, consultation) pass explicitly so they are not degraded.
 
 **Plain-English summary:** Build the **free Skyfield + JPL engine** as the **shipping engine
 now**, and validate it to **~99.9% practical parity with Swiss Ephemeris**. We keep

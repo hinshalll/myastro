@@ -23,7 +23,7 @@ if router is not None:
         _chat = config.model_for("chat")
         chat_models = [_chat] + [m for m in FREE_MODELS if m != _chat]
 
-        dossier = generate_astrology_dossier(req.profile)
+        dossier = generate_astrology_dossier(req.profile, include_kp=True)
         transits = get_gochara_overlay(req.profile)
         intent = classify_intent(req.question)
         system_prompt = build_prompt(intent)
