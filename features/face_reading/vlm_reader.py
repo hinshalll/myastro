@@ -118,18 +118,20 @@ def read_face(enhanced_face, region_crops: dict, metrics: dict, quality_metrics:
         dossier=dossier, use_kundli=use_kundli,
     )
 
-    model_ladder = [config.model_for("vision"), "gemini-2.5-flash", "gemini-1.5-flash"]
+    model_ladder = config.usable_models(config.ladder_for("vision"))
     response = None
     last_err = None
-    
+
     for model_name in model_ladder:
         try:
             model = get_ai_model_by_name(model_name)
             response = model.generate_content(images + [prompt])
             if response and response.text:
+                config.note_success(model_name)
                 break
         except Exception as e:
             last_err = e
+            config.note_failure(model_name, str(e))
             continue
             
     if response is None or not response.text:

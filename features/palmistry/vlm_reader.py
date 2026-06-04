@@ -665,14 +665,25 @@ def _scan_palm_internal(
         capture_roles=capture_roles,
     )
 
-    try:
-        if config.detect_provider(MODEL_NAME) == "gemini":
-            model = get_ai_model_for_json(MODEL_NAME, _PHASE_A_SYSTEM_RULES, temperature=0.0)
-        else:
-            model = get_ai_model_by_name(MODEL_NAME)
-        response_a = model.generate_content(images + [prompt_a])
-        text_a = response_a.text or ""
-    except Exception as e:
+    # Walk the 'vision' ladder (Gemini-only for now) with the circuit breaker.
+    text_a = ""
+    last_err = None
+    for _m in config.usable_models(config.ladder_for("vision")):
+        try:
+            if config.detect_provider(_m) == "gemini":
+                model = get_ai_model_for_json(_m, _PHASE_A_SYSTEM_RULES, temperature=0.0)
+            else:
+                model = get_ai_model_by_name(_m)
+            response_a = model.generate_content(images + [prompt_a])
+            text_a = response_a.text or ""
+            if text_a:
+                config.note_success(_m)
+                break
+        except Exception as e:
+            last_err = e
+            config.note_failure(_m, str(e))
+            continue
+    if not text_a:
         return {
             "phase_a": {},
             "capture_guidance": {
@@ -683,7 +694,7 @@ def _scan_palm_internal(
             "hand_metrics": hand_metrics,
             "vitality": vitality,
             "raw":     "",
-            "error":   f"VLM Pass A call failed: {type(e).__name__}: {e}",
+            "error":   f"VLM Pass A call failed: {type(last_err).__name__ if last_err else 'NoOutput'}: {last_err}",
         }
 
     phase_a = _extract_json(text_a)

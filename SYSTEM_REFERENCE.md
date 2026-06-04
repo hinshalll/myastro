@@ -209,14 +209,23 @@ to `chart.interpretations`. Imported lazily so `/kundli/compute` stays light.
 
 ## 2. The AI layer — `shared/ai/`
 
-- **`config.py` — THE ONE FILE to change models.** Per-task model names:
-  `default / chat / json / agent / vision`, each with a fallback ladder. Provider
-  (Gemini / DeepSeek) is **auto-detected from the model-name prefix** — switch models by
-  typing a new name. `model_for(task)` returns the name.
-- `gemini_client.py` — Gemini adapter + retry/fallback router; `FREE_MODELS` ladder,
-  `get_ai_model_by_name(custom_system_rules=…)`, `generate_content_with_fallback`.
+- **`config.py` — THE ONE FILE to change models.** Per-task **ladders** in `TASK_LADDERS`
+  (`default / chat / json / agent / vision`). **Two-tier rule:** SMART tasks lead with Gemini
+  → fall to DeepSeek (no Gemma); LIGHT tasks would lead with Gemma → DeepSeek (none assigned
+  yet — Gemma is opt-in only after a quality test, never gamble accuracy). `deepseek-v4-flash`
+  is the last rung of every text ladder: the paid net that never runs dry. **Vision = Gemini-only**
+  (DeepSeek's public API doesn't document image input yet). Provider auto-detected from the
+  model-name prefix. `model_for(task)` = primary; `ladder_for(task)` = full ladder.
+- **Circuit breaker (in `config.py`):** `note_failure / note_success / is_cooling /
+  usable_models`. On a quota/429 error a model is skipped for `COOLDOWN_SECONDS` (180s) so
+  failover to DeepSeek is **instant** (no wasted retry); it re-probes and returns to free
+  Gemini automatically the moment Google's daily quota resets.
+- `gemini_client.py` — Gemini adapter + breaker-aware routers; `FREE_MODELS` ladder,
+  `get_ai_model_by_name(custom_system_rules=…)`, `generate_content_with_fallback(task=…)`,
+  `agent_worker` (cascades the `agent` ladder).
 - `deepseek_client.py` — OpenAI-compatible DeepSeek adapter, same interface (text+stream+JSON).
-  Vision still Gemini-only.
+  Can encode images (PIL/bytes → image_url blocks), future-ready; not routed until DeepSeek
+  ships documented vision.
 - `knowledge.py` — `rag_context` (Qdrant hybrid retrieval). **Embeddings = FastEmbed/ONNX**
   (`BAAI/bge-base-en-v1.5`, 768-dim, cosine) — no PyTorch, fits free-tier RAM. ⚠️ Books must
   be **re-ingested with the ONNX chunker** so stored vectors match (open task #9).

@@ -35,6 +35,7 @@ import re
 from typing import Optional
 
 from shared.ai.gemini_client import get_ai_model_by_name, FREE_MODELS
+from shared.ai import config
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -238,28 +239,26 @@ def generate(chart, *, language: str = "en",
     """
     facts = _facts_for_ai(chart)
     prompt = _build_prompt(facts, language=language)
-    chosen_model = model_name or FREE_MODELS[0]
 
-    try:
-        model = get_ai_model_by_name(chosen_model, custom_system_rules=_SYSTEM_RULES)
-        resp = model.generate_content(prompt)
-        text = (resp.text or "").strip()
-        clean = _strip_to_json(text)
-        payload = json.loads(clean)
-        payload["_meta"] = {"ok": True, "model": chosen_model, "reason": "ok"}
-        return payload
-    except Exception as e:
-        # Try one fallback if the primary failed
-        for fb in FREE_MODELS[1:]:
-            try:
-                model = get_ai_model_by_name(fb, custom_system_rules=_SYSTEM_RULES)
-                resp = model.generate_content(prompt)
-                payload = json.loads(_strip_to_json(resp.text or ""))
-                payload["_meta"] = {"ok": True, "model": fb,
-                                    "reason": f"primary_failed: {type(e).__name__}"}
-                return payload
-            except Exception:
-                continue
-        out = _empty_payload()
-        out["_meta"]["reason"] = f"{type(e).__name__}: {e}"
-        return out
+    # Walk the 'json' ladder (Gemini → DeepSeek) with the circuit breaker.
+    ladder = config.ladder_for("json")
+    if model_name:
+        ladder = [model_name] + [m for m in ladder if m != model_name]
+
+    last_err = None
+    for m_name in config.usable_models(ladder):
+        try:
+            model = get_ai_model_by_name(m_name, custom_system_rules=_SYSTEM_RULES)
+            resp = model.generate_content(prompt)
+            payload = json.loads(_strip_to_json((resp.text or "").strip()))
+            config.note_success(m_name)
+            payload["_meta"] = {"ok": True, "model": m_name, "reason": "ok"}
+            return payload
+        except Exception as e:
+            last_err = e
+            config.note_failure(m_name, str(e))   # cools only on quota errors
+            continue
+
+    out = _empty_payload()
+    out["_meta"]["reason"] = f"{type(last_err).__name__}: {last_err}" if last_err else "no_model"
+    return out

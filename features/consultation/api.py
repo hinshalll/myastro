@@ -21,7 +21,7 @@ if router is not None:
         from shared.ai.knowledge import rag_context
 
         _chat = config.model_for("chat")
-        chat_models = [_chat] + [m for m in FREE_MODELS if m != _chat]
+        chat_models = config.usable_models([_chat] + [m for m in FREE_MODELS if m != _chat])
 
         dossier = generate_astrology_dossier(req.profile)
         transits = get_gochara_overlay(req.profile)
@@ -63,9 +63,11 @@ if router is not None:
             try:
                 model = get_ai_model_by_name(m_id, custom_system_rules=system_prompt)
                 text = model.generate_content(content_parts).text or ""
+                config.note_success(m_id)
                 return ConsultationResponse(intent=intent, reading=text)
             except Exception as e:
                 last_error = e
+                config.note_failure(m_id, str(e))
         return ConsultationResponse(
             intent=intent,
             reading=f"All models are briefly at capacity ({last_error}). Please try again in a moment.",

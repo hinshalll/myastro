@@ -125,31 +125,27 @@ def show_consultation_room():
 
                 consult_content = [consult_ctx, full_prompt] if consult_ctx else [full_prompt]
 
-                # 6. Model call with fallback ladder.
+                # 6. Model call with fallback ladder (Gemini → DeepSeek) + breaker.
                 full_txt = ""
                 success  = False
                 _chat = config.model_for("chat")
-                for m_id in [_chat] + [m for m in FREE_MODELS if m != _chat]:
-                    if success: break
-                    for attempt in range(3):
-                        try:
-                            model    = get_ai_model_by_name(
-                                m_id, custom_system_rules=system_prompt
-                            )
-                            response = model.generate_content(consult_content, stream=True)
-                            for chunk in response:
-                                full_txt += chunk.text
-                                res_ph.markdown(full_txt + "▌")
-                            res_ph.markdown(full_txt)
-                            success = True
-                            break
-                        except Exception as e:
-                            err = str(e)
-                            is_rate     = any(x in err for x in ["429", "quota", "RESOURCE_EXHAUSTED", "rate limit"])
-                            is_overflow = any(x in err for x in ["400", "InvalidArgument", "token count exceeds", "maximum number of tokens"])
-                            if is_overflow: break
-                            elif is_rate and attempt < 2: time_module.sleep((2 ** attempt) * 3)
-                            else: break
+                for m_id in config.usable_models([_chat] + [m for m in FREE_MODELS if m != _chat]):
+                    full_txt = ""   # reset so a mid-stream failure never concatenates partials
+                    try:
+                        model    = get_ai_model_by_name(
+                            m_id, custom_system_rules=system_prompt
+                        )
+                        response = model.generate_content(consult_content, stream=True)
+                        for chunk in response:
+                            full_txt += chunk.text
+                            res_ph.markdown(full_txt + "▌")
+                        res_ph.markdown(full_txt)
+                        config.note_success(m_id)
+                        success = True
+                        break
+                    except Exception as e:
+                        config.note_failure(m_id, str(e))   # opens breaker only on quota errors
+                        continue                            # instant fall to next rung
 
                 if not success:
                     res_ph.warning("⏳ Models are briefly at capacity. Please try again in a moment.")

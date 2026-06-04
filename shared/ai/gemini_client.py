@@ -4,7 +4,7 @@ Uses the new `google-genai` package (pip: `google-genai`, import:
 `from google import genai`). The old `google-generativeai` was deprecated.
 
 Public API (unchanged after the SDK migration):
-    FREE_MODELS                          — model id ladder (Flash Lite → Gemma fallbacks)
+    FREE_MODELS                          — generic fallback ladder (Gemini → DeepSeek net)
     init_gemini(api_key)                 — call ONCE at app startup
     get_ai_model_by_name(name, system_rules=None) -> _Model
         The returned object exposes .generate_content(contents, stream=False)
@@ -13,8 +13,6 @@ Public API (unchanged after the SDK migration):
     generate_content_with_fallback(prompt, knowledge_files, preferred_model)
         Universal model router with retry + cascade.
 """
-
-import time as time_module
 
 from google import genai
 from google.genai import types
@@ -146,60 +144,56 @@ def get_ai_model_for_json(model_name: str, system_instruction: str,
 
 # ── retry / fallback helpers ──────────────────────────────────────────────────
 
+def _ladder_with_preference(task, preferred_model=None):
+    """Build the live ladder for a task: optional preferred model first, then the
+    task's configured rungs, with models currently cooling-down filtered out."""
+    ladder = config.ladder_for(task)
+    if preferred_model:
+        ladder = [preferred_model] + [m for m in ladder if m != preferred_model]
+    return config.usable_models(ladder)
+
+
 def agent_worker(prompt, file_objs=None, model_id=None, custom_system_rules=None, retries=3):
-    """Calls a model with exponential backoff. Returns plain text or an
-    'Agent Note: ...' fallback message — never raises."""
+    """Run one oracle agent, cascading down the 'agent' ladder (Gemini → DeepSeek)
+    with the circuit breaker. Returns plain text or an 'Agent Note: ...' fallback
+    message — never raises. `retries` is kept for signature compatibility."""
     if file_objs is None:
         file_objs = []
     elif not isinstance(file_objs, list):
         file_objs = [file_objs]
 
-    for attempt in range(retries):
+    last_err = ""
+    for m_name in _ladder_with_preference("agent", model_id):
         try:
-            model = get_ai_model_by_name(model_id, custom_system_rules)
-            return model.generate_content(file_objs + [prompt]).text
+            text = get_ai_model_by_name(m_name, custom_system_rules).generate_content(
+                file_objs + [prompt]).text
+            config.note_success(m_name)
+            return text
         except Exception as e:
             err_str = str(e)
-            is_rate_limit    = any(x in err_str for x in ["429", "quota", "RESOURCE_EXHAUSTED", "rate limit"])
-            is_token_overflow = any(x in err_str for x in ["400", "InvalidArgument", "token count exceeds", "maximum number of tokens"])
-            if is_token_overflow:
-                return f"Agent Note: Content too large for {model_id} ({err_str[:80]}). Inferring from raw dossier."
-            elif is_rate_limit and attempt < retries - 1:
-                time_module.sleep((2 ** attempt) * 4)
-                continue
-            else:
-                return f"Agent Note: Model {model_id} unavailable ({err_str[:80]}). Inferring from raw dossier."
+            last_err = err_str
+            config.note_failure(m_name, err_str)   # opens breaker only on quota errors
+            continue                                # instant fall to next rung
+    return f"Agent Note: all models unavailable ({last_err[:80]}). Inferring from raw dossier."
 
 
-def generate_content_with_fallback(prompt, knowledge_files=None, preferred_model=None):
-    """Universal model router with automatic fallback. Always tries Flash Lite
-    first (1M context). Cascades through HEAVY_MODELS on failure."""
+def generate_content_with_fallback(prompt, knowledge_files=None, preferred_model=None,
+                                    task="default"):
+    """Universal model router. Walks the task's ladder (smart tasks: Gemini →
+    DeepSeek), skipping any rung whose breaker is open and falling instantly to
+    the next on a quota error. Records success/failure so the breaker can recover
+    to free Gemini the moment its daily quota resets."""
     content_to_send = (knowledge_files + [prompt]) if knowledge_files else [prompt]
 
-    primary = preferred_model or config.model_for("default")
-    models_to_try = [primary] + [m for m in FREE_MODELS if m != primary]
-
     last_error = None
-    for m_name in models_to_try:
-        for attempt in range(3):
-            try:
-                return get_ai_model_by_name(m_name).generate_content(content_to_send).text
-            except Exception as e:
-                err_str = str(e)
-                is_rate_limit    = any(x in err_str for x in ["429", "quota", "RESOURCE_EXHAUSTED", "rate limit"])
-                is_token_overflow = any(x in err_str for x in ["400", "InvalidArgument", "token count exceeds", "maximum number of tokens"])
-                if is_token_overflow:
-                    last_error = e
-                    break
-                elif is_rate_limit:
-                    if attempt < 2:
-                        time_module.sleep((2 ** attempt) * 3)
-                        continue
-                    else:
-                        last_error = e
-                        break
-                else:
-                    last_error = e
-                    break
+    for m_name in _ladder_with_preference(task, preferred_model):
+        try:
+            text = get_ai_model_by_name(m_name).generate_content(content_to_send).text
+            config.note_success(m_name)
+            return text
+        except Exception as e:
+            last_error = e
+            config.note_failure(m_name, str(e))   # opens breaker only on quota errors
+            continue                               # token-overflow & transient errors also fall through
 
     raise Exception(f"All models unavailable. Last error: {last_error}. Please wait a few minutes and try again.")

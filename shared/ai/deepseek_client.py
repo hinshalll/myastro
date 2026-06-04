@@ -14,14 +14,16 @@ The returned object exposes:
     .generate_content(contents, stream=True)  -> iterator of chunks with .text
 so streaming consultation, one-shot readings, and JSON callers all just work.
 
-NOTE on vision: DeepSeek does not accept Gemini file/image handles. If a caller
-passes non-text parts (palm/face images uploaded as Gemini objects), this
-adapter raises a clear error so the fallback ladder skips to a Gemini model.
-Pointing the "vision" task at a DeepSeek model therefore needs provider-neutral
-image bytes — left for when you actually want to experiment there.
+NOTE on vision: this adapter CAN encode images (PIL images or raw bytes) into the
+OpenAI-compatible image_url blocks DeepSeek's multimodal endpoint expects. It is
+future-ready, but DeepSeek's public API does not yet document image input, so the
+"vision" task ladder in config.py stays Gemini-only. When DeepSeek officially
+ships vision, add "deepseek-v4-flash" to that ladder — no change needed here.
 """
 
+import io as _io
 import json as _json
+import base64 as _b64
 
 import httpx
 
@@ -46,24 +48,60 @@ def _require_key() -> str:
     return key
 
 
-def _contents_to_text(contents) -> str:
-    """Flatten a Gemini-style contents list into a single user-message string.
+def _encode_image_part(part):
+    """Return an OpenAI-style image_url block for a PIL image or raw bytes,
+    else None if `part` is not an image we can encode."""
+    data = None
+    try:
+        import PIL.Image
+        if isinstance(part, PIL.Image.Image):
+            buf = _io.BytesIO()
+            part.convert("RGB").save(buf, format="PNG")
+            data = buf.getvalue()
+    except Exception:
+        pass
+    if data is None and isinstance(part, (bytes, bytearray)):
+        data = bytes(part)
+    if data is None:
+        return None
+    b64 = _b64.b64encode(data).decode("ascii")
+    return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}
 
-    Strings are kept; anything non-text (image/file objects) means a vision
-    payload DeepSeek can't take here, so we fail loudly for the fallback ladder.
+
+def _build_user_content(contents):
+    """Flatten a Gemini-style contents list into OpenAI chat content.
+
+    All-text input collapses to a single string (simplest form). If any image
+    part is present, returns the list-of-blocks form DeepSeek's multimodal
+    endpoint expects. Truly un-encodable parts raise, so the fallback ladder
+    skips to a Gemini model.
     """
     if isinstance(contents, str):
         return contents
-    parts: list[str] = []
+
+    blocks: list = []
+    has_image = False
     for part in contents:
         if isinstance(part, str):
-            parts.append(part)
-        else:
-            raise RuntimeError(
-                "DeepSeek adapter received a non-text part (likely an image). "
-                "Keep image/vision tasks on a Gemini model for now."
-            )
-    return "\n\n".join(parts)
+            blocks.append({"type": "text", "text": part})
+            continue
+        img = _encode_image_part(part)
+        if img is not None:
+            blocks.append(img)
+            has_image = True
+            continue
+        if isinstance(part, dict) and part.get("type") in ("text", "image_url"):
+            blocks.append(part)
+            has_image = has_image or part.get("type") == "image_url"
+            continue
+        raise RuntimeError(
+            f"DeepSeek adapter can't encode a content part of type "
+            f"{type(part).__name__}."
+        )
+
+    if not has_image:
+        return "\n\n".join(b["text"] for b in blocks if b.get("type") == "text")
+    return blocks
 
 
 class _Resp:
@@ -93,7 +131,7 @@ class DeepSeekModel:
             "model": self.model_name,
             "messages": [
                 {"role": "system", "content": self.system_instruction},
-                {"role": "user", "content": _contents_to_text(contents)},
+                {"role": "user", "content": _build_user_content(contents)},
             ],
             "temperature": self.temperature,
             "stream": stream,
