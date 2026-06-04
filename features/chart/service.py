@@ -145,7 +145,10 @@ def interpret(profile: dict) -> dict:
                            f"शनि {M.SIGN_SANSKRIT.get(sa.sign,'')}",
                            f"Saturn — patience and mastery — sits in the area of {_house_short(sah)}."))
 
-    # 7. The season you're in — current Vimshottari Mahadasha theme.
+    # 7. Your birth star — the Moon's nakshatra (the most personal signature).
+    birth_star = _birth_star(chart)
+
+    # 8. The season you're in — current Vimshottari Mahadasha theme.
     current_chapter = _current_chapter(chart)
 
     # Headline — an evocative one-liner (contrast outside vs inside when we can).
@@ -164,9 +167,30 @@ def interpret(profile: dict) -> dict:
         "ok": True,
         "headline": headline,
         "core": cards,
+        "birth_star": birth_star,
         "current_chapter": current_chapter,
         "precision_note": precision_note,
     }
+
+
+def _birth_star(chart) -> dict:
+    """The Moon's nakshatra as a warm 'your birth star' card. Moon-based, so it's
+    reliable at every birth-time tier (it doesn't need the Ascendant)."""
+    from features.chart.nakshatras import NAKSHATRA
+
+    moon = chart.planets["Moon"]
+    nak = moon.nakshatra
+    info = NAKSHATRA.get(nak)
+    if not info:                                  # safety net — never crash on a name mismatch
+        return _card("Your birth star", f"Your birth star is {nak}.",
+                     nak, f"Your Moon is in the nakshatra {nak}.")
+    return _card(
+        f"Your birth star · {nak}",
+        info["body"],
+        f"{info['dev']} · {info['ruler']}",
+        f"Your Moon sits in {nak} (symbol: {info['symbol']}; guided by {info['deity']}; "
+        f"ruling planet {info['ruler']}).",
+    )
 
 
 def _current_chapter(chart) -> dict:
