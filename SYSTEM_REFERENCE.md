@@ -349,6 +349,20 @@ logic, social-graph features, payment/IAP processing.
   table (`features/reflect/meanings.py`: Jaimini AK natures, 12-house life-areas, 12 sign styles).
   Needs lat/lon (houses/D10); unknown birth time → midday estimate + precision note.
 
+### 4.2d chart — the plain-English interpretation layer ("front room", warm, no AI)
+- **FastAPI (`features/chart/api.py`) — 3 routes, all FREE/no-AI, stateless + deterministic:**
+  - `/interpret` — curated hero cards (You at the core / inner world / how you love / think /
+    drive / where you grow) + `birth_star` (Moon's nakshatra, all 27) + `current_chapter`
+    (Mahadasha + sub-period) + `highlights` (yogas as "gifts", doshas as gentle "growth areas").
+  - `/houses` — the 12 houses, warm (needs exact birth time). `/planets` — the 9 planets in
+    sign + house, warm (dignity/retrograde notes; sign reads work at every tier).
+- **Voice:** every card `{title, body, sanskrit, why}` — `body` is plain, jargon-free English;
+  Sanskrit/technical only in `sanskrit`/`why`. Anti-fatalism, never fate.
+- **Engine reuse:** warm ATOMS (`meanings.py` signs/houses/planets, `nakshatras.py` ×27,
+  `yogas.py`) **composed** in `service.py` over the computed chart (`compute_chart` + the dasha
+  themes from `retrospect.py`) — the same atoms-then-compose approach as `kundli_text.py` (whose
+  classical substance, cross-checked BPHS/Phaladeepika/Saravali, this re-voices). Needs lat/lon.
+
 ### 4.3 kundli — the flagship chart (free in-app) + premium PDF
 - **Streamlit:** full scrollable free chart (D1 SVG, Panchanga, Avakahada, planetary
   positions, Vimshottari MD/AD, Sade Sati, Shadbala, SAV, Bhava Bala, remedies, Manglik,
@@ -458,5 +472,5 @@ Then wire it all into the mobile mockup and re-aim presentation.
 - **people:** `/couple-week` · `/family-grid`
 - **companion:** `/micro-insight` · `/patterns` (JWT) · `/proof`
 - **reflect:** `/purpose` · `/year`
-- **chart:** `/interpret` (warm front-room cards; `/houses` + `/planets` planned)
+- **chart:** `/interpret` (warm front-room cards) · `/houses` (12 houses) · `/planets` (9 planets)
 - **me:** `/profiles` · `/profiles/{id}` · `/checkins` · `/journal` · `/streaks/{kind}` (JWT)

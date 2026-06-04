@@ -233,6 +233,80 @@ def _birth_star(chart) -> dict:
     )
 
 
+def _dignity_note(dignity: str | None) -> str:
+    if not dignity:
+        return ""
+    d = dignity.lower()
+    for key, note in M.DIGNITY_NOTE.items():
+        if key in d:
+            return note
+    return ""
+
+
+def houses(profile: dict) -> dict:
+    """The 12 houses, each as a warm, plain-English card — the deeper dive behind
+    the front room. Needs the Ascendant, so it requires an exact birth time."""
+    chart, time_known = _build_chart(profile)
+    if not time_known:
+        return {"ok": False, "error": "birth_time_required",
+                "message": ("The 12 houses are built from your rising sign, so they need your "
+                            "exact birth time. Add it to unlock this.")}
+    out = []
+    for h in range(1, 13):
+        hi = chart.houses[h]
+        body = (f"This is the part of your life about {M.HOUSE_LIFE[h]}. "
+                f"With {hi.sign} here, you tend to approach it in a {_pre(hi.sign)} way.")
+        occ = [p for p in hi.occupants if p in M.PLANET_FLAVOUR]
+        if len(occ) == 1:
+            body += f" {occ[0]} sits here, adding {M.PLANET_FLAVOUR[occ[0]]} quality."
+        elif len(occ) > 1:
+            names = " and ".join(occ)
+            body += f" {names} sit here, each colouring this part of life."
+        out.append(_card(
+            f"House {h} · {hi.sign}", body,
+            f"{M.HOUSE_SANSKRIT.get(h,'')} · {M.SIGN_SANSKRIT.get(hi.sign,'')}",
+            f"Your {_ord(h)} house holds {hi.sign} (ruled by {hi.sign_lord})"
+            + (f"; planets here: {', '.join(hi.occupants)}." if hi.occupants else "; no planets here."),
+        ))
+    return {"ok": True, "houses": out}
+
+
+def planets(profile: dict) -> dict:
+    """Each of the 9 planets in its sign (+ house, with an exact time) as a warm
+    card — what that part of you is like and where it plays out."""
+    chart, time_known = _build_chart(profile)
+    order = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+    out = []
+    for p in order:
+        pp = chart.planets.get(p)
+        if not pp:
+            continue
+        dom = M.PLANET_DOMAIN[p]
+        body = (f"This is {dom['of']}. In {pp.sign}, that shows up as {_pre(pp.sign)}"
+                f"{_dignity_note(pp.dignity)}")
+        if not body.rstrip().endswith("."):
+            body = body.rstrip() + "."
+        if time_known and pp.house:
+            body += f" It plays out mostly through {M.HOUSE_LIFE[pp.house]}."
+        if getattr(pp, "is_retrograde", False) and p not in ("Rahu", "Ketu"):
+            body += " It's retrograde, so this energy runs deep and inward — you revisit it a lot."
+        out.append(_card(
+            f"{dom['lead']} · {p} in {pp.sign}", body,
+            f"{dom['sanskrit']} {M.SIGN_SANSKRIT.get(pp.sign,'')}",
+            f"{p} is in {pp.sign}"
+            + (f", in the area of {_house_short(pp.house)}" if time_known and pp.house else "")
+            + (f" ({pp.dignity})" if pp.dignity else "") + ".",
+        ))
+    return {"ok": True, "planets": out, "precision_note": (
+        None if time_known else
+        "Without an exact birth time, these read from each planet's sign (reliable) but not its house.")}
+
+
+def _ord(n: int) -> str:
+    return {1:"1st",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"6th",7:"7th",
+            8:"8th",9:"9th",10:"10th",11:"11th",12:"12th"}.get(n, f"{n}th")
+
+
 def _current_chapter(chart) -> dict:
     """The Vimshottari Mahadasha running now, as a warm 'season you're in' card."""
     from shared.astro.astro_calc import build_vimshottari_timeline

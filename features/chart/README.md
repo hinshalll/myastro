@@ -14,11 +14,11 @@ Every card is `{ title, body, sanskrit, why }`:
 
 ## Endpoints
 
-| Method & path | Status | What it does |
-|---|---|---|
-| `POST /chart/interpret` | **built (slice 1)** | The curated "front room" — the hero cards the chart screen shows. |
-| `POST /chart/houses` | planned (slice 4) | All 12 houses, warm. |
-| `POST /chart/planets` | planned (slice 4) | Each planet in its sign + house, warm (composed). |
+| Method & path | What it does |
+|---|---|
+| `POST /chart/interpret` | The curated "front room" — the hero cards the chart screen shows. |
+| `POST /chart/houses` | All 12 houses, warm (sign on the house + any planets there). |
+| `POST /chart/planets` | Each of the 9 planets in its sign + house, warm (composed, with dignity/retrograde notes). |
 
 ### `POST /chart/interpret`
 ```jsonc
@@ -30,19 +30,22 @@ Every card is `{ title, body, sanskrit, why }`:
       { "title":"Your inner world", … }, { "title":"How you love", … },
       { "title":"How you think", … }, { "title":"Your drive", … },
       { "title":"Where you grow", … } ],
-    "current_chapter":{ "title":"The season you're in", "body":"…(dasha theme)…", … },
+    "birth_star":{ "title":"Your birth star · Rohini", "body":"…(27-nakshatra personality)…", … },
+    "current_chapter":{ "title":"The season you're in", "body":"…(Mahadasha + sub-period)…", … },
+    "highlights":[ { "kind":"gift", "title":"A gift in your chart", … },
+                   { "kind":"growth", "title":"A growth area", … } ],
     "precision_note":null }
 ```
 Birth-time tiers: an **exact time** gives the rising sign + houses (all 6 cards +
 "Where you grow"); an **unknown time** falls back to the **Sun/Moon sign reads**
-(still reliable) + a precision note.
+(still reliable) + a precision note. `birth_star` (Moon-based) works at every tier.
 
-## Build slices (task #18)
-1. ✅ **Atoms + composition + `/chart/interpret`** — 12 signs, 12 houses, 9 planets
-   (warm), the hero-card read. *(this slice)*
-2. ⏳ **27 nakshatras** — the birth-star personality layer.
-3. ⏳ **Dasha themes + key yogas/doshas** — richer "season" + notable highlights.
-4. ⏳ **`/chart/houses` + `/chart/planets` deep-dives** + full docs.
+## Build slices (task #18) — all complete
+1. ✅ **Atoms + composition + `/chart/interpret`** — 12 signs, 12 houses, 9 planets.
+2. ✅ **27 nakshatras** (`nakshatras.py`) — the birth-star personality (`birth_star`).
+3. ✅ **Dasha sub-theme + key yogas/doshas** (`yogas.py`) — richer "season" +
+   `highlights` (gifts + gently-framed growth areas).
+4. ✅ **`/chart/houses` + `/chart/planets` deep-dives** + docs.
 
 ## Design note
 Warm **atoms** for the finite sets (signs/houses/planets), **composed** into

@@ -85,6 +85,28 @@ PLANET_DOMAIN: dict[str, dict] = {
                 "lead": "What you release", "sanskrit": "केतु"},
 }
 
+# Short flavour per planet — for "X sits here, adding a … quality" occupant lines.
+PLANET_FLAVOUR: dict[str, str] = {
+    "Sun":     "a proud, visible, identity-driven",
+    "Moon":    "an emotional, caring, changeable",
+    "Mars":    "a driven, energetic, sometimes combative",
+    "Mercury": "a busy, clever, communicative",
+    "Jupiter": "a hopeful, expansive, wise",
+    "Venus":   "a warm, pleasure-loving, relational",
+    "Saturn":  "a serious, patient, building",
+    "Rahu":    "a hungry, ambitious, unconventional",
+    "Ketu":    "a detached, inward, spiritual",
+}
+
+# A gentle note when a planet sits in a notable dignity (classically strong/weak).
+# Weakness is always framed as a growth-into-strength, never a flaw (anti-fatalism).
+DIGNITY_NOTE: dict[str, str] = {
+    "exalt":        " and it's especially strong and well-placed here.",
+    "debilit":      " and here it's working from a tougher spot — often the very thing that becomes a real strength as you grow.",
+    "own":          " and it's right at home here, comfortable and sure of itself.",
+    "moola":        " and it's right at home here, comfortable and sure of itself.",
+}
+
 # How a sign's essence gets framed for a few specific, hero-card domains, so the
 # composed line reads naturally instead of mechanically.
 DOMAIN_FRAME: dict[str, str] = {

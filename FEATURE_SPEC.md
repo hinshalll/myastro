@@ -1,27 +1,32 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-04 — Chart interpretation layer started (`/chart/interpret`, slice 1/4).
+**Last updated:** 2026-06-04 — Chart interpretation layer complete (`/chart/interpret` + `/houses` + `/planets`).
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
 
-### Recent changes (2026-06-04) — plain-English chart interpretation ("front room"), slice 1/4
+### Recent changes (2026-06-04) — plain-English chart interpretation ("front room"), COMPLETE
 - **New feature `features/chart/`** (mounted at `/chart`) — turns the raw chart into **warm,
   jargon-free meanings any first-time user understands**. Every card is `{ title, body,
   sanskrit, why }`: the `body` is plain English (no jargon), the Sanskrit/technical detail
   lives only in `sanskrit`/`why` (behind a "why?" reveal). Classical substance is verified +
   reused from the engine (`kundli_text.py` atoms, cross-checked BPHS/Phaladeepika/Saravali);
-  this is the human voice over it. No live AI — static atoms (`meanings.py`: 12 signs, 12
-  houses, 9 planets, warm) **composed** into sentences (`service.py`), the same approach
-  `kundli_text.py` uses. Deterministic per profile (cache-friendly).
-- **`POST /chart/interpret`** (slice 1) — the curated "front room" hero cards: *You at the
-  core* (Ascendant + Sun), *Your inner world* (Moon), *How you love* (Venus), *How you think*
-  (Mercury), *Your drive* (Mars), *Where you grow* (Saturn), + *The season you're in* (current
-  Mahadasha theme) + a one-line headline. Exact birth time → rising sign + houses; unknown
-  time → Sun/Moon sign reads + a precision note; needs lat/lon (else 422).
-- **Slices to come (task #18):** 2) 27 nakshatras, 3) dasha themes + key yogas/doshas, 4)
-  `/chart/houses` + `/chart/planets` deep-dives.
+  this is the human voice over it. **No live AI** — static atoms (`meanings.py`, `nakshatras.py`,
+  `yogas.py`) **composed** into sentences (`service.py`), the same approach `kundli_text.py`
+  uses. Deterministic per profile (cache-friendly). Built in 4 verified slices:
+  - **`POST /chart/interpret`** — the curated "front room": *You at the core* (Ascendant + Sun),
+    *Your inner world* (Moon), *How you love* (Venus), *How you think* (Mercury), *Your drive*
+    (Mars), *Where you grow* (Saturn); **`birth_star`** (the Moon's nakshatra — all 27 written
+    warm, faithful to deity/symbol/ruler); **`current_chapter`** (current Mahadasha + sub-period
+    theme); **`highlights`** (notable yogas as "gifts" + key doshas as gently-framed "growth
+    areas", never as curses) + a one-line headline.
+  - **`POST /chart/houses`** — the 12 houses, warm (sign on the house + planets there). Needs an
+    exact birth time (else `ok:false`, birth_time_required).
+  - **`POST /chart/planets`** — each of the 9 planets in its sign + house, warm (composed, with
+    dignity/retrograde notes). Sign reads work at every tier; house clause needs an exact time.
+  - **Tiers:** exact birth time → rising sign + houses; unknown time → Sun/Moon sign reads +
+    precision note. Needs lat/lon (else 422). Warm/plain, anti-fatalism, never fate (§2/§3).
 
 ### Recent changes (2026-06-04) — big-picture reflective readings: Your Purpose + Year in Review
 - **New feature `features/reflect/`** (mounted at `/reflect`) — two pure-math, AI-free readings

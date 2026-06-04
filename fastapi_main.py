@@ -58,6 +58,8 @@ URL map
     /reflect/purpose             POST  features/reflect/api.py  (soul/career blueprint)
     /reflect/year                POST                          (Year in Review — Cosmic Wrapped)
     /chart/interpret             POST  features/chart/api.py  (plain-English chart "front room")
+    /chart/houses                POST                          (all 12 houses, warm)
+    /chart/planets               POST                          (each planet in sign+house, warm)
     /docs                        Interactive Swagger UI (built into FastAPI)
 
 Auth note

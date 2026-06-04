@@ -439,14 +439,16 @@ horoscopes, numerology, tarot, palm, face, vault, `/ask`), AI config, ONNX re-in
   + ✅ streaks (`/me/streaks`) + ✅ Mirror journal store (`/me/journal`) + ✅ **family grid** &
   **couple 7-day forecast** (`/people/*`). *Companion long-memory + Practice progress still open.*
 - **(C partial) Pure-compute endpoints** — ✅ **the Proof back-test** (`/companion/proof`),
-  ✅ **Your Purpose** (`/reflect/purpose`), ✅ **Year in Review / Cosmic Wrapped** (`/reflect/year`).
-  *Festival/Panchanga calendar + the plain-English chart-interpretation layer still open.*
+  ✅ **Your Purpose** (`/reflect/purpose`), ✅ **Year in Review / Cosmic Wrapped** (`/reflect/year`),
+  ✅ **plain-English chart-interpretation layer** — the "front room" (`/chart/interpret` +
+  `/chart/houses` + `/chart/planets`): warm, jargon-free cards over the whole chart (signs,
+  houses, planets, all 27 nakshatras, dasha season, yogas-as-gifts / doshas-as-growth). *Only
+  the festival/Panchanga calendar is still open in cluster C.*
 
 **Not done:**
 - **(B rest)** — Companion conversational long-memory, Practice/ritual progress, the social
   graph proper (connections/groups, friend requests, sharing).
-- **(C rest)** — festival/Panchanga calendar, the plain-English chart-interpretation layer
-  (the "front room" — task #18, the big static-meaning build).
+- **(C rest)** — festival/Panchanga calendar.
 - **(D) Infra/integrations** — notifications/push + scheduler, **payments (IAP) + coin/sub
   logic**, shareable card rendering, caching (app + API), usage limits.
 - **(E) Compliance** — DPDP/GDPR, account deletion/export, journal privacy.
