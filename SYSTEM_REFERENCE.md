@@ -123,9 +123,9 @@ Key public functions (by purpose):
 - **Numerology helpers:** `calculate_numerology_core`, `get_personal_year/month/day`,
   `get_pinnacle_cycles`.
 - **Western:** `get_western_sign`, `get_western_transits_today`. **Geo:** `geocode_place`
-  (place→lat/lon via **LocationIQ** — commercial-OK, free 5k/day, store-allowed; needs
-  `LOCATIONIQ_API_KEY`; Photon is a dev-only non-commercial fallback), `timezone_for_latlon`
-  (offline `TimezoneFinder`, commercial-safe).
+  (place→lat/lon via **OpenCage** — commercial-OK, free 2.5k/day, store-allowed, NO vendor
+  attribution required; needs `OPENCAGE_API_KEY`; Photon is a dev-only non-commercial
+  fallback), `timezone_for_latlon` (offline `TimezoneFinder`, commercial-safe).
 
 ### 1.3 `kundli.py` (2,545 lines — the full chart object)
 The flagship. `BirthData` (input) → `compute_chart(bd)` → `KundliChart` (everything).
