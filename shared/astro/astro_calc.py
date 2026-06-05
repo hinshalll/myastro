@@ -325,13 +325,64 @@ def get_western_transits_today():
     return western_pos
 
 
+def _read_locationiq_key():
+    """LocationIQ key from env first, then .streamlit/secrets.toml (no Streamlit import)."""
+    import os
+    key = os.environ.get("LOCATIONIQ_API_KEY")
+    if key:
+        return key.strip()
+    try:
+        import tomllib, pathlib
+        p = pathlib.Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml"
+        if p.exists():
+            with open(p, "rb") as f:
+                k = tomllib.load(f).get("LOCATIONIQ_API_KEY")
+                return k.strip() if k else None
+    except Exception:
+        pass
+    return None
+
+
 def geocode_place(pt):
-    try: 
-        # Using Photon to bypass Streamlit Cloud IP blocks
+    """Resolve a place name to (lat, lon, address).
+
+    PRIMARY: LocationIQ (OpenStreetMap data; free tier 5k/day; COMMERCIAL use OK
+    and results may be STORED — required since we save the birth lat/lon in the
+    profile). Set LOCATIONIQ_API_KEY in env or .streamlit/secrets.toml.
+
+    DEV FALLBACK ONLY: Photon (Komoot). Its public endpoint is NOT licensed for
+    commercial use, so it runs only when no LocationIQ key is set, with a warning.
+    Production MUST set LOCATIONIQ_API_KEY.
+    """
+    key = _read_locationiq_key()
+    if key:
+        try:
+            import httpx
+            r = httpx.get(
+                "https://us1.locationiq.com/v1/search",
+                params={"key": key, "q": pt, "format": "json", "limit": 1,
+                        "accept-language": "en"},
+                timeout=10,
+            )
+            r.raise_for_status()
+            data = r.json()
+            if data:
+                top = data[0]
+                return (float(top["lat"]), float(top["lon"]),
+                        top.get("display_name", pt))
+            return None
+        except Exception as e:
+            print(f"Geocoding Error (LocationIQ): {e}")
+            return None
+
+    # ── DEV-ONLY fallback (non-commercial); set LOCATIONIQ_API_KEY for production ──
+    print("[geocode] WARNING: LOCATIONIQ_API_KEY not set — falling back to Photon "
+          "(NON-commercial, local dev only). Set the key before shipping.")
+    try:
         loc = Photon(user_agent="astro_suite_cloud").geocode(pt, exactly_one=True, timeout=10)
         return (loc.latitude, loc.longitude, loc.address) if loc else None
-    except Exception as e: 
-        print(f"Geocoding Error: {e}")
+    except Exception as e:
+        print(f"Geocoding Error (Photon fallback): {e}")
         return None
 
 
