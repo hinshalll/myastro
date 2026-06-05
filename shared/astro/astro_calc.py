@@ -325,62 +325,79 @@ def get_western_transits_today():
     return western_pos
 
 
-def _read_geocoder_key():
-    """OpenCage key from env first, then .streamlit/secrets.toml (no Streamlit import)."""
+def _secret(name):
+    """Read a secret from env first, then .streamlit/secrets.toml (no Streamlit import)."""
     import os
-    key = os.environ.get("OPENCAGE_API_KEY")
-    if key:
-        return key.strip()
+    v = os.environ.get(name)
+    if v:
+        return v.strip()
     try:
         import tomllib, pathlib
         p = pathlib.Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml"
         if p.exists():
             with open(p, "rb") as f:
-                k = tomllib.load(f).get("OPENCAGE_API_KEY")
-                return k.strip() if k else None
+                val = tomllib.load(f).get(name)
+                return val.strip() if val else None
     except Exception:
         pass
     return None
 
 
+def _geocoder_settings():
+    """Pick the geocoder, preferring a self-hosted Nominatim (NOMINATIM_URL) over
+    LocationIQ (LOCATIONIQ_API_KEY). Both speak the SAME Nominatim /search API,
+    so switching is config-only. Returns (base_url, key_or_None) or (None, None)."""
+    nominatim = _secret("NOMINATIM_URL")
+    if nominatim:                                   # self-hosted: no key, OSM-only credit
+        return (nominatim.rstrip("/"), None)
+    liq = _secret("LOCATIONIQ_API_KEY")
+    if liq:
+        return ("https://us1.locationiq.com/v1", liq)
+    return (None, None)
+
+
 def geocode_place(pt):
-    """Resolve a place name to (lat, lon, address).
+    """Resolve a place name to (lat, lon, address) via a Nominatim-compatible API.
 
-    PRIMARY: OpenCage (OpenStreetMap data; free 2,500/day; COMMERCIAL use OK and
-    results may be STORED — needed since we save the birth lat/lon. NO OpenCage
-    brand attribution required, only the standard OSM data credit). Set
-    OPENCAGE_API_KEY in env or .streamlit/secrets.toml.
+      • PREFERRED: self-hosted Nominatim via NOMINATIM_URL — full OSM precision,
+        no vendor, only the standard "© OpenStreetMap" data credit. (Endgame on
+        the Oracle box.)
+      • ELSE: LocationIQ via LOCATIONIQ_API_KEY — full OSM data; commercial use on
+        the free tier is allowed WITH a LocationIQ backlink (put it in About/Credits).
+      • DEV FALLBACK: Photon (Komoot), NOT licensed for commercial use — only when
+        nothing else is configured, with a warning.
 
-    DEV FALLBACK ONLY: Photon (Komoot), NOT licensed for commercial use — runs
-    only when no OpenCage key is set, with a warning. Production MUST set the key.
+    To move from LocationIQ to your own server later, just set NOMINATIM_URL — no
+    code change.
     """
-    key = _read_geocoder_key()
-    if key:
-        import httpx
-        url = "https://api.opencagedata.com/geocode/v1/json"
-        params = {"q": pt, "key": key, "limit": 1, "no_annotations": 1, "language": "en"}
-        for attempt in range(2):   # retry once on the free-tier 1-req/sec limit
-            try:
-                r = httpx.get(url, params=params, timeout=10)
+    base, key = _geocoder_settings()
+    if base:
+        try:
+            import httpx
+            params = {"q": pt, "format": "json", "limit": 1, "accept-language": "en"}
+            if key:
+                params["key"] = key
+            for attempt in range(2):                # one retry for rate-limit hiccups
+                r = httpx.get(f"{base}/search", params=params, timeout=10)
                 if r.status_code == 429 and attempt == 0:
                     import time as _t
                     _t.sleep(1.2)
                     continue
                 r.raise_for_status()
-                results = r.json().get("results") or []
-                if results:
-                    g = results[0]["geometry"]
-                    return (float(g["lat"]), float(g["lng"]),
-                            results[0].get("formatted", pt))
+                data = r.json()
+                if data:
+                    top = data[0]
+                    return (float(top["lat"]), float(top["lon"]),
+                            top.get("display_name", pt))
                 return None
-            except Exception as e:
-                print(f"Geocoding Error (OpenCage): {e}")
-                return None
-        return None
+            return None
+        except Exception as e:
+            print(f"Geocoding Error: {e}")
+            return None
 
-    # ── DEV-ONLY fallback (non-commercial); set OPENCAGE_API_KEY for production ──
-    print("[geocode] WARNING: OPENCAGE_API_KEY not set — falling back to Photon "
-          "(NON-commercial, local dev only). Set the key before shipping.")
+    # ── DEV-ONLY fallback (non-commercial) ──
+    print("[geocode] WARNING: no commercial geocoder configured (set NOMINATIM_URL "
+          "or LOCATIONIQ_API_KEY) — using Photon (NON-commercial, dev only).")
     try:
         loc = Photon(user_agent="astro_suite_cloud").geocode(pt, exactly_one=True, timeout=10)
         return (loc.latitude, loc.longitude, loc.address) if loc else None
