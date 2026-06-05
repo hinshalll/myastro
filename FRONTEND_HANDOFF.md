@@ -28,7 +28,7 @@ Polish like CHANI / Co-Star, with deeper Vedic substance.
 - **Today** — daily habit + discovery (daily forecast, good/avoid times, 3-tap check-in, ritual).
 - **People** — relationships; 3 tag-driven modes: Romantic / Family / Social-Work.
 - **Explore** — read my charts + classical tools (incl. the Kundli Milan 36-guna calculator).
-- **Practice** — rituals / daily practice (rituals live inside this tab).
+- **Rituals** — daily practice / rituals (the daily doable actions live here).
 - **You** — profile, the Mirror journal, Patterns/Proof, settings.
 
 ## 3. Monetization (locked — DO NOT add ads, ever)
@@ -53,6 +53,16 @@ Exactly two ways:
 > typography over decoration. Rounded, soft-edged cards. Gentle, quiet, ritual feel — pretty
 > and approachable, like a beautiful printed journal crossed with a confident editorial app.
 
+## 4b. Design source files (IMPORTANT — read before building a screen)
+Screen designs are produced in **Google Stitch**, then exported via **Google AI Studio**, and
+saved under `design_import/<screen>/` (folder + screenshot).
+
+**The AI Studio export is a WEB mockup, not a runnable Expo app.** It imports web-only libs
+(`lucide-react`, `motion/react`, `vite.config.ts`, `index.css`). DO NOT try to run it or copy it
+verbatim. Use it ONLY as the **visual source of truth**: colors, fonts, spacing, layout, copy.
+Rebuild each screen as REAL React Native + Expo (`react-native` primitives, `StyleSheet`,
+`lucide-react-native`, `react-native-reanimated`/Moti for motion). Match the look, not the code.
+
 ## 5. How to keep design consistent across screens (CRITICAL)
 Consistency comes from two anchors, not from eyeballing:
 
@@ -76,7 +86,7 @@ Consistency comes from two anchors, not from eyeballing:
 2. Today tab + its sub-screens.
 3. People tab (3-mode per-person profile).
 4. Explore tab.
-5. Practice tab.
+5. Rituals tab.
 6. You tab.
 7. Onboarding + overlays (Ask bubble, paywall).
 8. Wire each screen to the live backend as it's built.
