@@ -275,10 +275,11 @@ every user table; design ref = `MOBILE_APP_BLUEPRINT.md §8.4 / §9.5`). It now 
   `precision` so unknown→exact recomputes once), `usage_counters` (freemium soft caps per
   user/day/kind).
 - **Currency + growth (added 2026-06):** `coin_wallets` + `coin_transactions` (the **"Diyas"**
-  in-app currency — balance + append-only signed ledger: earned/bought/ad/spent/gift/referral;
+  in-app currency — balance + append-only signed ledger: earned/bought/spent/gift/referral;
   writes server-side only so no client can mint Diyas), `referrals`, `gifts`, `ad_rewards`
-  (rewarded-video tracking, `UNIQUE(network, ssv_id)` blocks double-claims). `app_users` gained
-  a **`depth_mode`** column (`simple`/`full`, blueprint §6.7).
+  (`UNIQUE(network, ssv_id)`). `app_users` gained a **`depth_mode`** column (`simple`/`full`,
+  blueprint §6.7). **NOTE (2026-06-05): ads were dropped — Subscription + Diyas only; `ad_rewards`
+  remains in schema but unused (see blueprint §7).**
 - A trigger auto-creates an `app_users` row on signup; `set_updated_at()` stamps mutable rows.
 
 ### 3.1 The Python data layer — `shared/db/` (Streamlit-free)

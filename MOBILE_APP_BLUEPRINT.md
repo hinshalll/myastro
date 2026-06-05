@@ -139,7 +139,7 @@ Practice · "how today feels between you & ___" → People.
 | Feature | Plain English | Tag | Powered by |
 |---|---|---|---|
 | **Your circle** (saved people) | Daily relationship weather per person | `[FREE]` ≤3 people, `[SUB]`/`[COINS]` more | math + cache |
-| **Per-person view, gated by tag** | crush/partner/spouse → show compatibility; mother/friend/boss → relationship weather only (marriage kootas don't apply) | `[FREE]`/`[COINS]` | math |
+| **Per-person view — 3 reading modes by tag** | **Romantic** (crush/partner/spouse) → love compatibility + couple forecast; **Family** (parent/sibling/child) → bond dynamics + nudges; **Social/Work** (friend/colleague/boss) → how-you-click + nudges. Marriage kootas appear ONLY for romantic-serious. | `[FREE]`/`[Diyas]` | math + AI |
 | **Couple space** | Shared pulse + multi-day tension forecast | `[SUB]`/`[COINS]` | math |
 | **Family grid (across timezones)** | Whole household's day at a glance — the diaspora killer | `[SUB]`/`[COINS]` | math |
 | **Add a person** | By birth details (works solo) or friend request (growth) | `[FREE]` | — |
@@ -154,6 +154,29 @@ calculator). People surfaces the relationship *reading* per person.
 *manual chart* = static, for matchmaking/family of non-users (the big Indian use case).
 **Privacy tiers** on connections (acquaintance / close). **Mood logs + journal are NEVER
 shareable, on any tier.**
+
+**Per-person profile screen (locked 2026-06-05) — what opens when you tap a person:**
+- **Header:** name + relationship tag + their key signs in plain words.
+- **"Today between you"** (the hero): the daily relationship weather as ONE *actionable nudge*
+  — "Warm window — good day to call Mom" / "Give them space today" — never just a vibe word.
+- **Body, by reading mode (driven by the tag):**
+  - **💕 Romantic** (crush/partner/spouse): overall harmony (warm read + gentle score), what
+    flows / what to watch, a 5–7-day harmony-vs-tension peek, talk/avoid nudges. **Spouse/serious
+    also** shows a Kundli-Milan guna summary + **"See full matching →"** deep-linking the dedicated
+    **Explore** tool.
+  - **👨‍👩‍👧 Family** (parent/sibling/child/relative): bond dynamics + daily nudge + short peek. No kootas.
+  - **🤝 Social/Work** (friend/colleague/boss): how you two click (communication/energy) + nudge.
+- **Universal:** a "why?" depth toggle (the astrology underneath), a privacy reminder, and a
+  **share card**. Gating: `[FREE]` for ≤3 people + today's weather; deeper couple forecast /
+  more people = `[Diyas]`/`[SUB]`.
+- **If BOTH people are app users** (friend-request path), Couple space becomes a **two-way shared
+  "how are we today"** both see — the double-retention + invite hook.
+- **Compatibility = the growth loop:** every result exports a gorgeous shareable card + "invite
+  them to see their side" → the other person installs. Free (it's marketing).
+
+**Matchmaking split (confirmed):** the full **Kundli Milan / Ashta-Koota (36-guna) calculator**
+is an **Explore** *tool* (any two charts — the rishta use-case). **People** shows the living
+per-person *relationship reading* and links into the Explore tool for romantic-serious matches.
 
 ### TAB 3 — Explore  *(all astrology features + depth; the back room)*
 | Feature | Plain English | Tag | Powered by |
@@ -288,22 +311,22 @@ layer on top.
    disciplined practice (check-ins, mantras, meditation, streaks) *kindles* Diyas, which maps
    to the Vedic idea that sadhana lights one's inner light (jyoti) — earning feels earned, not
    gamey. Every paid report/feature is priced in Diyas. Get them by: **buying** (direct profit),
-   **earning** via daily/streak/practice rewards, **watching a rewarded ad** (the advertiser
-   pays → free coins become revenue-positive), **referrals**, or **gifts**. Big reports cost
+   **earning** via daily/streak/practice rewards, **referrals**, or **gifts**. Big reports cost
    many Diyas (still a real purchase, in your currency). *"Diyas" is a UI label only; the DB
    tables stay neutral (`coin_wallets`/`coin_transactions`) so it can be renamed without a
    migration.*
-2. **Myastro+ subscription** — unlimited AI actions + the always-on companion + deep insights
-   + **ad-free**. ₹49/wk · ₹199/mo · ₹999/yr. Push annual. **7-day free trial.**
+2. **Myastro+ subscription** — unlimited AI actions + the always-on companion + deep insights.
+   ₹49/wk · ₹199/mo · ₹999/yr. Push annual. **7-day free trial.**
 
-**Clean rule so dual isn't confusing:** coins and subscription buy the *same* AI actions —
-metered vs unlimited. A subscriber never needs coins.
+**Clean rule so dual isn't confusing:** Diyas and subscription buy the *same* AI actions —
+metered vs unlimited. A subscriber never needs Diyas.
 
-**Ads (tasteful only — no-ads would lose money, intrusive ads would cheapen the app):**
-- **Rewarded video** ("watch → earn coins") — opt-in, the backbone.
-- **Occasional native ads** styled like content, clearly labeled, only at low-stakes moments —
-  **never** during a reading/journal/sacred moment, never full-screen pop-ups.
-- **Subscription removes all ads** (so ads also sell the subscription).
+**NO ADS — decided 2026-06-05, and the economics prove it:** a 30-sec rewarded video nets only
+~₹0.30–0.50 in India, so a meaningful Diya reward (5–10) would *lose* money, while a stingy
+1-Diya reward kills engagement — there is no profitable sweet spot. Ads would also cheapen a
+trust-based, intimate product. **Diyas (real money) monetize non-subscribers far better than ad
+pennies.** (The `ad_rewards` table stays in the schema but is now unused — no migration needed;
+drop later if desired.)
 
 **Other revenue streams:** **gifting** (gift a reading/report to family — strong for diaspora),
 **referrals** (invite → both earn coins), **festival-timed pushes** (relevant paid reports at
@@ -317,9 +340,8 @@ high-intent moments like Diwali — natural, not spammy).
   ever loses money.
 - **Tier-1 pricing:** charge more in US/UK/etc. (per-country store pricing) — same product,
   several times the revenue from richer markets.
-- **Free daily coins stay profitable** because: amounts are small, they point at *cheap*
-  actions, a big share are ad-funded, and there are gentle caps (so big-ticket items still
-  need a purchase).
+- **Free daily Diyas stay profitable** because: amounts are small, they point at *cheap*
+  actions, and there are gentle caps (so big-ticket items still need a real purchase).
 - The coin economy is a **living dial** — set starting values, tune with real usage data.
 
 ---

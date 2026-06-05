@@ -123,6 +123,8 @@
   signed-ledger `coin_transactions`, server-write-only), `referrals`, `gifts`, `ad_rewards`
   (dedup-safe), `app_users.depth_mode`, auto-`updated_at` triggers. `supabase>=2.7` added to
   requirements. **Owner still to do:** create the live Supabase project + paste the 3 keys.
+  *(Monetization decision 2026-06-05: NO ADS — Subscription + Diyas only; the `ad_rewards`
+  table stays but is unused. See blueprint §7.)*
 - **Out of scope** (later sessions): Pattern-Engine correlation, social graph, payment/IAP.
 
 ### Recent changes (2026-06-03) — free Skyfield ephemeris wired in (SE-free runtime)
