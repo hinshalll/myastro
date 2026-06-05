@@ -1,10 +1,25 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-04 — Chart interpretation layer complete (`/chart/interpret` + `/houses` + `/planets`).
+**Last updated:** 2026-06-05 — Accuracy verification + voice upgrade across all user-facing copy.
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,
 > not Flutter — the "Future work" section below predates that decision and is stale.
+
+### Recent changes (2026-06-05) — accuracy verification + "house voice" copy upgrade
+- **Accuracy pass (no behaviour change):** all 27 nakshatra personality reads + the key yogas
+  (Pancha Mahapurusha, Gajakesari, etc.) were cross-checked against multiple reputable Vedic
+  sources and confirmed faithful to the classical significations. Provenance recorded in
+  `features/chart/nakshatras.py`.
+- **Voice upgrade (copy only — endpoints/maths untouched):** locked a single "house voice" —
+  warm, plain, specific, lightly witty, never jargon/cringe/fate — and rolled it across the
+  user-facing strings: the 12 sign cores + hero cards + 27 nakshatra reads (now each with a
+  gently-defused "flip side") + yoga/dosha highlights (`features/chart/`), the 12 daily
+  forecast reads (`shared/astro/forecast.py`), the relationship-weather bond/day lines
+  (`shared/astro/relationship_weather.py`), The Proof (`shared/astro/retrospect.py`), and
+  Purpose/Year (`features/reflect/`). Voice rules captured in memory + blueprint §2/§3. The
+  guiding goal: outputs should make a user feel genuinely *seen* — via specificity, named
+  inner tensions, and "they-misread-you" hooks — while keeping every calculation 100% real.
 
 ### Recent changes (2026-06-04) — plain-English chart interpretation ("front room"), COMPLETE
 - **New feature `features/chart/`** (mounted at `/chart`) — turns the raw chart into **warm,
