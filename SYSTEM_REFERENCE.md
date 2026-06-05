@@ -65,14 +65,19 @@ adapter), never from a specific engine directly. The provider is chosen by the
   `requirements-dev.txt`, not installed in production).
 
 Adapter surface (all return plain Python floats/lists): `ayanamsa(jd, mode)`,
-`planet_lon(_speed)(jd, name, mode)`, `planet_lat`, `node_lon` (**Mean** node — unified
-convention), `ascendant`, `houses(system, mode)`, tropical variants
+`planet_lon(_speed)(jd, name, mode)`, `planet_lat`, `node_lon(jd, node_type)` (**Mean** node
+by default; True opt-in — see below), `ascendant`, `houses(system, mode)`, tropical variants
 (`planet_lon_tropical`, `ascendant_tropical`, `houses_tropical`, `node_lon_tropical`) for
 the Western chart, calendar helpers (`julday`, `jd_to_utc`), `sun_rise_set`,
 `moon_rise_set`, `next_eclipse(s)`. **Planet IDs are NAME STRINGS** ("Moon", "Mars" …).
 - **Ayanamsha `mode`** — all five implemented on the free engine via frozen J2000 anchors
   + shared IAU-2006 precession: `lahiri` (default), `raman`, `krishnamurti` (KP),
   `yukteshwar`, `fagan_bradley`. Validated to ≤0.001″ vs Swiss Ephemeris.
+- **Node `node_type`** — Rahu/Ketu model: `mean` (default, matches Indian panchangs) or
+  `true` (osculating). Per-call via `node_lon(..., node_type="true")` or globally via
+  `NODE_TYPE=true` (`shared.astro.config.node_type()`). True node is implemented on the free
+  engine (`ephem_skyfield.true_node_*`), validated ~48″ vs SE TRUE_NODE — far inside any
+  nakshatra boundary. **Opt-in, not the default** (the whole app still computes Mean).
 - **Validation:** `scripts/validate_ephemeris.py` diffs the free engine vs Swiss Ephemeris
   (positions, ayanamshas, ascendant, houses, tropical, latitude, calendar, all 16 vargas,
   panchanga) → 0 mismatches except the irreducible D60 boundary rate (~0.1%).

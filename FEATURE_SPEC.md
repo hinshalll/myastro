@@ -135,9 +135,12 @@
 - **All 5 ayanamshas on the free engine** — `lahiri` (default), `raman`, `krishnamurti` (KP),
   `yukteshwar`, `fagan_bradley`, each a frozen J2000 anchor + shared IAU-2006 precession
   (≤0.001″ vs SE). `bd.ayanamsha` now actually drives the whole chart.
-- **Rahu/Ketu unified to the Mean node everywhere** (was TRUE in astro_calc/kundli, MEAN in
-  scoring). **Western/tropical chart** also runs on the free engine (tropical positions +
-  Placidus + ascendant + Mean node, ≤2.4″ vs SE). **Graha Yuddha** uses real ecliptic latitude.
+- **Rahu/Ketu unified to the Mean node as the default everywhere** (was TRUE in
+  astro_calc/kundli, MEAN in scoring). *(A True/osculating-node toggle was later added,
+  opt-in via `NODE_TYPE=true` or `node_lon(..., node_type="true")` — Mean stays the default;
+  see `docs/ephemeris-decision.md`.)* **Western/tropical chart** also runs on the free engine
+  (tropical positions + Placidus + ascendant + Mean node, ≤2.4″ vs SE). **Graha Yuddha** uses
+  real ecliptic latitude.
 - **`pyswisseph` is now dev-only** (`requirements-dev.txt`) — kept solely as the validation
   reference. The Lahiri/other anchors are frozen constants (no `swisseph` import at runtime).
   `constants.PLANETS` are NAME strings. Docker bakes in `de440s.bsp`; the old `ephe/` SE data
