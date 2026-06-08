@@ -1,5 +1,17 @@
 # Myastro — Frontend Build Brief (upload this to your AI builder)
 
+> **⚠️ v3 UPDATE (2026-06-08) — read with `MOBILE_APP_BLUEPRINT.md` v3 (authoritative).** Key
+> deltas since this brief was written: (1) the **3rd tab is now "Decode"** (not "Explore").
+> 5 tabs = **Today / People / Decode / Rituals / You**. (2) The app has a **self-aware, witty
+> voice** (calm *look*, personality in the *copy*) — sincere for real readings, witty/savage for
+> the Daily Roast, Compatibility, and the shareable cards. (3) New surfaces to build: a
+> **share-card system** (Daily Roast, The Receipt, Dating Resume, Wrapped, Compatibility, Rank-
+> your-circle) with an **in-app share screen** (Instagram-Story + universal image share). (4)
+> **People** = per-person profile is the hub (reading/compatibility/couple inside it). (5)
+> **Rituals** = chart-derived remedies; a free "practices" zone + an optional affiliate "items"
+> zone (gemstone budget tiers). (6) **Monetization:** Subscription + Diyas (earned by doing good)
+> + tasteful affiliate links; still **no ads**. Placeholder data only; wiring is later.
+
 You are building the **complete mobile frontend** for Myastro in **React Native + Expo**. Read this
 whole brief first — it's the single source of truth for structure, navigation, and how to build.
 You build the UI + navigation + placeholder data only. A separate engineer wires the real backend

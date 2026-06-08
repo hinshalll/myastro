@@ -1,6 +1,15 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-05 — Accuracy verification + voice upgrade across all user-facing copy.
+**Last updated:** 2026-06-08 — see v3 repositioning note below.
+
+> **⚠️ v3 REPOSITIONING (2026-06-08):** the product is now **"self-aware astrology"** — same real
+> Vedic engine (frozen), but a witty/savage personality + a viral shareables layer. Tabs renamed
+> (Explore→**Decode**, Practice→**Rituals**). New: curated (non-AI) savage layer, the Diya
+> "do-good-to-earn" economy + tasteful affiliate remedy-commerce (no ads), two-tier kundli +
+> generate-for-others, personalized chart-derived rituals. **`MOBILE_APP_BLUEPRINT.md` v3 is the
+> authoritative structure** — this spec's tab/feature framing predates it where they differ.
+
+**Prior update:** 2026-06-05 — Accuracy verification + voice upgrade across all user-facing copy.
 
 > **For the deep code map** (engine functions, every endpoint, Streamlit-vs-mobile, what's
 > built vs new) see **`SYSTEM_REFERENCE.md`**. Note: the mobile app is **React Native/Expo**,

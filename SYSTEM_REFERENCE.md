@@ -1,5 +1,12 @@
 # Myastro — System Reference (deep map of the real product)
 
+> **⚠️ v3 REPOSITIONING (2026-06-08):** product is now "self-aware astrology" (witty surface, same
+> frozen Vedic engine). The repositioning changes only the **language layer** — the 8 prompt files
+> (`features/*/prompts.py` + `shared/ai/prompts.py`; sincere zones get a light AI-slop-word scrub,
+> the daily forecast gets the witty voice) + **new curated line-banks** (the Daily Roast, keyed to
+> the day's dominant transit — NOT AI). `shared/astro/*` math is untouched. See `MOBILE_APP_BLUEPRINT.md`
+> v3 §12 for the copy map (AI / Curated / Templated / Streamlit-ignore).
+
 **Last updated:** 2026-05-30
 **Purpose:** The single deep reference so no human or AI has to re-read the code to
 understand what exists. This complements `FEATURE_SPEC.md` (high-level source of
