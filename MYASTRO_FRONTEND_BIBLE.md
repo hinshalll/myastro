@@ -20,10 +20,26 @@ later, so **build in the "wiring-ready" way described in section 5.**
 ---
 
 ## 1. What Myastro is
-A Vedic-astrology + AI-divination app for everyone, including complete beginners. The feel is calm,
-warm, premium, and personal — like a beautiful printed journal crossed with a confident editorial
-app. Plain, warm English everywhere. Never cold, cryptic, or jargon-heavy. (Reference feel: CHANI's
-calm warmth + Co-Star's bold quotable headlines, minus any intimidation.)
+A Vedic-astrology + AI-divination app for everyone, including complete beginners. **Self-aware
+astrology:** real astrology with a modern, witty personality. Plain, warm English everywhere; never
+cold, cryptic, or jargon-heavy.
+
+**Design language (locked — the combo):** a calm, warm, premium minimal base **plus** playful
+collage personality.
+- **Base:** soft off-white / warm-paper background, generous spacing, uncluttered, premium.
+- **Type:** expressive editorial **serif** headlines, **small-caps mono** labels ("MOON PHASE",
+  "12-DAY STREAK"), clean **sans** body.
+- **Personality (sparing, never cluttered):** tasteful surreal cut-out collage celestial art
+  (vintage grainy photo cut-outs, moon, stars, soft hand-drawn rainbows, the occasional playful
+  creature) + hand-drawn accents — squiggly underlines under titles, washi-tape corners,
+  dashed-border toggles, doodle icons.
+- **Color:** soft blush + lavender pastels + one warm gold for special moments; most color comes
+  from the collage art itself.
+- **Mood:** a beautiful printed journal with wit and charm — a refined, less-busy take on CHANI's
+  collage style on a quieter, premium canvas. Personality without clutter.
+- **Collage images** are generated in one consistent style ("surreal mixed-media cut-out collage,
+  vintage halftone photo cut-outs, soft doodles, off-white paper texture, blush/lavender pastels +
+  gold, minimal, no text") — a matched set across the app.
 
 ## 2. Tech
 - **React Native + Expo, SDK 54** (do not change the SDK).
@@ -41,6 +57,17 @@ and reuse it on every screen:
 - **Every screen is composed from these primitives. NEVER hardcode a color, font, or spacing value
   on an individual screen.** Change a token once → it updates everywhere. This is what keeps all
   screens looking like one app.
+
+**Charts, tables & diagrams must follow the same design language — never a chart library's default
+look.** Build them as custom themed components (`react-native-svg` for diagrams/rings/graphs,
+styled Views for tables) reading the theme tokens:
+- Background = the off-white paper (never a white/grey chart box). Lines = thin soft ink; tables use
+  hairline dividers, no heavy gridlines.
+- Type = mono small-caps for labels/axes, serif for big numbers, sans for body.
+- Palette = blush/lavender/sage pastels + gold highlight; soft-green/soft-red for good/avoid.
+  Rounded caps on arcs/bars; soft rounded nodes on timelines; optional hand-drawn squiggle accents.
+- Reusable components: `KundliChart` (traditional North-Indian diamond, thin soft-ink lines, mono
+  planet labels, engraved feel), `ScoreRing`, `Timeline` (Life Chapters), `DataTable`, `MiniGraph`.
 
 ## 4. Navigation & screen map
 Five bottom tabs + a floating "Ask" bubble (FAB) + onboarding + overlays.
