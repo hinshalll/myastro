@@ -26,7 +26,9 @@ cold, cryptic, or jargon-heavy.
 
 **Design language (locked — the combo):** a calm, warm, premium minimal base **plus** playful
 collage personality.
-- **Base:** soft off-white / warm-paper background, generous spacing, uncluttered, premium.
+- **Base:** clean, warm **white in light mode** (a soft near-white, premium not stark) and **near-black
+  in dark mode**; generous spacing, uncluttered, premium. Both themes are **token-driven** — screens
+  are designed once (in light), and dark mode is an alternate token set built in code, not redesigned.
 - **Type:** expressive editorial **serif** headlines, **small-caps mono** labels ("MOON PHASE",
   "12-DAY STREAK"), clean **sans** body.
 - **Personality (sparing, never cluttered):** tasteful surreal cut-out collage celestial art
