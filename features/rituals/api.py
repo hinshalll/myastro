@@ -4,7 +4,7 @@
                    priority planets + free practices + optional gemstone tiers.
 """
 
-from features.rituals.schemas import RemediesRequest
+from features.rituals.schemas import RemediesRequest, TodayRitualRequest
 
 try:
     from fastapi import APIRouter
@@ -19,3 +19,8 @@ if router is not None:
     def remedies(req: RemediesRequest) -> dict:
         from features.rituals.service import build_remedies
         return build_remedies(req.profile)
+
+    @router.post("/today")
+    def today(req: TodayRitualRequest) -> dict:
+        from features.rituals.service import build_today_ritual
+        return build_today_ritual(req.profile, req.date)

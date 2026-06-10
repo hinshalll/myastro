@@ -128,3 +128,75 @@ def build_remedies(profile: dict) -> dict:
         "dosha_remedies": rem.get("per_dosha", {}),
         "time_precision": getattr(chart, "time_precision", None),
     }
+
+
+# Python date.weekday(): Monday=0 ... Sunday=6 → the planet ruling that day.
+_WEEKDAY_PLANET = {0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter",
+                   4: "Venus", 5: "Saturn", 6: "Sun"}
+_WEEKDAY_NAME = ["Monday", "Tuesday", "Wednesday", "Thursday",
+                 "Friday", "Saturday", "Sunday"]
+
+
+def build_today_ritual(profile: dict, on_date: str | None = None) -> dict:
+    """One small, doable ritual for the Today card.
+
+    Prefers the planet ruling today's weekday IF it's one the chart asks the
+    user to support ("It's Saturday — do your Saturn remedy"); otherwise the
+    top priority planet; otherwise a gentle generic practice.
+    """
+    from shared.astro.kundli import compute_chart, PLANET_REMEDIES
+
+    chart = compute_chart(_profile_to_birthdata(profile))
+    rem = getattr(chart, "remedies", None) or {}
+    priorities = [p for p in (rem.get("priority_planets") or []) if p in PLANET_REMEDIES]
+
+    today = date.fromisoformat(on_date) if on_date else date.today()
+    wd = today.weekday()
+    day_planet = _WEEKDAY_PLANET[wd]
+
+    if day_planet in priorities:
+        chosen, is_planet_day = day_planet, True
+    elif priorities:
+        chosen, is_planet_day = priorities[0], False
+    else:
+        chosen, is_planet_day = None, False
+
+    if chosen is None:
+        # No priority planet with remedies → a gentle, universal practice.
+        return {
+            "date": today.isoformat(),
+            "weekday": _WEEKDAY_NAME[wd],
+            "is_planet_day": False,
+            "ritual": {
+                "planet": None,
+                "action": "Light a ghee lamp at home before sundown and sit quietly for one minute.",
+                "mantra": None,
+                "daily_count": None,
+                "tip": "A small daily flame steadies the mind and the day.",
+                "deity": None,
+                "why": "A calm, grounding practice for any day.",
+            },
+        }
+
+    r = PLANET_REMEDIES[chosen]
+    lal = r.get("lal_kitab") or []
+    if is_planet_day:
+        why = (f"Today is {_WEEKDAY_NAME[wd]}, ruled by {chosen} — "
+               f"a planet your chart asks you to strengthen.")
+    else:
+        why = f"{chosen} is a key planet to support in your chart."
+
+    return {
+        "date": today.isoformat(),
+        "weekday": _WEEKDAY_NAME[wd],
+        "is_planet_day": is_planet_day,
+        "ritual": {
+            "planet": chosen,
+            "action": f"Chant {chosen}'s mantra 108 times (one mala).",
+            "mantra": r.get("beej_mantra"),
+            "daily_count": 108,
+            "tip": lal[0] if lal else None,
+            "deity": r.get("deity"),
+            "why": why,
+        },
+    }

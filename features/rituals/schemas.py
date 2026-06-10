@@ -8,3 +8,8 @@ except ImportError:  # pragma: no cover - allows import without FastAPI installe
 
 class RemediesRequest(BaseModel):
     profile: dict
+
+
+class TodayRitualRequest(BaseModel):
+    profile: dict
+    date: str | None = None   # "YYYY-MM-DD"; defaults to today
