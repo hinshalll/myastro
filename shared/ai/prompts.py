@@ -401,7 +401,7 @@ Discuss what their specific score in each category reveals about their day-to-da
 Discuss their Nadi or Bhakoot doshas (if any) and if they cancel out (check the notes: {koota['nadi_note']}). Discuss the Manglik status ({canc}). 
 
 ### 3. Destiny Match & The KP Promise (The True Confirmations)
-- **KP Promise**: Discuss if their individual charts actually promise marriage ({kp_labels.get(kp_a, "UNCLEAR")} vs {kp_labels.get(kp_b, "UNCLEAR")}). This is the true cosmic confirmation of whether a marriage will manifest.
+- **KP Promise**: Discuss if their individual charts actually promise marriage ({kp_labels.get(kp_a, "UNCLEAR")} vs {kp_labels.get(kp_b, "UNCLEAR")}). This is the true astrological confirmation of whether a marriage will manifest.
 - **D9 Cross-Match**: Compare Person 1's D9 7th House traits against Person 2's actual nature, and vice-versa. Describe the *exact* physical looks, appearance, and innate nature each person is destined to attract using the D9 7th Sign and Lord. Does the partner match the destiny?
 
 ### 4. Life After Marriage & Sustenance (Upapada Lagna)

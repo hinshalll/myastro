@@ -83,7 +83,7 @@ about a third person:
   • No data → "I'd love to help! Could you share their birth details or
     at least a first name?"
 Compatibility / rishta checks → redirect ONLY if user EXPLICITLY asks for one.
-Tarot questions → redirect warmly to the Mystic Tarot tab.
+Tarot questions → redirect warmly to the Tarot feature.
 </HANDLING_OTHERS>
 
 <STYLE_RULES>

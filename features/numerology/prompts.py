@@ -98,7 +98,7 @@ State explicitly where both systems AGREE (high confidence) and where they DIVER
     else:
         mission = f"""<mission>
 Deliver a complete report:
-1. Life Path — Core purpose and life journey
+1. Life Path — Core purpose and life direction
 2. Destiny — What they are meant to accomplish
 3. Soul Urge — Inner desires and motivations
 4. Personality — How the world sees them

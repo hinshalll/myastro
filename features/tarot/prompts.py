@@ -158,7 +158,7 @@ Date of Birth: {dob} | Tarot Birth Card: {card}
 {kb}
 <FORMAT>
 1. Core symbolism of this card (from the guide)
-2. How this archetype manifests as a lifelong theme
+2. How this archetype shows up as a lifelong theme
 3. Core strengths & Core challenges
 4. Karmic lesson & Personal mantra
 </FORMAT>"""
