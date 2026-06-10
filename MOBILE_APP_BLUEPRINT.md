@@ -304,32 +304,40 @@ English + Hindi/Hinglish first, then ta/te/mr/bn/gu (engine already supports the
 
 ---
 
-## 7. Monetization — Subscription + Diyas + affiliate, no ads
+## 7. Monetization — ONE currency (Diyas) + a Plus membership + affiliate, no ads
 
-**Principle: free = the data accumulates + math runs + daily habit; paid = the AI/depth on top.**
-Gating the inputs would stop the moat forming, so inputs are free.
+> **Locked numbers live in code: `features/wallet/prices.py` (the single source of truth).**
+> The wallet is server-authoritative — the price always comes from the server, never the client;
+> the atomic `apply_coin_delta` SQL function blocks minting/overdraw. Public price book at
+> `GET /wallet/prices`.
 
-**Three streams (no ads):**
-1. **Diyas 🪔 (wallet, pay-as-you-go).** The lamp metaphor is deliberate — **you light a diya by
-   doing good** (real practice). **Earn** (stingy, by genuine actions): daily check-in (small),
-   completing a ritual/meditation/lighting a diya (more), streak milestones, multi-day practice,
-   referrals that convert. **Spend:** premium readings, premium kundli + PDFs, **kundlis for
-   others**, extra palm/face/tarot, kundli-cross-referenced deep reads, deep Patterns, more people.
-   *Tables stay neutral (`coin_wallets`/`coin_transactions`); "Diyas" is a UI label.*
-2. **Subscription** — unlimited AI + always-on companion + deep insights. ₹49/wk · ₹199/mo ·
-   ₹999/yr, 7-day trial, push annual. A subscriber never needs Diyas.
-3. **Tasteful affiliate remedy-commerce** — optional gemstone/rudraksha purchase links (maharatna
-   → lab → uparatna budget tiers, §5 Tab 4). Commission now; own store later if traffic justifies.
-   **NOT ads, NOT a consultation-marketplace.** Free remedy always comes first; affiliate disclosed.
+**Principle: free = data accumulates + math runs + daily habit; paid = the AI/depth/artifacts.**
 
-**Diya economy — price the SINKS first, then the FAUCETS.** Decide each feature's Diya cost first,
-then calibrate earning *underneath* so a free user stays warm but still must buy for anything big.
-**Earning is modest** (or nobody buys). No dark patterns — no "pay or lose your streak," no fake
-scarcity. Effort *or* money, both respected.
+**Not two competing currencies — ONE (Diyas), plus a membership that improves it:**
+1. **Diyas 🪔** = the currency for everything. **You light a diya by doing good** (real practice).
+   **Earn (stingy, capped ~5/day):** welcome 25 · check-in 1 · ritual/meditation 2 · streaks
+   10/25/60 · referral 25 (+50 if they go Plus). **Spend (server-priced):** Full Life Reading **60**,
+   Premium Kundli + PDF (self/**each other person**) **60**, Marriage/Purpose/Varshaphal **40**,
+   matching full report **30**, deep palm/face **25**, 7-day couple forecast **25**, Prashna **15**,
+   numerology deep **15**, muhurta deep **10**, Proof extra **10**, cross-ref add-on **10**,
+   extra person **10**, **AI chat 3/message**, extra tarot **5**.
+2. **Plus membership** (not a second currency) — ₹49/wk · ₹199/mo · ₹999/yr, 7-day trial:
+   **unlimited AI chat** (fair use) + **couple space / family grid / deep Patterns** + **cross-ref
+   free** + **25% off every Diya feature**. (The permanent artifacts stay Diyas even for Plus —
+   discounted — so there is no "subscribe a week, extract everything, cancel" exploit, and vision/
+   flagship margin is protected.)
+3. **Tasteful affiliate remedy-commerce** — gemstone/rudraksha links (Maharatna → lab → Uparatna
+   tiers, §5 Tab 4). **NOT ads, NOT a marketplace.** Free remedy first; affiliate disclosed.
 
-**Profitability math (must always hold):** plan around the **~15% store cut** (Apple/Google
-small-business). Every Diya price + plan keeps a healthy margin after the cut *and* the (pennies)
-AI cost. **Tier-1 pricing** (charge more in US/UK). The economy is a living dial — tune with usage.
+**Free tier by COST to us:** daily/unlimited for near-zero-cost deterministic stuff (forecast,
+roast, check-in+mirror, good/avoid, ritual, basic chart, quick matching score, basic numerology,
+≤3 people, all shareables incl. **Wrapped**); **1 AI chat/day**, **1 tarot/week**, **1 palm + 1
+face taste**, Proof 1/month. (Costly AI = weekly/taste, never daily-free.)
+
+**Why it holds:** Full Life is the 4-agent flagship (verified deep) repriced to 60 so it feels a
+steal; Diyas vs Plus never cannibalize (different KINDS of value — consumable membership vs
+permanent artifacts); chat at 3/msg pushes regulars to Plus. **~15% store cut**, AI cost pennies,
+**tier-1 geo pricing 3–4×**. Living dial — tune with usage.
 
 ---
 
