@@ -293,10 +293,15 @@ Frame: **Sidereal / Lahiri.** One chart per person at best precision the data al
 Implemented via `BirthData.time_precision` + `houses_reliable`/`divisionals_reliable`; adding
 time later = one recompute (cache key includes precision).
 
-### 6.10 Depth mode
-At onboarding the user picks the *default* depth: **Simple** (plain-English) or **Full** (charts,
-dashas, Sanskrit). Stored on `app_users.depth_mode`. A default, not a lock — drill up/down
-anywhere. Backend payloads already return both layers.
+### 6.10 Depth mode (built 2026-06-08)
+At onboarding the user picks the *default* depth: **Simple / Balanced / Full**. A default, not a
+lock — drill up/down anywhere. **It's a pure display setting (zero astrology/accuracy impact):** the
+chart "front room" cards (and the forecast) already carry all three layers — `body` (plain English)
+· `why` (the plain astrology reason) · `sanskrit` (Devanagari/technical) — so depth-mode just decides
+how much shows by default: **Simple = body · Balanced = body+why · Full = body+why+sanskrit** (the
+full technical kundli/dashas live in the separate `/kundli/*` surface). Stored on
+`app_users.depth_mode` (check `simple|balanced|full`); read/write via **`GET/PUT /me/settings`**
+(JWT). No payload regeneration — the layered data already exists.
 
 ### 6.11 Languages
 English + Hindi/Hinglish first, then ta/te/mr/bn/gu (engine already supports these for PDFs).
