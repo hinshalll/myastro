@@ -58,21 +58,21 @@ def micro_insight(profile: dict, mood=None, energy=None, clarity=None, date=None
         clause = "Check in with a word or two and I'll mirror it against today's sky."
     elif abs(self_v) < 0.25 or abs(day_valence) < 0.20:
         match = "neutral"
-        clause = "That sits about where the day does — no strong pull either way, so set your own pace."
+        clause = "That sits about where the day does. No strong pull either way, so set your own pace."
     elif (self_v > 0) == (day_valence > 0):
         match = "aligned"
         if self_v < 0:
-            clause = "The sky agrees with you today, so the heaviness is real, not random — be gentle and let it be slow."
+            clause = "The sky agrees with you today, so the heaviness is real, not random. Be gentle and let it be slow."
         else:
-            clause = "The day is leaning the same way, so ride it — what you're feeling has the sky behind it."
+            clause = "The day is leaning the same way, so ride it. What you're feeling has the sky behind it."
     else:
         match = "crosscurrent"
         if self_v > 0:
-            clause = "You're lighter than the day around you — that's your own momentum carrying you, not the sky. Enjoy it."
+            clause = "You're lighter than the day around you. That's your own momentum carrying you, not the sky, so enjoy it."
         else:
-            clause = "The day itself is fairly open, so this weight is coming from you, not the stars — worth a gentle look at what's underneath."
+            clause = "The day itself is fairly open, so this weight is coming from you, not the stars. Worth a gentle look at what's underneath."
 
-    line = f"You logged '{label}' — {day_ctx}. {clause}"
+    line = f"You logged '{label}'. {day_ctx}. {clause}"
     why = (f"Today the Moon is in your {f['chandra_house']}-from-Moon house "
            f"({f['moon_sign']}, {f['moon_nakshatra']}), a {f['tara_quality']} day-star "
            f"(Tara Bala). Your check-in reads as {_valence_word(self_v)}; the day reads as "
