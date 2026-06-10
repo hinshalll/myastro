@@ -183,6 +183,7 @@ _FEATURES = [
     ("companion",    "features.companion.api"), # /micro-insight, /patterns (JWT), /proof — the Companion's payoffs (pure math)
     ("reflect",      "features.reflect.api"),   # /purpose, /year — big-picture soul/career blueprint + Cosmic Wrapped (pure math)
     ("chart",        "features.chart.api"),     # /interpret — plain-English chart "front room" (warm cards, no AI)
+    ("rituals",      "features.rituals.api"),   # /remedies — chart-derived remedies for the Rituals tab (pure math)
 ]
 
 for prefix, module_path in _FEATURES:
