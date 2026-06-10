@@ -184,6 +184,7 @@ _FEATURES = [
     ("reflect",      "features.reflect.api"),   # /purpose, /year — big-picture soul/career blueprint + Cosmic Wrapped (pure math)
     ("chart",        "features.chart.api"),     # /interpret — plain-English chart "front room" (warm cards, no AI)
     ("rituals",      "features.rituals.api"),   # /remedies — chart-derived remedies for the Rituals tab (pure math)
+    ("wallet",       "features.wallet.api"),    # /prices (public) + Diya balance/spend/earn/history (JWT, server-authoritative)
 ]
 
 for prefix, module_path in _FEATURES:

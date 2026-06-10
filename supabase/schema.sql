@@ -239,6 +239,39 @@ create table if not exists public.coin_transactions (
 );
 create index if not exists coin_tx_user_idx on public.coin_transactions(user_id, created_at);
 
+-- Atomic wallet + ledger update. delta>0 credits, delta<0 debits.
+-- Locks the wallet row, REJECTS (returns null) if a debit would overdraw, then
+-- updates the balance + lifetime totals and appends one signed ledger row.
+-- SECURITY DEFINER + server-only callers = clients can never mint Diyas.
+create or replace function public.apply_coin_delta(
+  p_user uuid, p_delta int, p_source text, p_ref text, p_meta jsonb
+) returns int
+language plpgsql
+security definer
+as $$
+declare
+  v_balance int;
+  v_new int;
+begin
+  insert into public.coin_wallets(user_id, balance) values (p_user, 0)
+    on conflict (user_id) do nothing;
+  select balance into v_balance from public.coin_wallets where user_id = p_user for update;
+  v_new := v_balance + p_delta;
+  if v_new < 0 then
+    return null;                              -- insufficient diyas
+  end if;
+  update public.coin_wallets
+     set balance         = v_new,
+         lifetime_earned = lifetime_earned + greatest(p_delta, 0),
+         lifetime_spent  = lifetime_spent  + greatest(-p_delta, 0),
+         updated_at      = now()
+   where user_id = p_user;
+  insert into public.coin_transactions(user_id, delta, source, ref, meta, balance_after)
+    values (p_user, p_delta, p_source, p_ref, p_meta, v_new);
+  return v_new;
+end;
+$$;
+
 -- ── Referrals: invite → both earn diyas (blueprint §7 growth loop) ──────────
 create table if not exists public.referrals (
   id               uuid primary key default gen_random_uuid(),

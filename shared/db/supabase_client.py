@@ -255,3 +255,74 @@ def save_pattern(client, user_id: str, pattern_text: str,
     row = {"user_id": user_id, "pattern_text": pattern_text, "evidence": evidence}
     res = client.table("patterns").insert(row).execute()
     return res.data[0]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Diya wallet — SERVER-AUTHORITATIVE (pass the SERVICE client, never the user's)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_wallet(client, user_id: str) -> dict:
+    """Fetch the user's wallet, auto-creating an empty one on first read."""
+    res = (
+        client.table("coin_wallets").select("*")
+        .eq("user_id", user_id).limit(1).execute()
+    )
+    rows = res.data or []
+    if rows:
+        return rows[0]
+    client.table("coin_wallets").insert({"user_id": user_id, "balance": 0}).execute()
+    return {"user_id": user_id, "balance": 0, "lifetime_earned": 0, "lifetime_spent": 0}
+
+
+def apply_coin_delta(
+    client, user_id: str, delta: int, source: str,
+    ref: Optional[str] = None, meta: Optional[dict] = None,
+) -> Optional[int]:
+    """Atomic wallet + ledger update via the `apply_coin_delta` SQL function
+    (locks the row, rejects overdraw, writes the signed ledger row). Returns the
+    new balance, or None if a debit would overdraw / on error."""
+    try:
+        res = client.rpc("apply_coin_delta", {
+            "p_user": user_id, "p_delta": delta, "p_source": source,
+            "p_ref": ref, "p_meta": meta or {},
+        }).execute()
+        data = res.data
+        if data is None:
+            return None
+        return int(data[0]) if isinstance(data, list) else int(data)
+    except Exception:
+        return None
+
+
+def earned_today(client, user_id: str) -> int:
+    """Sum of Diyas earned today from routine activity (for the daily cap)."""
+    from datetime import datetime, timezone
+    start = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00+00:00")
+    res = (
+        client.table("coin_transactions").select("delta,source")
+        .eq("user_id", user_id).gte("created_at", start).execute()
+    )
+    rows = res.data or []
+    return sum(r.get("delta", 0) for r in rows
+               if r.get("delta", 0) > 0 and str(r.get("source", "")).startswith("earned_"))
+
+
+def list_coin_transactions(client, user_id: str, limit: int = 50) -> list[dict]:
+    res = (
+        client.table("coin_transactions").select("*")
+        .eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+    )
+    return res.data or []
+
+
+def is_plus_member(client, user_id: str) -> bool:
+    """True if the user has an active Plus subscription."""
+    try:
+        res = (
+            client.table("subscriptions").select("status")
+            .eq("user_id", user_id).limit(1).execute()
+        )
+        rows = res.data or []
+        return bool(rows) and rows[0].get("status") == "active"
+    except Exception:
+        return False
