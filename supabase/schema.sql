@@ -19,11 +19,11 @@ create table if not exists public.app_users (
   email       text,
   language    text default 'en',
   push_token  text,                       -- Expo push token
-  -- depth_mode: how much astrology to SHOW by default (blueprint §6.7).
-  -- 'simple' = plain-English meanings only; 'full' = charts/dashas/Sanskrit.
-  -- A default, not a lock: the user can drill up/down anywhere. Mirrored into
-  -- settings.depth_mode for forward-compat; this column is the fast read/write path.
-  depth_mode  text not null default 'simple' check (depth_mode in ('simple','full')),
+  -- depth_mode: how much astrology to SHOW by default (blueprint §6.10). Maps to
+  -- the 3 card layers: 'simple' = body only; 'balanced' = body + the plain "why";
+  -- 'full' = body + why + Sanskrit/technical. A default, not a lock — the user can
+  -- drill up/down anywhere. This column is the fast read/write path.
+  depth_mode  text not null default 'simple' check (depth_mode in ('simple','balanced','full')),
   settings    jsonb default '{}'::jsonb,
   created_at  timestamptz default now()
 );
@@ -32,7 +32,11 @@ create table if not exists public.app_users (
 -- guarantees the column exists on re-run.
 alter table public.app_users
   add column if not exists depth_mode text not null default 'simple'
-  check (depth_mode in ('simple','full'));
+  check (depth_mode in ('simple','balanced','full'));
+-- Widen the check on an existing column (DBs created with the old 2-value check).
+alter table public.app_users drop constraint if exists app_users_depth_mode_check;
+alter table public.app_users
+  add constraint app_users_depth_mode_check check (depth_mode in ('simple','balanced','full'));
 
 -- ── Profiles: the user themselves + people they save (People tab) ───────────
 -- source: 'self' (the account owner) | 'friend' (a live app user) | 'manual' (static chart)

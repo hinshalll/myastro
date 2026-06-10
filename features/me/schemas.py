@@ -46,3 +46,11 @@ class JournalIn(BaseModel):
     date: str                             # YYYY-MM-DD
     text: str
     astro_state: Optional[dict[str, Any]] = None
+
+
+# ── Settings (depth-mode, language, free-form settings jsonb) ──────────────────
+
+class SettingsIn(BaseModel):
+    depth_mode: Optional[str] = None      # 'simple' | 'balanced' | 'full'
+    language: Optional[str] = None        # 'en' | 'hi' | ...
+    settings: Optional[dict[str, Any]] = None

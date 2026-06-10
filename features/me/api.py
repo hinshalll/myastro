@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from features.me import service
 from features.me.auth import CurrentUser, get_current_user
-from features.me.schemas import CheckinIn, JournalIn, ProfileIn
+from features.me.schemas import CheckinIn, JournalIn, ProfileIn, SettingsIn
 
 try:
     from fastapi import APIRouter, Depends, HTTPException
@@ -94,3 +94,17 @@ if router is not None:
     ) -> dict:
         row = service.get_streak(user, kind)
         return row or {"user_id": user.user_id, "kind": kind, "count": 0, "last_date": None}
+
+    # ── Settings (depth-mode / language) ───────────────────────────────────────
+    @router.get("/settings")
+    def get_settings(user: CurrentUser = Depends(get_current_user)) -> dict:
+        return service.get_settings(user)
+
+    @router.put("/settings")
+    def update_settings(
+        payload: SettingsIn, user: CurrentUser = Depends(get_current_user)
+    ) -> dict:
+        try:
+            return service.update_settings(user, payload.model_dump(exclude_none=True))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))

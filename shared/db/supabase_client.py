@@ -326,3 +326,24 @@ def is_plus_member(client, user_id: str) -> bool:
         return bool(rows) and rows[0].get("status") == "active"
     except Exception:
         return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App-user record — settings (depth_mode, language, settings jsonb)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_app_user(client, user_id: str) -> Optional[dict]:
+    res = (
+        client.table("app_users").select("*")
+        .eq("id", user_id).limit(1).execute()
+    )
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def update_app_user(client, user_id: str, fields: dict) -> dict:
+    """Upsert the app_users row (keyed by id = auth user). Used for settings
+    like depth_mode / language / the settings jsonb."""
+    row = {"id": user_id, **fields}
+    res = client.table("app_users").upsert(row).execute()
+    return res.data[0]
