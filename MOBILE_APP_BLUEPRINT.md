@@ -412,11 +412,15 @@ writes only), `referrals`, `gifts`, `depth_mode` column. *Owner step: create liv
 **Built (✅):** the engine, daily loop (forecast/checkins/micro-insight/streaks/timing/day-alerts/
 week), chart suite, all premium readings, matchmaking, palm, face, tarot, numerology, muhurta,
 relationship-weather, couple-week, family-grid, patterns, proof, journal, vault, year, compare,
-birth-card.
-**To build (🔨 — wiring phase):** Daily Roast (line-bank + dominant-transit selector), The Receipt,
-Dating Resume, **Monthly** Wrapped, today's-ritual/remedy endpoint (surface existing kundli remedy
-data), Compatibility flag layer, the share-card render engine, Diyas wallet/earn/spend endpoints,
-affiliate-tier data for gemstones, meditation audio. **Verify:** Varshaphal, birth-card payload.
+birth-card (tarot), **Rituals remedies** (`POST /rituals/remedies` — chart-derived practices +
+gemstone tiers, built 2026-06-08).
+**Verified (2026-06-08):** birth-card = the tarot birth card (`/tarot/birth-card`); Varshaphala
+engine exists (`compute_varshaphala`, powers `/reflect/year`) — a standalone year-ahead Decode
+endpoint would be a thin wrapper if wanted.
+**To build (🔨 — wiring phase, most blocked on decisions/frontend):** the witty-line system
+(needs voice locked + lines written), The Receipt, Dating Resume, **Monthly** Wrapped, Compatibility
+flag layer, the share-card render engine, Diyas wallet/earn/spend endpoints (need Diya prices),
+affiliate-tier data for gemstones, meditation audio, a `/rituals/today` quick-ritual endpoint.
 **Infra:** notifications/scheduler, payments (IAP), caching, usage limits.
 
 ## 12. The language pivot (engine frozen — only words change)
