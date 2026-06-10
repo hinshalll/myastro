@@ -275,6 +275,14 @@ begin
   return v_new;
 end;
 $$;
+-- CRITICAL: lock this SECURITY DEFINER function to the server only. Without
+-- this, Postgres grants EXECUTE to PUBLIC, so a client with the anon key could
+-- call it via PostgREST RPC and mint Diyas. Only the service_role (the backend)
+-- may call it.
+revoke all on function public.apply_coin_delta(uuid, int, text, text, jsonb)
+  from public, anon, authenticated;
+grant execute on function public.apply_coin_delta(uuid, int, text, text, jsonb)
+  to service_role;
 
 -- ── Referrals: invite → both earn diyas (blueprint §7 growth loop) ──────────
 create table if not exists public.referrals (
