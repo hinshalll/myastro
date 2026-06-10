@@ -121,9 +121,13 @@ Tags: `[FREE]` · `[Diyas]` costs Diyas · `[SUB]` subscription. **Made by:** `[
 · tag · flex — every shareable must name one, or it doesn't ship).
 
 ### TAB 1 — Today  *(daily habit + viral hook)*
-- **Daily Forecast** `[AI] [FREE]` — your day from your chart × today's transit: a mood word (from
-  a fixed **28-word set**, each with its own image), a one-line vibe, then Mood / Opportunity /
-  Caution / Action. A "why?" toggle reveals the astrology. *Share-angle: so/me.*
+- **Daily Forecast** `[Math/Templated] [FREE]` — your day from the **deterministic Moon forecast**
+  (`/dashboard/forecast` → `daily_moon_forecast`: Chandra house from your natal Moon + Tara Bala —
+  classical, verified, NO AI). Returns the **mood word + Mood / Opportunity / Caution / Action + a
+  grounded "why"**, all pre-written in the warm-witty (B) voice. **The mood word is one of the
+  engine's 12 (locked, source-of-truth):** Settled · Guarded · Bold · Tender · Restless · Capable ·
+  Warm · Deep · Wandering · Driven · Upbeat · Quiet — each maps to a cluster image. *(The earlier
+  invented "28-word set" was wrong and is dropped — images remap to these 12.)* *Share-angle: so/me.*
 - **Daily Roast** `[Curated] [FREE]` — a compact savage one-liner keyed to the day's dominant
   transit; rotates, never repeats, always true to the sky; tap to share. *Share-angle: funny.*
 - **Check-in + Mirror** `[AI/Math] [FREE]` — 3 taps (mood/energy) → an instant one-line "mirror"
