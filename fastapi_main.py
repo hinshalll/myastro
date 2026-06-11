@@ -185,6 +185,7 @@ _FEATURES = [
     ("chart",        "features.chart.api"),     # /interpret — plain-English chart "front room" (warm cards, no AI)
     ("rituals",      "features.rituals.api"),   # /remedies — chart-derived remedies for the Rituals tab (pure math)
     ("wallet",       "features.wallet.api"),    # /prices (public) + Diya balance/spend/earn/history (JWT, server-authoritative)
+    ("geo",          "features.geo.api"),       # /search — place autocomplete (label/lat/lon/tz) for onboarding (public)
 ]
 
 for prefix, module_path in _FEATURES:

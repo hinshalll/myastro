@@ -406,6 +406,39 @@ def geocode_place(pt):
         return None
 
 
+def search_places(query, limit: int = 5):
+    """Autocomplete city search -> list of {label, lat, lon} via the configured
+    Nominatim-compatible geocoder. Powers the app's place picker (onboarding).
+    Returns [] for very short queries or on error."""
+    query = (query or "").strip()
+    if len(query) < 2:
+        return []
+    base, key = _geocoder_settings()
+    if not base:
+        g = geocode_place(query)              # dev fallback (Photon) -> single best match
+        return [{"label": g[2], "lat": g[0], "lon": g[1]}] if g else []
+    try:
+        import httpx
+        params = {"q": query, "format": "json", "limit": limit, "accept-language": "en"}
+        if key:
+            params["key"] = key
+        r = httpx.get(f"{base}/search", params=params, timeout=10)
+        if r.status_code == 429:
+            return []
+        r.raise_for_status()
+        out = []
+        for row in r.json():
+            try:
+                out.append({"label": row.get("display_name", query),
+                            "lat": float(row["lat"]), "lon": float(row["lon"])})
+            except (KeyError, ValueError, TypeError):
+                continue
+        return out
+    except Exception as e:
+        print(f"Place search error: {e}")
+        return []
+
+
 def timezone_for_latlon(lat,lon): return TimezoneFinder().timezone_at(lat=lat,lng=lon)
 
 
