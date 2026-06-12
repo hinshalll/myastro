@@ -453,3 +453,47 @@ The repositioning touches the **language layer only**, never `shared/astro/*` (m
 ## 13. Standing rule — keep docs in sync
 On any change to features/structure/voice/monetization, update **this blueprint** + the short
 notes in `FEATURE_SPEC.md` and `SYSTEM_REFERENCE.md` + `memory/`. This file is authoritative.
+
+## 14. The Memory + final refinements (2026-06-12)
+
+### 14.1 THE MEMORY (headline feature)
+One **chart-grounded personal brain**: journal + check-ins + natal chart + **dasha** + transits.
+The AI **reads, interprets, and stores** each entry (structured) and **embeds it** (Qdrant) → it
+remembers **forever** (text is tiny) and is AI-recallable across years. **Predictions weigh the
+dasha first, then natal, then transits** — not just the daily sky (in Vedic astrology the dasha is
+the bigger life-driver).
+
+**Three doors to one brain:**
+- **The Mirror (journal)** — write OR **speak** (on-device dictation; typos fine, the AI reads for
+  meaning). On save, the AI stores it and shows **one** warm reflection (comfort / growth / "you've
+  been here before"). It's a journal, **not a chat**; sincere and tender (never savage); a crisis
+  entry triggers a care + helpline safety net; private + encrypted, with an opt-out for pure-diary.
+  A soft **"talk about it? →"** opens the Ask.
+- **The Ask** — the conversational door; it has the full Memory. **Chat conversations are
+  ephemeral, NOT stored** (only journal + check-ins + events are) → no data waste.
+- **Forecast / Patterns** — the brain personalizes your day.
+
+**"It knows me" surfaces proactively (no chat required):** the personalized daily forecast
+("Scorpio Moon — you usually run low, go gentle"), occasional **"Pattern unlocked" reveal cards + a
+gentle notification** (variable-reward surprise), the Patterns screen, Mirror reflections, Wrapped.
+
+**Placement:** the journal is its **own prominent card on Today** + its home in **You** — never
+hidden behind the check-in. The **check-in is simplified to 2 quick taps (mood + energy)**; the
+journal is the deep signal. **Build:** storage + sky-stamp done; AI interpret-on-save + embed +
+recall + feeding forecast/Patterns/Ask is the high-value build (staged, after Supabase is live).
+
+### 14.2 Feature philosophy + cuts
+**Upgrade existing features over adding new ones (no bloat).** The one upgrade worth doing =
+personalize the daily forecast + Patterns via the Memory. Three cheap new **shareables** to add
+(reuse engine data, need content): **Nakshatra Type** (27-type Vedic typology → You), **Past-Life /
+Ketu reading** (→ Decode), **Decode Anyone** (roast any chart, ex/crush/celeb → People). **Skipped:**
+cosmic calendar, cosmic quest, inner deity, muhurta-for-moments; traditional utilities
+(panchang/dosha/sade-sati) stay as Decode tools, not elevated.
+
+### 14.3 Onboarding = 5 screens (depth-mode moved to Settings)
+Depth-mode is **out of onboarding** → a Settings toggle, default `simple` + per-card "why?" tap.
+Screens: **welcome** (no logo/name; "Meet yourself, exactly as you are." / "Astrology without the
+noise.") · **name+gender** · **birth date+place** (`POST /geo/search`) · **birth time** (exact
+unlocks rising sign/houses; a rough "when" sharpens the Moon only, never the houses) · **reveal**
+(image by gender → `/chart/interpret`; Continue = sign-up, then `POST /me/profiles` +
+`PUT /me/settings` → Today).
