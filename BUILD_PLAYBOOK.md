@@ -3,6 +3,11 @@
 > **Read this + `MOBILE_APP_BLUEPRINT.md` (esp. §14) + `memory/project_myastro.md` to resume.**
 > This is the durable roadmap for the hardest phase: finish frontend, finish remaining backend,
 > wire them, test, ship. Written 2026-06-12 so work continues seamlessly after a compaction.
+>
+> **UPDATED 2026-06-18 for blueprint v4** (Trust + Timing + Companion spine; warm voice, wit in the
+> share layer). Nav is now **5 tabs: Today · Timeline · People · Rituals · You** + a top-bar
+> **Readings & Tools hub** (the old Decode) + the floating **Moon companion**. See
+> `MOBILE_APP_BLUEPRINT.md` v4 for the authoritative structure. Key v4 deltas baked in below.
 
 ---
 
@@ -16,6 +21,9 @@ folder has uncommitted frontend work — commit it.
 
 ## 1. PHASE ORDER (do in this sequence)
 0. **Owner unblocks** (only the user can): Supabase live + keys, Render env keys.
+0.5 **Astrology source-audit FIRST** (blueprint §14): verify the rule layer (Vimshottari → Sade Sati
+   → 36-guna → Manglik/doshas → divisionals → yogas → remedies) against multiple authoritative
+   sources into a written doc. Accuracy is the brand; do this before wiring features.
 1. **Frontend** — design each screen (Claude Design) → AI Studio builds RN, screen by screen,
    **wiring-ready** (mock api). Perfect ONE hero screen, then "apply this style to screen X".
 2. **Remaining backend** (me) — The Memory, personalized forecast, Daily Roast lines + share-card
@@ -53,22 +61,29 @@ folder has uncommitted frontend work — commit it.
   data/endpoints/logic only** (it imports the design, don't re-describe layout). **ALWAYS verify the
   endpoint exists before writing "the app calls X."**
 
-### Screen inventory (what still needs design + build)
+### Screen inventory (v4 — what still needs design + build)
 - **Onboarding (5):** welcome · name+gender · birth date+place (`/geo/search`) · birth time (3
-  opts; exact unlocks houses, rough sharpens Moon only) · reveal (3 images by gender). *(Today + a
-  global top cluster + Moon companion already specced.)*
-- **Global elements (every screen):** top cluster (avatar + Diya chip), Moon companion FAB (chat).
-- **Today** — done (forecast, check-in 2-tap, **Mirror journal card**, good/avoid, ritual, event,
-  peek, teasers, nav).
-- **People** — circle · per-person 3-mode reading · Compatibility · couple · family grid ·
-  **Decode Anyone** · share+invite.
-- **Decode** — kundli (basic/premium PDF) · readings (Full Life/Marriage/Purpose/Prashna) ·
-  matching · numerology · palm · face · tarot · muhurta · varshaphal · **Past-Life (Ketu)**.
-- **Rituals** — home · practices (free) · items/gemstone-tiers (affiliate) · mala · mantras ·
-  meditation · ritual-detail.
-- **You** — story · **Mirror (journal home)** · **Patterns** · Proof · **Nakshatra Type** ·
-  Receipt · Wrapped · Dating Resume · life chapters · vault · **Diyas wallet** · settings (depth-mode).
+  opts; exact unlocks houses, rough sharpens Moon only) · reveal → leads with timing+trust, then the
+  **Proof** wow.
+- **Global elements (every screen):** top cluster (avatar + Diya chip + **Readings & Tools icon**),
+  Moon companion FAB (chat, ephemeral + auto-remember).
+- **Today** — LOCKED, no structural change (forecast, check-in 2-tap, **Mirror**, good/avoid, ritual,
+  event, nav).
+- **Timeline (NEW hero tab)** — current chapter (Mahadasha+Antardasha) · life roadmap · **Sade Sati
+  tracker** · the four big questions (Career/Love/Marriage/Money) · **Proof** · check-any-date ·
+  major weather windows. Framing = windows/periods, never fixed dates.
+- **People** — circle · per-person 3-mode reading · **household/family view** · Kundli Matching ·
+  **Decode Anyone** · Compatibility share · add-person (baby-name syllables contextual).
+- **Rituals (keeps its tab)** — practices (free, chart-derived) · **guided journeys** · **"did it
+  help" tracking** · tutorials · items/gemstone-tiers (affiliate).
+- **You** — story · **Memory home** (Mirror archive + Patterns + growth/look-back + monthly recap) ·
+  **shareables** (Nakshatra Type · Dating Resume · Monthly + Yearly Wrapped) · vault + **privacy
+  export/delete** · **Diyas wallet** · settings (depth-mode, language).
+- **Readings & Tools hub (old Decode, top-bar + contextual):** kundli (basic/premium PDF) + **Trust
+  badge** + full-chart transparency · readings (Full Life/Marriage/Purpose/Prashna) · **Auspicious
+  Days planner** (+calendar sync) · tools (numerology/palm/face/tarot/varshaphal) · **Pro view**.
 - **Overlays/screens:** Chat (Moon) · Diyas wallet · paywall/Plus · Diya top-up · share-card sheet.
+- **CUT (don't build):** dream log, Past-Life, Receipt, Rank-circle, glossary, save-chat-answer.
 
 ## 4. BACKEND — BUILT vs LEFT
 **BUILT (verified, pushed; don't redo):** the frozen engine (charts/dashas/divisionals/remedies/
@@ -81,7 +96,12 @@ prices|balance|spend|earn|history` + atomic `apply_coin_delta` SQL fn locked to 
 palm, face, tarot, horoscopes); `/companion/patterns`; `/companion/proof`; `/reflect/year`;
 `/me/journal` (store + sky-stamp); `/consultation/ask`.
 
-**LEFT TO BUILD (me, mostly after Supabase live):**
+**LEFT TO BUILD (me, mostly after Supabase live):** *(v4 note: the Memory ENGINE is BUILT 2026-06-18 —
+`features/memory/` extracts durable facts from journal + chat into `memory_facts` (NO Qdrant; facts
+loaded+ranked directly), recall via `GET /memory/context`, chat takes optional `memory_context`;
+journal save auto-extracts in a background task; check-ins/journal are sky-stamped server-side.
+Remaining: surface Sade Sati + the four big-question flows on Timeline, remedy "did it help" tracking,
+calendar sync on Auspicious Days, personalize the forecast with the Memory, and frontend-wire it.)*
 1. **THE MEMORY (headline):** AI interpret-on-save (one cheap model call per journal entry → themes/
    emotion/recurring concerns, stored) · **embed per-user entries in Qdrant** (you already have
    Qdrant for books) · **semantic recall** over a user's journal · "you've been here before"
@@ -135,6 +155,12 @@ palm, face, tarot, horoscopes); `/companion/patterns`; `/companion/proof`; `/ref
   SINCERE everywhere else (kundli, readings, the Mirror); no AI-slop words; tease folk-characters not
   worshipped gods; English default + Hinglish opt-in; no em dashes in user copy.
 - **Money:** Diyas + Plus + affiliate, no ads.
+- **Falsifiability rule ("a mirror, not a slot machine"):** assume astrology may be placebo/psychology.
+  Build REFLECTIVE features (mirror/interpret/prompt — value from the psychology, can never be "wrong");
+  AVOID FALSIFIABLE ones (dated verdicts, yes/no oracles, self-scored hit-rates, seal-and-verify loops —
+  when they miss, users blame the APP, not astrology, and they break the placebo). Test every feature:
+  *if astrology is fake, does this still help the person?* No → cut. Also: NO feature sprawl — fold ideas
+  into existing structure (Mirror/Memory, timing, People/Decode), don't add screens we can't place.
 - **Commit trailer:** `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. User pushes main →
   Render auto-deploys.
 

@@ -9,6 +9,44 @@ from __future__ import annotations
 from shared.db import supabase_client as db
 
 
+# ── Standardized sky-state — computed SERVER-SIDE so every check-in / journal
+#    entry carries a FIXED-shape snapshot of the day's Moon (the client can't pass
+#    a garbage shape). Best-effort: never blocks or breaks the save.
+
+def _self_astro_profile(user) -> dict | None:
+    try:
+        profiles = db.list_profiles(user.client, user.user_id)
+    except Exception:
+        return None
+    self_p = None
+    for p in profiles:
+        if p.get("relation_tag") == "self" or p.get("source") == "self":
+            self_p = p
+            break
+    if self_p is None and profiles:
+        self_p = profiles[0]
+    if not self_p or not self_p.get("birth_date"):
+        return None
+    return {
+        "date": self_p.get("birth_date"),
+        "time": self_p.get("birth_time") or "",
+        "tz": self_p.get("tz") or "Asia/Kolkata",
+        "lat": self_p.get("lat"),
+        "lon": self_p.get("lon"),
+    }
+
+
+def _astro_state(user, on_date) -> dict | None:
+    try:
+        from shared.astro.forecast import astro_state_for
+        ap = _self_astro_profile(user)
+        if not ap:
+            return None
+        return astro_state_for(ap, on_date)
+    except Exception:
+        return None
+
+
 # ── Profiles ─────────────────────────────────────────────────────────────────
 
 def list_profiles(user) -> list[dict]:
@@ -30,6 +68,7 @@ def delete_profile(user, profile_id: str) -> None:
 # ── Check-ins (also bumps the check-in streak) ───────────────────────────────
 
 def save_checkin(user, data: dict) -> dict:
+    astro = data.get("astro_state") or _astro_state(user, data["date"])
     return db.save_checkin(
         user.client,
         user.user_id,
@@ -37,7 +76,7 @@ def save_checkin(user, data: dict) -> dict:
         data.get("mood"),
         data.get("energy"),
         data.get("clarity"),
-        data.get("astro_state"),
+        astro,
     )
 
 
@@ -48,8 +87,9 @@ def list_checkins(user, limit: int = 60) -> list[dict]:
 # ── Journal ──────────────────────────────────────────────────────────────────
 
 def save_journal(user, data: dict) -> dict:
+    astro = data.get("astro_state") or _astro_state(user, data["date"])
     return db.save_journal(
-        user.client, user.user_id, data["date"], data["text"], data.get("astro_state")
+        user.client, user.user_id, data["date"], data["text"], astro
     )
 
 

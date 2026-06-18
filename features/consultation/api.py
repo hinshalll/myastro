@@ -40,6 +40,15 @@ if router is not None:
                 f"{'User' if m.role == 'user' else 'Astrologer'}: {m.text}" for m in tail
             )
 
+        # THE MEMORY: what the companion already knows about this person (from their
+        # journal + past chats). Use it naturally; never recite it back.
+        memory_block = ""
+        if getattr(req, "memory_context", None):
+            memory_block = (
+                "\n\nWHAT YOU ALREADY KNOW ABOUT THIS PERSON (their private memory — "
+                "weave it in naturally, never list it back):\n" + req.memory_context.strip()
+            )
+
         turn_hint = (
             "TURN_TYPE: FIRST_REPLY — you MAY use a brief warm opener naming the user once, then go to the answer."
             if not req.history else
@@ -51,6 +60,7 @@ if router is not None:
             f"DETECTED_INTENT: {intent}\n\n"
             f"BIRTH CHART DOSSIER FOR {req.profile.get('name', 'the native')}:\n{dossier}\n\n"
             f"TODAY'S LIVE TRANSITS:\n{transits}"
+            f"{memory_block}"
             f"{history_block}\n\n"
             f"USER QUESTION: {req.question}"
         )

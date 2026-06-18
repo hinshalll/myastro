@@ -20,10 +20,20 @@ from features.me.auth import CurrentUser, get_current_user
 from features.me.schemas import CheckinIn, JournalIn, ProfileIn, SettingsIn
 
 try:
-    from fastapi import APIRouter, Depends, HTTPException
+    from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
     router = APIRouter()
 except ImportError:  # pragma: no cover
     router = None
+
+
+def _remember_from_journal(user_id: str, text: str) -> None:
+    """Background task: distil durable facts from a new journal entry into the
+    user's Memory. Best-effort — never affects the save."""
+    try:
+        from features.memory import service as memory_service
+        memory_service.extract_and_save(user_id, text, source="journal")
+    except Exception:
+        pass
 
 
 if router is not None:
@@ -83,9 +93,15 @@ if router is not None:
 
     @router.post("/journal")
     def save_journal(
-        payload: JournalIn, user: CurrentUser = Depends(get_current_user)
+        payload: JournalIn,
+        background_tasks: BackgroundTasks,
+        user: CurrentUser = Depends(get_current_user),
     ) -> dict:
-        return service.save_journal(user, payload.model_dump())
+        entry = service.save_journal(user, payload.model_dump())
+        # Auto-remember: distil durable facts in the background (never blocks the save).
+        if payload.text and payload.text.strip():
+            background_tasks.add_task(_remember_from_journal, user.user_id, payload.text)
+        return entry
 
     # ── Streaks ──────────────────────────────────────────────────────────────
     @router.get("/streaks/{kind}")

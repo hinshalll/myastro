@@ -1,5 +1,14 @@
 # Myastro — System Reference (deep map of the real product)
 
+> **⚠️ v4 RE-SPINE (2026-06-18) — supersedes the v3 note.** Spine = **Trust + Timing + Companion**
+> (warm voice; wit only in shareables). Nav = **Today · Timeline · People · Rituals · You** + a
+> top-bar **Readings & Tools hub** + the Moon companion. The **Memory auto-remembers** via a new
+> `memory_facts` table (text) + Qdrant (vectors); chat is ephemeral. Models (`shared/ai/config.py`,
+> verified June-2026): chat/agent `gemini-3.1-flash-lite` → `deepseek-v4-flash`; vision Gemini-only.
+> New standing task: the astrology **source-audit** (Vimshottari → Sade Sati → 36-guna → Manglik/
+> doshas → divisionals → yogas → remedies). `shared/astro/*` math is untouched. **`MOBILE_APP_BLUEPRINT.md`
+> v4 is authoritative.**
+
 > **⚠️ v3 REPOSITIONING (2026-06-08):** product is now "self-aware astrology" (witty surface, same
 > frozen Vedic engine). The repositioning changes only the **language layer** — the 8 prompt files
 > (`features/*/prompts.py` + `shared/ai/prompts.py`; sincere zones get a light AI-slop-word scrub,

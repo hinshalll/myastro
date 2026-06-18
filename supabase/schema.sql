@@ -106,6 +106,31 @@ create table if not exists public.journal_entries (
 );
 create index if not exists journal_user_idx on public.journal_entries(user_id, date);
 
+-- ── Memory facts: the auto-remembered, distilled "what the app knows about you"
+-- (THE MEMORY). Durable facts the AI EXTRACTS from journal entries + chat
+-- (people, events, goals, fears, preferences, dates), deduped/merged. This is the
+-- compressed layer; raw signals live in `journal_entries` + `checkins`. Chat is
+-- EPHEMERAL (not stored) — only these distilled facts persist (this replaces the
+-- old "save chat answer"). NO vector DB: a single user's facts are few, so they
+-- are loaded + ranked directly (salience + recency). Qdrant stays for the shared
+-- book RAG only; if semantic journal-search is ever wanted, use Supabase pgvector,
+-- not a second service. Strictly private; the user can view/edit/delete any fact.
+create table if not exists public.memory_facts (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  fact        text not null,                  -- the distilled durable fact (1-2 lines)
+  category    text,                           -- 'person'|'relationship'|'event'|'goal'|'fear'|'preference'|'health'|'work'|'money'|'other'
+  source      text not null default 'chat',   -- 'chat'|'journal'|'manual'
+  source_ref  uuid,                            -- optional link to journal_entries.id etc.
+  salience    real not null default 0.5,       -- 0..1 importance, for recall ranking
+  times_seen  integer not null default 1,      -- reinforcement count (fact mentioned again)
+  status      text not null default 'active',  -- 'active'|'superseded' (merge/dedupe)
+  first_seen  timestamptz default now(),
+  last_seen   timestamptz default now(),       -- recency, for recall ranking
+  updated_at  timestamptz default now()
+);
+create index if not exists memory_facts_user_idx on public.memory_facts(user_id, status, salience desc);
+
 -- ── Streaks ─────────────────────────────────────────────────────────────────
 create table if not exists public.streaks (
   user_id    uuid not null references auth.users(id) on delete cascade,
@@ -203,7 +228,11 @@ create table if not exists public.rewards (
 );
 create index if not exists rewards_user_idx on public.rewards(user_id);
 
--- ── Ask / Prashna conversation history (always-on Ask button) ───────────────
+-- ── Ask / Prashna conversation context (always-on Ask button) ───────────────
+-- NOTE (v4): chat is now EPHEMERAL — conversations are NOT persisted. The
+-- companion "remembers" only via the distilled `memory_facts` it auto-extracts.
+-- This table is kept for optional short-lived session context / backward-compat;
+-- it is no longer the source of recall. Safe to leave unused (like ad_rewards).
 create table if not exists public.ai_conversations (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users(id) on delete cascade,
@@ -343,6 +372,7 @@ alter table public.connections    enable row level security;
 alter table public.checkins       enable row level security;
 alter table public.patterns       enable row level security;
 alter table public.journal_entries enable row level security;
+alter table public.memory_facts   enable row level security;
 alter table public.streaks        enable row level security;
 alter table public.subscriptions  enable row level security;
 alter table public.purchases      enable row level security;
@@ -387,6 +417,10 @@ create policy patterns_owner on public.patterns
 
 drop policy if exists journal_owner on public.journal_entries;
 create policy journal_owner on public.journal_entries
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists memory_facts_owner on public.memory_facts;
+create policy memory_facts_owner on public.memory_facts
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 drop policy if exists streaks_owner on public.streaks;
@@ -505,6 +539,10 @@ create trigger ai_conv_set_updated before update on public.ai_conversations
 
 drop trigger if exists ritual_set_updated on public.ritual_journeys;
 create trigger ritual_set_updated before update on public.ritual_journeys
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists memory_facts_set_updated on public.memory_facts;
+create trigger memory_facts_set_updated before update on public.memory_facts
   for each row execute function public.set_updated_at();
 
 -- Prune index: lets us cheaply delete stale shared daily content later.

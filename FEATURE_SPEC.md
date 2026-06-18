@@ -1,6 +1,15 @@
 # Myastro — Feature Specification & Architecture
 
-**Last updated:** 2026-06-08 — see v3 repositioning note below.
+**Last updated:** 2026-06-18 — see v4 re-spine note below.
+
+> **⚠️ v4 RE-SPINE (2026-06-18) — supersedes v3 below.** Spine is now **Trust + Timing + Companion**
+> (WARM voice; wit only in the share layer — the savage spine is dropped). Nav = **5 tabs: Today ·
+> Timeline · People · Rituals · You** + a top-bar **Readings & Tools hub** (the old Decode) + the
+> floating Moon companion. New hero = the **Timeline** tab (dasha roadmap + Sade Sati + the four big
+> questions Career/Love/Marriage/Money + the Proof; framing = windows/periods, never fixed dates).
+> The **Memory auto-remembers** (AI extracts durable facts → new `memory_facts` table + Qdrant; chat
+> is ephemeral; "save chat answer" removed). Shareables culled to 4; cut dream/Past-Life/Receipt/
+> Rank-circle/glossary. **`MOBILE_APP_BLUEPRINT.md` v4 is the authoritative structure.** Engine frozen.
 
 > **⚠️ v3 REPOSITIONING (2026-06-08):** the product is now **"self-aware astrology"** — same real
 > Vedic engine (frozen), but a witty/savage personality + a viral shareables layer. Tabs renamed

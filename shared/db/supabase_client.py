@@ -258,6 +258,45 @@ def save_pattern(client, user_id: str, pattern_text: str,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Memory facts — the distilled, auto-remembered "what the app knows about you".
+# Server WRITES via the SERVICE client (like the wallet); the user READS/EDITS via
+# their own RLS client. No vector DB — a user's facts are few, ranked by salience
+# + recency directly.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def list_memory_facts(client, user_id: str, limit: int = 200,
+                      only_active: bool = True) -> list[dict]:
+    q = client.table("memory_facts").select("*").eq("user_id", user_id)
+    if only_active:
+        q = q.eq("status", "active")
+    res = (q.order("salience", desc=True)
+            .order("last_seen", desc=True)
+            .limit(limit).execute())
+    return res.data or []
+
+
+def insert_memory_fact(client, user_id: str, fact: str, category: Optional[str] = None,
+                       source: str = "chat", source_ref: Optional[str] = None,
+                       salience: float = 0.5) -> dict:
+    row = {
+        "user_id": user_id, "fact": fact, "category": category,
+        "source": source, "source_ref": source_ref, "salience": salience,
+    }
+    res = client.table("memory_facts").insert(row).execute()
+    return res.data[0]
+
+
+def update_memory_fact(client, fact_id: str, fields: dict) -> Optional[dict]:
+    res = client.table("memory_facts").update(fields).eq("id", fact_id).execute()
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def delete_memory_fact(client, fact_id: str) -> None:
+    client.table("memory_facts").delete().eq("id", fact_id).execute()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Diya wallet — SERVER-AUTHORITATIVE (pass the SERVICE client, never the user's)
 # ─────────────────────────────────────────────────────────────────────────────
 

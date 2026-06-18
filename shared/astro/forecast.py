@@ -234,3 +234,23 @@ def weekly_moon_forecast(profile: dict, start_date=None, days: int = 7) -> dict:
         f["is_today"] = (d == today)
         out.append(f)
     return {"start_date": start_date.isoformat(), "days": out}
+
+
+def astro_state_for(profile: dict, on_date=None) -> dict:
+    """A STANDARDIZED sky-state snapshot for one day, with a FIXED set of keys.
+
+    Stored on each check-in / journal entry so anything that reads history (the
+    Mirror, the Memory, displays) can rely on a consistent shape. Pure math +
+    lookup (reuses `daily_moon_forecast`), no AI. Same { profile } contract.
+    """
+    f = daily_moon_forecast(profile, on_date)
+    return {
+        "date": f.get("date"),
+        "moon_sign": f.get("moon_sign"),
+        "moon_nakshatra": f.get("moon_nakshatra"),
+        "chandra_house": f.get("chandra_house"),
+        "tara_quality": f.get("tara_quality"),
+        "vibe_word": f.get("vibe_word"),
+        "vibe_score": f.get("vibe_score"),
+        "astro_state_key": f.get("astro_state_key"),
+    }
