@@ -256,6 +256,24 @@ def _pattern_fires_today(kind: str, tara_quality: str, chandra_house: int) -> bo
     return False
 
 
+def _trend_note(checkins: list[dict]) -> str:
+    """A gentle, honest line from the user's OWN recent check-ins (reflective, not
+    predictive). Fires from just a few days, so a new user feels seen long before
+    the 30-check-in Pattern unlock."""
+    recent = checkins[:5]
+    if len(recent) < 3:
+        return ""
+    low = sum(1 for c in recent
+             if c.get("energy") == "low" or c.get("mood") in ("heavy", "tender"))
+    bright = sum(1 for c in recent
+                if c.get("energy") == "bright" or c.get("mood") == "calm")
+    if low >= 3:
+        return "You've been running low these last few days, so be gentle with yourself today."
+    if bright >= 3:
+        return "You've had a good run lately, so lean into it while it lasts."
+    return ""
+
+
 def personalize_today(user, on_date=None) -> dict:
     """Which of the user's OWN patterns the sky triggers today + their recent mood
     trend. Deterministic, no AI. The app merges `personal_note` with the
@@ -282,11 +300,16 @@ def personalize_today(user, on_date=None) -> dict:
         matched = []
 
     try:
-        mood_trend = _recent_mood_summary(db.list_checkins(user.client, user.user_id, 7))
+        recent = db.list_checkins(user.client, user.user_id, 7)
     except Exception:
-        mood_trend = ""
+        recent = []
+    mood_trend = _recent_mood_summary(recent)
 
     notes = [_PATTERN_TODAY_NOTE[k] for k in matched if k in _PATTERN_TODAY_NOTE]
-    personal_note = " ".join(dict.fromkeys(notes))   # de-dup if energy+clarity both fire
+    pattern_note = " ".join(dict.fromkeys(notes))   # de-dup if energy+clarity both fire
+    # An unlocked Pattern (needs ~30 check-ins) is the strongest; otherwise fall
+    # back to a gentle read of the user's OWN recent trend (works from a few days)
+    # so the daily line feels personal early, not generic.
+    personal_note = pattern_note or _trend_note(recent)
     return {"ok": True, "personal_note": personal_note,
             "matched_kinds": matched, "mood_trend": mood_trend}

@@ -1,4 +1,4 @@
-"""shared.astro.forecast — daily "Cosmic Weather" hero for the mobile Today tab.
+"""shared.astro.forecast: the daily Moon forecast hero for the mobile Today tab.
 
 FREE + cheap by design (cost rule): pure MATH + a pre-baked meaning LOOKUP.
 NO live AI call. Moon-only, so it works at every birth-time tier — an unknown
@@ -145,7 +145,7 @@ def _transit_moon_lon(on_date: _date, tz: str) -> float:
 
 
 def daily_moon_forecast(profile: dict, on_date=None) -> dict:
-    """Display-ready daily "Cosmic Weather" forecast. Pure math + lookup, no AI.
+    """Display-ready daily Moon forecast. Pure math + lookup, no AI.
 
     `on_date`: None → today (in the profile's tz); else a date or "YYYY-MM-DD".
     Same { profile } contract as /kundli/compute; works at every birth-time tier.

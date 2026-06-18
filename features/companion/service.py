@@ -203,11 +203,11 @@ def _phrase(p: dict, total: int) -> dict:
     pct_pos = round(m["p_pos"] * 100)
     pct_neg = round(m["p_neg"] * 100)
     direction = "lean toward" if m["effect"] > 0 else "tend to avoid"
-    text = (f"Your {p['noun']} {direction} {p['axis']} — "
+    text = (f"Your {p['noun']} {direction} {p['axis']}: "
             f"{m['hits_pos']} of {m['n_pos']} ({pct_pos}%), "
             f"versus {pct_neg}% on the other days.")
     why = (f"Across {total} check-ins: on {p['axis']}, you logged {p['noun']} "
-           f"{pct_pos}% of the time, against {pct_neg}% otherwise — a plain count, "
+           f"{pct_pos}% of the time, against {pct_neg}% otherwise. A plain count, "
            "not a prediction. The more you check in, the sharper it gets.")
     return {
         "pattern_text": text,
@@ -235,7 +235,7 @@ def compute_patterns(user) -> dict:
         return {
             "ok": True, "unlocked": False,
             "progress": {"have": have, "need": MIN_CHECKINS},
-            "message": (f"Keep checking in — {left} more "
+            "message": (f"Keep checking in, {left} more "
                         f"{'day' if left == 1 else 'days'} and your first personal "
                         "pattern unlocks." if have else
                         "Check in each day and your personal patterns start to surface."),
@@ -279,7 +279,7 @@ def compute_patterns(user) -> dict:
         pass
 
     if not patterns:
-        message = ("Enough check-ins now — no single strong pattern stands out yet, "
+        message = ("Enough check-ins now, and no single strong pattern stands out yet, "
                    "which is its own kind of steadiness. Keep going and I'll keep watching.")
     else:
         message = "Here's what your check-ins are showing so far."
