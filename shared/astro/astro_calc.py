@@ -2192,15 +2192,15 @@ def calculate_tara_bala(natal_moon_lon, transit_moon_lon):
     tara_value = ((transit_idx - natal_idx) % 9) + 1
     
     tara_meanings = {
-        1: {"tara": "Janma (Birth)", "color": "🟡 YELLOW", "status": "Caution", "advice": "Your mind may feel restless or overwhelmed today. Stick to routine tasks and avoid making impulsive decisions."},
-        2: {"tara": "Sampat (Wealth)", "color": "🟢 GREEN", "status": "Go", "advice": "Highly favorable for finances and resources. Excellent day to ask for a raise, make investments, or close a deal."},
-        3: {"tara": "Vipat (Danger)", "color": "🔴 RED", "status": "Stop", "advice": "Obstacles and sudden losses are likely. Keep a very low profile today. Do not start new projects or argue with authority."},
-        4: {"tara": "Kshema (Well-being)", "color": "🟢 GREEN", "status": "Go", "advice": "A day of peace, healing, and stability. Perfect for self-care, finalizing plans, and nurturing relationships."},
-        5: {"tara": "Pratyak (Obstacles)", "color": "🔴 RED", "status": "Stop", "advice": "You will face resistance and delays. People may oppose your ideas. Focus on patience and do not force outcomes today."},
-        6: {"tara": "Sadhaka (Achievement)", "color": "🟢 GREEN", "status": "Go", "advice": "Cosmic green light for ambition. Your efforts will yield direct success today. Push hard on your biggest goals."},
-        7: {"tara": "Naidhana (Destruction)", "color": "🔴 RED", "status": "Stop", "advice": "Severe cosmic friction. Avoid travel, signing contracts, or taking risks. Use today strictly for cleaning up old messes."},
-        8: {"tara": "Mitra (Friendship)", "color": "🟢 GREEN", "status": "Go", "advice": "Support from others is highlighted. Great day for networking, collaborating, and asking for favors."},
-        9: {"tara": "Parama Mitra (Great Joy)", "color": "🟢 GREEN", "status": "Go", "advice": "Extremely auspicious. Things will easily go your way. Take bold actions and enjoy the cosmic tailwind!"}
+        1: {"tara": "Janma (Birth)", "color": "🟡 YELLOW", "status": "Caution", "advice": "Your mind may feel restless or stretched today. Stick to routine and avoid impulsive decisions."},
+        2: {"tara": "Sampat (Wealth)", "color": "🟢 GREEN", "status": "Go", "advice": "Strongly favourable for money and resources. A good day to ask for a raise, invest, or close a deal."},
+        3: {"tara": "Vipat (Danger)", "color": "🔴 RED", "status": "Stop", "advice": "Obstacles and sudden setbacks are more likely. Keep a low profile, and don't start anything new or argue with people above you."},
+        4: {"tara": "Kshema (Well-being)", "color": "🟢 GREEN", "status": "Go", "advice": "A day of ease, healing, and steadiness. Good for self-care, finalizing plans, and tending relationships."},
+        5: {"tara": "Pratyak (Obstacles)", "color": "🔴 RED", "status": "Stop", "advice": "You may meet resistance and delays, and people may push back on your ideas. Stay patient and don't force outcomes."},
+        6: {"tara": "Sadhaka (Achievement)", "color": "🟢 GREEN", "status": "Go", "advice": "A clear go for ambition. Effort pays off directly today, so push on your biggest goals."},
+        7: {"tara": "Naidhana (Destruction)", "color": "🔴 RED", "status": "Stop", "advice": "Strong friction today. Avoid travel, signing contracts, or taking risks. Use it to clean up old loose ends instead."},
+        8: {"tara": "Mitra (Friendship)", "color": "🟢 GREEN", "status": "Go", "advice": "Support from others stands out. A good day to network, collaborate, and ask for a favour."},
+        9: {"tara": "Parama Mitra (Great Joy)", "color": "🟢 GREEN", "status": "Go", "advice": "Very favourable. Things tend to go your way, so take the bolder step and enjoy the tailwind."}
     }
     return tara_meanings[tara_value]
    
