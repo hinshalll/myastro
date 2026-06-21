@@ -421,6 +421,18 @@ fact-extraction on journal save; chat memory-injection (`memory_context`). No Qd
 Memory work = frontend wiring (see `features/memory/README.md` contract) + live test. Optional later:
 a richer AI daily personalization; pgvector journal topic-search.*
 
+**VOICE — "talk to the Moon" — BUILT but DEFERRED to post-launch (2026-06-22):** `features/talk/`
+(POST `/talk`: a SHORT, warm, RAG-grounded spoken reply; translate-first so Hindi questions still hit
+the English books; `en` + `hi` Devanagari modes) + `voice/kokoro_service.py` (self-hosted Kokoro TTS,
+CPU-only, free). Pipeline: on-device STT (free) → `/talk` → Kokoro TTS (free). **Deferred** because it
+can't be flawless at v1 cost: multi-hop ~3 to 6s/turn latency, Kokoro's Hindi voice is unverified, and
+we ruled out a paid TTS fallback (free-Kokoro-or-nothing). It's a delight layer, not the spine. The
+code is dormant + harmless (no UI; returns text-only without `KOKORO_URL`); flip it on post-launch when
+on-device Kokoro makes it truly free + flawless. **Related facts now locked:** the RAG embedder is
+English-only (`bge-base-en-v1.5`), so Hindi book-search needs translate-first (or swap to `bge-m3`);
+the Memory extractor now stores facts in ENGLISH regardless of input language; DeepSeek V4 Flash rates
+"strong" at Hindi (Gemini is stronger and stays primary).
+
 **To build new (🔨):** the curated Daily Roast line-bank + share-card render engine, remedy "did it
 help" tracking, monthly Wrapped, child-naming syllables
 (contextual), wallet spend-wiring + usage counters, payments (IAP), notifications/scheduler, caching.

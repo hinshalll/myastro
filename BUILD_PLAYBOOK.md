@@ -84,6 +84,11 @@ folder has uncommitted frontend work — commit it.
   Days planner** (+calendar sync) · tools (numerology/palm/face/tarot/varshaphal) · **Pro view**.
 - **Overlays/screens:** Chat (Moon) · Diyas wallet · paywall/Plus · Diya top-up · share-card sheet.
 - **CUT (don't build):** dream log, Past-Life, Receipt, Rank-circle, glossary, save-chat-answer.
+- **DEFERRED to post-launch (built, dormant):** the voice "talk to the Moon" feature (`features/talk/`
+  + `voice/kokoro_service.py`). On-device STT (free) → `/talk` (RAG-grounded, translate-first for
+  Hindi) → free Kokoro TTS (`en`+`hi`). Shelved for v1: can't be flawless at the cost (multi-hop
+  latency, unverified Kokoro Hindi voice, free-Kokoro-only). Code is harmless/dormant; flip on later.
+  Note: RAG embedder is English-only (`bge-base-en-v1.5`); the Memory extractor now stores facts in English.
 
 ## 4. BACKEND — BUILT vs LEFT
 **BUILT (verified, pushed; don't redo):** the frozen engine (charts/dashas/divisionals/remedies/

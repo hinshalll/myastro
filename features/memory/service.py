@@ -51,7 +51,9 @@ remembering for months: people in their life (with their relation), ongoing \
 situations, goals, fears, recurring themes, important dates, strong preferences. \
 IGNORE passing moods, weather, one-off trivia, and anything ephemeral.
 
-Each fact: ONE short third-person line about the user. Assign a category from \
+Each fact: ONE short third-person line about the user, written in ENGLISH even if \
+the text is in another language (translate as needed, so memory stays uniform). \
+Assign a category from \
 [person, relationship, event, goal, fear, preference, health, work, money, other] \
 and a salience 0.0-1.0 (how important to remember long-term).
 

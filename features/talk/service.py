@@ -36,13 +36,44 @@ def _fallback(lang: str) -> str:
             else "मैं यहीं हूँ, तुम्हारे साथ। थोड़ी देर में फिर से कहना।")
 
 
+def _to_english(text: str) -> str:
+    """Translate a non-English utterance to English for RAG retrieval (the books +
+    embedder are English-only). Cheap; returns the original on failure."""
+    try:
+        from shared.ai.gemini_client import generate_content_with_fallback
+        t = generate_content_with_fallback(
+            "Translate to English. Output ONLY the translation, nothing else:\n" + str(text),
+            task="micro",
+        )
+        return _clean_for_speech(t) or text
+    except Exception:
+        return text
+
+
 def reply(text, lang="en", profile=None, history=None, memory_context=None) -> str:
-    """One short, warm, spoken reply. Cheap LLM call (chat ladder). Never raises."""
+    """One short, warm, spoken reply, GROUNDED in the classical texts (RAG) so the
+    Moon never invents astrology. Hindi turns translate-first so retrieval still
+    hits the English books. Cheap; never raises."""
     lang = lang if lang in _LANG_NAME else "en"
     try:
         from shared.ai.gemini_client import generate_content_with_fallback
-        sys = _VOICE_SYSTEM.format(lang=_LANG_NAME[lang])
 
+        # 1. Retrieval query in English (books + embedder are English-only).
+        retrieval_text = text if lang == "en" else _to_english(text)
+
+        # 2. RAG grounding — the books are the source of truth (AIs hallucinate astrology).
+        ctx = ""
+        try:
+            from features.consultation.prompts import classify_intent
+            from features.consultation.service import INTENT_RAG_BOOKS
+            from shared.ai.knowledge import rag_context
+            intent = classify_intent(retrieval_text)
+            books = INTENT_RAG_BOOKS.get(intent, INTENT_RAG_BOOKS["GENERAL"])
+            ctx = rag_context(retrieval_text, list(books), k=6)
+        except Exception:
+            ctx = ""
+
+        # 3. Their chart
         dossier = ""
         try:
             if profile:
@@ -56,7 +87,11 @@ def reply(text, lang="en", profile=None, history=None, memory_context=None) -> s
             tail = history[-4:]
             hist = "\n".join(f"{m.get('role', 'user')}: {m.get('text', '')}" for m in tail)
 
+        sys = _VOICE_SYSTEM.format(lang=_LANG_NAME[lang])
         parts = [sys, ""]
+        if ctx:
+            parts.append("Grounding from the classical texts (rely on this; do NOT invent "
+                         "astrology beyond it):\n" + ctx)
         if dossier:
             parts.append("Their chart, briefly:\n" + dossier)
         if memory_context:
@@ -64,7 +99,8 @@ def reply(text, lang="en", profile=None, history=None, memory_context=None) -> s
         if hist:
             parts.append("Recent talk:\n" + hist)
         parts.append("They just said, out loud: " + str(text))
-        parts.append("Your short spoken reply in " + _LANG_NAME[lang] + ":")
+        parts.append("Your short spoken reply in " + _LANG_NAME[lang]
+                     + ", grounded in the texts above:")
         prompt = "\n\n".join(parts)
 
         out = _clean_for_speech(generate_content_with_fallback(prompt, task="chat") or "")
