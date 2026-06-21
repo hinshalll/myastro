@@ -187,6 +187,7 @@ _FEATURES = [
     ("wallet",       "features.wallet.api"),    # /prices (public) + Diya balance/spend/earn/history (JWT, server-authoritative)
     ("geo",          "features.geo.api"),       # /search — place autocomplete (label/lat/lon/tz) for onboarding (public)
     ("memory",       "features.memory.api"),    # THE MEMORY (JWT): /facts, /extract, /context — auto-remembered distilled facts
+    ("talk",         "features.talk.api"),       # voice companion: POST /talk -> short warm spoken reply (+Kokoro audio if KOKORO_URL set)
 ]
 
 for prefix, module_path in _FEATURES:
