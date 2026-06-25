@@ -14,8 +14,6 @@ Changes in this version:
 """
 
 import base64
-import json
-import os
 import cv2
 import numpy as np
 import streamlit as st
@@ -76,18 +74,6 @@ def _arr_to_b64_png(arr):
     return base64.b64encode(buf.tobytes()).decode()
 
 
-def _palm_eval_mode_enabled() -> bool:
-    """Hidden helper mode for collecting palm-reading accuracy examples."""
-    env_val = os.getenv("PALMISTRY_EVAL_MODE", "")
-    if str(env_val).strip().lower() in {"1", "true", "yes", "on"}:
-        return True
-    try:
-        secret_val = st.secrets.get("PALMISTRY_EVAL_MODE", "")
-    except Exception:
-        secret_val = ""
-    return str(secret_val).strip().lower() in {"1", "true", "yes", "on"}
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN PAGE
 # ══════════════════════════════════════════════════════════════════════════════
@@ -112,13 +98,10 @@ def show_palmistry():
 
     if uploaded_file is None:
         _render_capture_tips()
-        if _palm_eval_mode_enabled():
-            _render_eval_intro()
         return
 
     file_bytes = uploaded_file.getvalue()
     cache_key  = uploaded_file.name + str(len(file_bytes))
-    st.session_state.palm_uploaded_name = uploaded_file.name
 
     if (st.session_state.get("palm_cache_key") != cache_key
             or "palm_analysis" not in st.session_state):
@@ -574,9 +557,6 @@ def _render_reading(result):
         )
         _render_phase_a(phase_a)
 
-    if _palm_eval_mode_enabled():
-        _render_accuracy_lab(result)
-
     st.divider()
 
     fc1, fc2, fc3 = st.columns([1, 1, 1])
@@ -798,154 +778,6 @@ def _render_phase_a(phase_a):
 # ══════════════════════════════════════════════════════════════════════════════
 # MARKDOWN EXPORT
 # ══════════════════════════════════════════════════════════════════════════════
-
-def _render_eval_intro():
-    st.info(
-        "Palm Accuracy Lab is enabled. Upload a palm, generate a reading, then "
-        "download the evaluation packet and send it with the photo."
-    )
-
-
-def _suggest_case_id() -> str:
-    name = st.session_state.get("palm_uploaded_name", "palm")
-    clean = "".join(ch.lower() if ch.isalnum() else "_" for ch in name).strip("_")
-    return clean[:40] or "palm_case"
-
-
-def _eval_observation_summary(phase_a: dict) -> str:
-    """Compact plain-English summary for quick manual checking."""
-    if not isinstance(phase_a, dict):
-        return ""
-    lines = phase_a.get("lines", {}) or {}
-    mounts = phase_a.get("mounts", {}) or {}
-    fingers = phase_a.get("fingers", {}) or {}
-    thumb = phase_a.get("thumb", {}) or {}
-
-    out = ["Lines:"]
-    for key, label in _LINE_NAMES.items():
-        data = lines.get(key) or {}
-        bits = [data.get("visibility") or "missing"]
-        if key == "heart" and data.get("endpoint"):
-            bits.append(f"endpoint={data.get('endpoint')}")
-        if key == "head":
-            if data.get("joined_to_life"):
-                bits.append(f"joined_to_life={data.get('joined_to_life')}")
-            if data.get("slope"):
-                bits.append(f"slope={data.get('slope')}")
-        if key == "life" and data.get("curve"):
-            bits.append(f"curve={data.get('curve')}")
-        if key == "fate" and data.get("starts_at"):
-            bits.append(f"starts_at={data.get('starts_at')}")
-        out.append(f"- {label}: " + ", ".join(bits))
-
-    marriage = lines.get("marriage_lines") or {}
-    out.append(
-        "- Marriage lines: "
-        f"{marriage.get('count_visible', 'missing')} | {marriage.get('description', '')}"
-    )
-
-    out.append("\nMounts:")
-    for mount in ["Jupiter", "Saturn", "Sun", "Mercury", "Venus", "Mars", "Luna"]:
-        data = mounts.get(mount) or {}
-        out.append(
-            f"- {mount}: {data.get('fullness', 'missing')} | "
-            f"{data.get('marks', 'no marks')}"
-        )
-
-    out.append("\nFingers/thumb:")
-    out.append(f"- index_vs_ring_length: {fingers.get('index_vs_ring_length', 'missing')}")
-    out.append(f"- finger tips: {fingers.get('tip_shape_dominant', 'missing')}")
-    out.append(f"- thumb set: {thumb.get('set', 'missing')}")
-    out.append(f"- thumb flexibility: {thumb.get('flexibility_estimate', 'missing')}")
-    return "\n".join(out)
-
-
-def _build_eval_packet(case_id: str, result: dict, notes: str, corrections: str) -> dict:
-    analysis = st.session_state.get("palm_analysis", {}) or {}
-    phase_a = result.get("phase_a", {}) or {}
-    return {
-        "case_id": case_id,
-        "photo_filename": st.session_state.get("palm_uploaded_name", ""),
-        "purpose": "palmistry_phase_a_accuracy_check",
-        "manual_notes": notes.strip(),
-        "manual_corrections": corrections.strip(),
-        "app_observation_summary": _eval_observation_summary(phase_a),
-        "phase_a": phase_a,
-        "hand_metrics": result.get("hand_metrics") or analysis.get("hand_metrics") or {},
-        "palm_tone": result.get("vitality") or analysis.get("vitality") or {},
-        "quality_metrics": analysis.get("quality_metrics") or {},
-        "phase_b_excerpt": (result.get("phase_b") or "")[:1200],
-    }
-
-
-def _json_safe(value):
-    """Convert numpy/PIL-adjacent values into plain JSON-safe values."""
-    if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(v) for v in value]
-    if isinstance(value, np.generic):
-        return value.item()
-    if isinstance(value, np.ndarray):
-        return value.tolist()
-    return value
-
-
-def _render_accuracy_lab(result: dict):
-    phase_a = result.get("phase_a", {}) or {}
-    if not phase_a:
-        return
-
-    with st.expander("Palm Accuracy Lab", expanded=True):
-        st.caption(
-            "Private testing helper. It does not train the model. It creates a "
-            "small answer-key packet so we can see exactly what the app got "
-            "right or wrong for this photo."
-        )
-
-        st.text_area(
-            "App observations to check",
-            value=_eval_observation_summary(phase_a),
-            height=260,
-            disabled=True,
-            key="palm_eval_summary",
-        )
-        case_id = st.text_input(
-            "Case ID",
-            value=_suggest_case_id(),
-            help="Example: friend_01_clear_daylight",
-            key="palm_eval_case_id",
-        )
-        notes = st.text_area(
-            "What looks wrong? Plain English is fine.",
-            placeholder=(
-                "Example: marriage line should be not_assessable; fate line "
-                "starts closer to wrist; Venus mount looks moderate not prominent."
-            ),
-            height=120,
-            key="palm_eval_notes",
-        )
-        corrections = st.text_area(
-            "Optional corrected labels",
-            placeholder=(
-                "Example:\n"
-                "heart.visibility = clear\n"
-                "head.joined_to_life = yes\n"
-                "marriage_lines.count_visible = not_assessable"
-            ),
-            height=120,
-            key="palm_eval_corrections",
-        )
-
-        packet = _json_safe(_build_eval_packet(case_id, result, notes, corrections))
-        st.download_button(
-            "Download accuracy packet JSON",
-            data=json.dumps(packet, ensure_ascii=False, indent=2).encode("utf-8"),
-            file_name=f"{case_id or 'palm_case'}_accuracy_packet.json",
-            mime="application/json",
-            use_container_width=True,
-        )
-
 
 def _build_markdown_export(phase_b, phase_a, used_kundli=False):
     out = ["# My Palm Reading", "", "*Generated by Astro Suite · Samudrika Shastra*",
