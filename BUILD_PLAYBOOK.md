@@ -48,6 +48,14 @@ folder has uncommitted frontend work — commit it.
   MediaPipe has no ARM wheels), a privacy policy + store compliance (data-deletion etc.).
 
 ## 3. FRONTEND BUILD (the plan)
+> **⭐ FRONTEND RESTARTED (2026-06-25).** The finalized, backend-accurate, **tool-agnostic** design
+> prompts (the full Today screen + Moon chat + Diyas wallet, and the whole onboarding flow + Login)
+> now live verbatim in **`FRONTEND_PROMPTS.md`** (repo root). Design in **Claude Design OR Google
+> Stitch** (the prompts work in both) → port with **Google Antigravity 2 (use Gemini 3.1 Pro)** → I
+> wire the backend + we test in Expo Go. (The earlier Claude Design Today build was rejected; AI
+> Studio errored; z.ai was poor.) **Recover compacted detail:** the full chat transcripts are at
+> `C:\Users\hinsh\.claude\projects\C--Users-hinsh-Desktop-myastro\*.jsonl` — python-scan them
+> (json.loads each line, pull `message.content[].text`, grep a keyword) to print any exact past prompt.
 - **Tool chain:** Claude Design (premium look, hero screens) → screenshot → AI Studio (RN+Expo
   SDK54 code) → me (wire + animation polish). **Design language = premium dark-cosmic, CRED-tier,
   animated** (was leaning clean-white, pivoted — see chat; user perfecting in Claude Design).
