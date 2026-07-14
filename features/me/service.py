@@ -134,3 +134,10 @@ def update_settings(user, data: dict) -> dict:
     if fields:
         db.update_app_user(user.client, user.user_id, fields)
     return get_settings(user)
+
+
+# ── Push token (so the server can notify a closed app) ────────────────────────
+
+def set_push_token(user, token: str) -> dict:
+    db.update_app_user(user.client, user.user_id, {"push_token": token})
+    return {"ok": True}

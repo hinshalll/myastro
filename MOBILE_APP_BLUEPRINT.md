@@ -12,6 +12,86 @@
 
 ---
 
+## ⭐ CURRENT (v4.1) vs PLANNED (v5) — top-of-stack snapshot (2026-06-26)
+
+> This is the live top of the stack. **Where it differs from §3–§17 below, THIS governs.** It splits
+> what is **finalized/locked** from what is **proposed** (the align27-informed 10x) so nothing is
+> forgotten. **Companion specs (keep these in sync too):** competitive teardown → `COMPETITIVE_STRATEGY.md`;
+> Path/Timeline → `PATH_TAB_SPEC.md`; screen design prompts → `FRONTEND_PROMPTS.md`; **how the app
+> self-runs (on-open loop, real-time/live updates, notifications, fail-safes)** → `TODAY_FUNCTIONING.md`;
+> per-feature AI spend → `AI_COSTS.md`.
+
+### CURRENT — finalized & locked (build to this)
+All of v4 below STANDS, with two **finalized** changes from this session:
+1. **Nav swap (FINAL).** **You** left the bottom nav and is now the **top-left avatar** (tap photo →
+   You). The **Readings & Tools hub (old Decode) is now a real bottom tab** in the freed slot; the
+   separate Readings top-bar icon is removed. Result:
+   - Top cluster: **avatar (→ You, left) + Diya chip 🪔 (right)**.
+   - Bottom nav: **Today · Timeline · People · Rituals · Readings**.
+   - Floating **Sage companion** (chat) stays on every screen.
+2. **Timeline → "The Path" (FINAL direction).** The Timeline tab is reimagined as a **2.5D, gamified,
+   zoomable life-map** (`@shopify/react-native-skia` + Reanimated; Expo-Go-compatible; web-first dev):
+   zoom level = dasha level, floors at the **day** (hands off to Today). Land = dasha chapters ·
+   weather = transits · terrain height = Ashtakavarga strength · Sade Sati = a weather front · your
+   real life events = **Proof pins** · future under **fog** · lenses for **Career · Love · Money** ·
+   **convergence ("everything aligns") windows**. **Built LAST**; launches first as a simpler vertical
+   scroll. Full self-contained spec: `PATH_TAB_SPEC.md`.
+
+Everything else, the 5-tab contents, the Memory, monetization, trust, onboarding, is v4 as written
+below.
+
+### PLANNED CHANGES — v5, the 10x (align27-informed; PROPOSED, not yet locked)
+Studied **align27** (20 screens + pricing + reviews). Honest conclusion: **align27 validated our plan,
+it does not have features we lack.** It exposed **packaging/execution** gaps, and it carries the exact
+weaknesses our brand laws beat (paywall-after-paywall, trial→annual billing traps, charging loyal
+users more, fear-mongering, and zero memory). The 10x = keep our moat, adopt their daily-hook
+discipline. **Seven moves:**
+1. **Memory as the spine, not a tab** — personalize the daily reading, the companion, the Path,
+   Rituals, and every Readings card from the one brain. "It knows you" felt on every screen.
+2. **Today = a packaged daily Timing OS** — turn our existing `/dashboard/timing` (Green/Amber/Red +
+   golden/quiet windows) into one crisp, calm, *personal* daily system (align27's hook, done warm and
+   never alarmist).
+3. **The Path = the gamified wow** — already finalized (above); it's the showpiece that beats
+   align27's tiny "cosmic weather" graph.
+4. **Readings = a browsable, personalized, *conversational* trove** — surface our ~30+ readings (the
+   engine already computes them: Jaimini, Ashtakavarga, Varshaphala, yogas, nakshatra, karakas…) as
+   one beautiful library; each personalized by the Memory + a "talk it through →" to the companion.
+   (align27's reading cards are static dead-ends.)
+5. **Rituals = guided audio + "did it help?" proof** — match align27's stepped mantra-audio rituals
+   AND add measurable before/after from check-in history (they can't, no memory).
+6. **Trust as a marketed pillar** — put align27's #1 complaints on our marquee: NASA-derived accuracy,
+   the same chart every time, no fear-selling, export/delete your data, transparent Diyas, no traps.
+   The business model is the ad.
+7. **Execution: align27-level visual polish + a customizable home (pin your tools/readings to Today) +
+   the always-on Sage companion** as the warm soul align27 lacks.
+
+**Session decisions (2026-06-28, folded into the plan):**
+- **Daily check-in = a once-a-day warm bottom-sheet on open** (mood+energy, two taps, "ask me later" → a
+  slim chip on Read + an evening Sage nudge), NOT an always-present Today card. Lifts it out of the scroll,
+  makes it a small ritual, declutters Read. Endpoint unchanged (`/me/checkins`).
+- **The Sage's proactive messages run on a strict taxonomy + caps** — Care / Guide / Timely / Discover;
+  ≤1/day, mostly Care, ≤~2 commercial/week; **never fear-sell**, every teaser REAL, free remedy first. Full
+  spec in `TODAY_FUNCTIONING.md` §8. Care is built; Guide+Timely next; Discover with the Reports tab.
+- **Readings tab v2 = two sub-tabs (Kundli & tools · Reports)** with a **library of 20-30 real, accurate,
+  paid/Diya reports** (align27 had a plethora; we out-truth them). The earn-Diyas-over-days → unlock-one →
+  get-hooked loop IS the retention engine. Built LATER (Today first).
+- **Diyas stays** (not subscription-only): it's the engagement loop AND the way to serve India's
+  middle-class/poorer majority; Plus is the optional top layer. Data-flow reminder: moods → `checkins`,
+  journals → `journal_entries` + AI facts → `memory_facts`; **nothing personal in Qdrant (books only).**
+
+**Why people open it daily:** the Timing OS each morning · the companion · the check-in streak · the
+Path to fiddle with · a ritual. **Why they pay (Plus, by love not FOMO):** unlimited companion chat ·
+the full readings trove · deep couple/family/Patterns · 25% off Diya features. **The un-leavable moat:**
+align27 is identical on day 1 and day 100; ours **gets sharper the longer you live with it** (the
+Memory compounds).
+
+**Positioning:** *"align27 reads the sky and charges you for it. We read the sky, remember you, and
+earn your trust."* The honest astrologer that actually knows you.
+
+**Status:** PROPOSED. Refine, then promote into the body as v5.
+
+---
+
 ## 0. The situation in plain English
 - The **Python backend already works** (frozen, validated compute engine + most endpoints). The
   **Streamlit app** is the working reference. The **old `mobile/` mockup is a throwaway**. v1 mobile
@@ -90,7 +170,7 @@ in-app glossary, the "save chat answer" feature (the Memory auto-remembers inste
 ├───────────────────────────────────────────────┤
 │   Today   Timeline   People   Rituals   You      │
 └───────────────────────────────────────────────┘
-        + floating Moon companion (all tabs)
+        + floating Sage companion (all tabs)
         + OS home/lock-screen widget
 ```
 
@@ -105,7 +185,7 @@ in-app glossary, the "save chat answer" feature (the Memory auto-remembers inste
 **Decode is not a bottom tab.** The readings + tools become a **"Readings & Tools" hub**, reached
 from a persistent top-bar icon (so it never hides) *and* surfaced contextually (the Marriage reading
 appears when you add a partner, the Full Life Reading is promoted on Timeline). Tabs go to daily
-surfaces; occasional deep readings live in the hub. The **Moon companion** floats on every screen.
+surfaces; occasional deep readings live in the hub. The **Sage companion** floats on every screen.
 
 ---
 
@@ -114,20 +194,38 @@ surfaces; occasional deep readings live in the hub. The **Moon companion** float
 Tags: `[FREE]` · `[Diyas]` · `[SUB]`. Made by: `[AI]`/`[Curated]`/`[Templated]`/`[Math]`.
 Role: `(A)` marketed · `(B)` contextual · `(C)` plumbing.
 
-### TAB 1 — Today *(the daily companion)* — LOCKED, no structural change
-The Moon greets you, warmed by the Memory ("Scorpio Moon today, you usually run low, go gentle").
-- **Daily forecast** `(A) [Math/Templated] [FREE]` — Moon-based mood word + Mood/Opportunity/Caution/
-  Action + a grounded "why," from `daily_moon_forecast` (Chandra house from natal Moon + Tara Bala;
-  the 12 mood words: Settled·Guarded·Bold·Tender·Restless·Capable·Warm·Deep·Wandering·Driven·Upbeat·
-  Quiet). No AI.
-- **2-tap check-in** `(A) [Math] [FREE]` — mood + energy → one warm reflection + streak. Seeds the Memory.
-- **The Mirror** `(A) [AI/store] [FREE]` — write or speak a journal entry; the Memory reads, stores,
-  reflects one line back (comfort / growth / "you've been here before"). Pure journaling (no dream
-  logging). Crisis entry → care + helpline safety net. A soft "talk about it? →" opens the companion.
-- **Today's windows** `(B) [Templated] [FREE]` — good/avoid times (Choghadiya/Rahu-Kaal); tap → full timing.
-- **Today's ritual** `(A) [Templated] [FREE]` — one chart-derived remedy the day wants; opens Rituals.
-- **Live event card** `(B) [Templated] [FREE]` — only on real eclipse/sandhi days.
-- The Daily Roast `[Curated]` one-liner stays as an optional light share, growth-layer voice.
+### TAB 1 — Today *(the daily companion)* — RESTRUCTURED into two sub-tabs (finalized 2026-06-27)
+> Full design prompt → `FRONTEND_PROMPTS.md` §1 · self-functioning/real-time/notifications →
+> `TODAY_FUNCTIONING.md` · AI spend → `AI_COSTS.md`. (Supersedes the old single-scroll Today.)
+
+The **Read · Plan sub-tabs sit at the very top** (above the greeting), so there is **no shared header**.
+Avatar → You (top-left), Diya chip (top-right), the floating **Sage companion**. The **time-aware
+greeting** (tonight's Moon phase + greeting + a plain-English planetary-hour line) lives on the **Read tab
+only**; the Plan tab opens straight into the tools. Pop-ups are **bottom-sheets** (full screen only for
+the month calendar). Plain-English window names (no "Abhijit/Rahu Kaal" up front). **The Daily Roast is
+dropped from Today** (wit lives only in the share layer).
+
+- **READ (default) — your day + the quick log:**
+  - **Grahan heads-up** `(B) [Templated]` — conditional, only near an eclipse (`/dashboard/day-alerts`).
+  - **The reading** `(A) [Math/Templated] [FREE]` — ONE cohesive hero: a mood word (12 locked) + a light
+    personal Memory line + **Good for / Go easy on** chips + a "why" sheet (`daily_moon_forecast` + Tara
+    + nakshatra-fit; no AI).
+  - **Good & bad times** `(B) [Templated]` — compact strip (`/dashboard/timing`), tap → full day.
+  - **Check-in** `(A) [Math] [FREE]` — the **multi-step, self-collapsing** card (mood → energy → 2 picks +
+    a **pre-written** line + streak; auto-collapses ~12s; **no AI**).
+  - **The Mirror** `(A) [AI-extract/store]` — journal; the warm line back is templated; save triggers a
+    **selective** Memory extraction (skipped on trivia).
+  - **Today's ritual** `(B)` — one-line nudge → the Rituals tab (full flow lives there).
+- **PLAN — the tools:** **My Day** (type to-dos → auto-placed in best windows + ~15-min-before reminders)
+  · **My Panchang** (today+next-2-days → full-month screen; festivals/Grahan/Dasha markers; phone-calendar
+  sync; absorbs the **Calendar Doctor** audit + the **finance** event-types) · **Find a good day
+  (Muhurat)** `/dashboard/muhurta` · **Ask the Moment** (should-I / yes-no / A-or-B → casts a Prashna for
+  now; RAG-grounded) · **Time Capsule** (note → delivered at a future cosmic moment).
+- **The "one thoughtful thing", patterns, and look-backs live in the Sage companion, not Read** — the
+  Sage is RAG-grounded chat **and proactive** (glows when it has something; reply feeds the Memory).
+- **Contradiction guard:** ONE shared day-quality function feeds both the Read reading and the Panchang
+  today-colour. **Self-runs** via the on-open loop + a foreground ticker (time-based) + **Supabase
+  Realtime** (server-pushed patterns/messages/Diyas) + `expo-notifications`/`expo-calendar` (closed-app).
 
 ### TAB 2 — Timeline *(the hero: your life across time)*
 **"Your past, proven. Your future, prepared."** All from the frozen Vedic engine (verified mapping
@@ -215,7 +313,7 @@ Reached from the top-bar icon + surfaced contextually.
   strength, retrograde/combust/exalted flags, ayanamsa toggle. Invisible to casuals; a Trust signal
   to believers; near-zero cost (engine already computes it).
 
-### Always-on: the Moon companion (the Ask)
+### Always-on: the Sage companion (the Ask)
 - The conversational door to the Memory + chart + classical-text RAG. Chart-grounded, warm, never
   savage. **Identity: "your astrologer who actually knows you."**
 - Absorbs Prashna (moment-question) and quick yes/no Decide as *kinds* of questions it answers.
@@ -421,7 +519,7 @@ fact-extraction on journal save; chat memory-injection (`memory_context`). No Qd
 Memory work = frontend wiring (see `features/memory/README.md` contract) + live test. Optional later:
 a richer AI daily personalization; pgvector journal topic-search.*
 
-**VOICE — "talk to the Moon" — BUILT but DEFERRED to post-launch (2026-06-22):** `features/talk/`
+**VOICE — "talk to the Sage" — BUILT but DEFERRED to post-launch (2026-06-22):** `features/talk/`
 (POST `/talk`: a SHORT, warm, RAG-grounded spoken reply; translate-first so Hindi questions still hit
 the English books; `en` + `hi` Devanagari modes) + `voice/kokoro_service.py` (self-hosted Kokoro TTS,
 CPU-only, free). Pipeline: on-device STT (free) → `/talk` → Kokoro TTS (free). **Deferred** because it

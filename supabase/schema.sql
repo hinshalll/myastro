@@ -244,6 +244,61 @@ create table if not exists public.ai_conversations (
 );
 create index if not exists ai_conversations_user_idx on public.ai_conversations(user_id);
 
+-- ── Today → Plan tab + Sage companion, table 'moon_messages' is legacy (v4.1) ─
+-- My Day: typed to-dos auto-placed into the day's best windows. The placed
+-- window + notify_at are computed SERVER-SIDE from /dashboard/timing, so the
+-- client only has to schedule one local notification ~15 min before.
+create table if not exists public.day_tasks (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  date           date not null,
+  title          text not null,
+  importance     text not null default 'normal',   -- 'normal' | 'important'
+  window_start   text,                              -- "HH:MM" local (placed window)
+  window_end     text,                              -- "HH:MM" local
+  window_quality text,                              -- 'good' | 'neutral' | 'avoid'
+  notify_at      text,                              -- "HH:MM" local, ~15 min before window
+  done           boolean not null default false,
+  created_at     timestamptz default now(),
+  updated_at     timestamptz default now()
+);
+create index if not exists day_tasks_user_idx on public.day_tasks(user_id, date);
+
+-- Time Capsule: a note written now, delivered at a future moment — a custom date,
+-- or a computed one (next birthday / next Dasha chapter / next Jupiter-favours).
+-- 2-3 days before deliver_on the app shows a HINT (no content); on the day it
+-- reveals and `delivered` flips.
+create table if not exists public.time_capsules (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  note           text not null,
+  deliver_on     date not null,
+  occasion       text,                              -- 'custom'|'birthday'|'dasha'|'jupiter'
+  occasion_label text,                              -- e.g. "your next birthday"
+  sealed_on      date not null default current_date,
+  delivered      boolean not null default false,
+  created_at     timestamptz default now(),
+  updated_at     timestamptz default now()
+);
+create index if not exists time_capsules_user_idx on public.time_capsules(user_id, deliver_on);
+
+-- Moon messages: the PROACTIVE companion. The server writes an opener (a pattern
+-- it noticed, a look-back, or one thoughtful nudge) when today's sky triggers one
+-- of the user's unlocked patterns; the app shows the Moon glow + dot until read.
+-- Server WRITES via the service client (like memory_facts); the user READS/marks-read
+-- via RLS. `for_date` dedupes one opener of a kind per day.
+create table if not exists public.moon_messages (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  kind         text not null default 'nudge',       -- 'welcome' | 'pattern' | 'lookback' | 'nudge'
+  body         text not null,                        -- the warm opener line
+  meta         jsonb,                                -- what triggered it (for tap-through)
+  read         boolean not null default false,
+  for_date     date,                                 -- the day it was generated for (dedupe)
+  created_at   timestamptz default now()
+);
+create index if not exists moon_messages_user_idx on public.moon_messages(user_id, read, created_at desc);
+
 -- ── Diyas: the in-app currency (blueprint §7) ──────────────────────────────
 -- Display name in the app = "Diyas" (lamps; lit by practice/streaks, spent on
 -- AI readings, gifted, or topped-up). Table names are kept NEUTRAL so the
@@ -384,6 +439,9 @@ alter table public.group_members  enable row level security;
 alter table public.ritual_journeys enable row level security;
 alter table public.rewards        enable row level security;
 alter table public.ai_conversations enable row level security;
+alter table public.day_tasks         enable row level security;
+alter table public.time_capsules     enable row level security;
+alter table public.moon_messages     enable row level security;
 alter table public.coin_wallets      enable row level security;
 alter table public.coin_transactions enable row level security;
 alter table public.referrals         enable row level security;
@@ -479,6 +537,18 @@ drop policy if exists ai_conv_owner on public.ai_conversations;
 create policy ai_conv_owner on public.ai_conversations
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+drop policy if exists day_tasks_owner on public.day_tasks;
+create policy day_tasks_owner on public.day_tasks
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists time_capsules_owner on public.time_capsules;
+create policy time_capsules_owner on public.time_capsules
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists moon_messages_owner on public.moon_messages;
+create policy moon_messages_owner on public.moon_messages
+  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- Currency tables: a user may READ their own wallet/ledger/ads, but all WRITES
 -- go through the server (service role bypasses RLS). No insert/update/delete
 -- policy is granted to normal users → they can never alter their own balance.
@@ -543,6 +613,14 @@ create trigger ritual_set_updated before update on public.ritual_journeys
 
 drop trigger if exists memory_facts_set_updated on public.memory_facts;
 create trigger memory_facts_set_updated before update on public.memory_facts
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists day_tasks_set_updated on public.day_tasks;
+create trigger day_tasks_set_updated before update on public.day_tasks
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists time_capsules_set_updated on public.time_capsules;
+create trigger time_capsules_set_updated before update on public.time_capsules
   for each row execute function public.set_updated_at();
 
 -- Prune index: lets us cheaply delete stale shared daily content later.

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from features.me import service
 from features.me.auth import CurrentUser, get_current_user
-from features.me.schemas import CheckinIn, JournalIn, ProfileIn, SettingsIn
+from features.me.schemas import CheckinIn, JournalIn, ProfileIn, SettingsIn, PushTokenIn
 
 try:
     from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -124,3 +124,10 @@ if router is not None:
             return service.update_settings(user, payload.model_dump(exclude_none=True))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    # ── Push token (register the device for closed-app notifications) ───────────
+    @router.put("/push-token")
+    def set_push_token(
+        payload: PushTokenIn, user: CurrentUser = Depends(get_current_user)
+    ) -> dict:
+        return service.set_push_token(user, payload.token)

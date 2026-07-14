@@ -186,6 +186,105 @@ def daily_timing_windows(d, lat, lon, tz_name):
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# HORA  (the planetary hour — date + location based, NOT birth-chart based)
+# Powers the Today → Read greeting line ("a good stretch for X right now").
+#
+# Method (confirmed against Drik Panchang + multiple standard sources):
+#   • The hora-day runs sunrise → next sunrise. Daytime (sunrise→sunset) splits
+#     into 12 EQUAL day-horas; night (sunset→next sunrise) into 12 EQUAL night-
+#     horas. Day vs night lengths differ and vary by date/latitude.
+#   • The FIRST hora from sunrise is ruled by the WEEKDAY LORD; each following
+#     hora walks the Chaldean reverse order, continuously across sunset:
+#       Sun → Venus → Mercury → Moon → Saturn → Jupiter → Mars → (repeat).
+#     24 horas later the cycle lands on the next weekday's lord — the very rule
+#     the seven weekday names come from (a built-in correctness check).
+# ══════════════════════════════════════════════════════════════════════════
+
+_HORA_SEQUENCE = ["Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars"]
+_WEEKDAY_LORD = {0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter",
+                 4: "Venus", 5: "Saturn", 6: "Sun"}   # Python weekday() Mon=0..Sun=6
+# Warm, plain-English "good stretch for ..." line per hora lord (no jargon).
+_HORA_LINE = {
+    "Sun":     "a strong stretch for official things, taking the lead, or dealing with people in charge",
+    "Moon":    "a gentle stretch, good for home, family, and the calmer, softer tasks",
+    "Mars":    "a bold stretch, good for effort, exercise, and pushing something forward",
+    "Mercury": "a sharp stretch for talking, writing, money, and getting things sorted",
+    "Jupiter": "one of the day's best stretches, good for anything that matters or a fresh start",
+    "Venus":   "a warm stretch for love, people, beauty, and small comforts",
+    "Saturn":  "a slow, steady stretch, better for patient work than for new beginnings",
+}
+_HORA_SANSKRIT = {"Sun": "सूर्य होरा", "Moon": "चन्द्र होरा", "Mars": "मंगल होरा",
+                  "Mercury": "बुध होरा", "Jupiter": "गुरु होरा", "Venus": "शुक्र होरा",
+                  "Saturn": "शनि होरा"}
+_HORA_BEST = {"Jupiter", "Venus"}   # the two most auspicious hora lords
+
+
+def current_hora(lat, lon, tz_name, at=None):
+    """The planetary hour (Hora) ruling `at` (default: now) at a location.
+
+    Returns { planet, line, start, end (24h HH:MM), period (day|night),
+    index (1..24), auspicious (bool), sanskrit }. Pure math, no AI.
+    """
+    tz = ZoneInfo(tz_name)
+    now = at.astimezone(tz) if at is not None else datetime.now(tz)
+
+    # The hora-day frame (sunrise → next sunrise) that contains `now`.
+    frame_date = now.date()
+    sunrise, sunset, next_sunrise = sun_rise_set(frame_date, lat, lon, tz_name)
+    if now < sunrise:                       # before today's sunrise = yesterday's night
+        frame_date = frame_date - timedelta(days=1)
+        sunrise, sunset, next_sunrise = sun_rise_set(frame_date, lat, lon, tz_name)
+
+    start_idx = _HORA_SEQUENCE.index(_WEEKDAY_LORD[frame_date.weekday()])
+
+    if now < sunset:                        # a daytime hora
+        seg = (sunset - sunrise) / 12
+        offset = min(int((now - sunrise) / seg), 11)
+        h_start, h_end = sunrise + seg * offset, sunrise + seg * (offset + 1)
+        period, hora_offset = "day", offset
+    else:                                   # a night hora
+        seg = (next_sunrise - sunset) / 12
+        offset = min(int((now - sunset) / seg), 11)
+        h_start, h_end = sunset + seg * offset, sunset + seg * (offset + 1)
+        period, hora_offset = "night", 12 + offset
+
+    planet = _HORA_SEQUENCE[(start_idx + hora_offset) % 7]
+    return {
+        "planet": planet,
+        "line": _HORA_LINE[planet],
+        "start": _hm(h_start),
+        "end": _hm(h_end),
+        "period": period,
+        "index": hora_offset + 1,           # 1..24 within the hora-day
+        "auspicious": planet in _HORA_BEST,
+        "sanskrit": _HORA_SANSKRIT[planet],
+    }
+
+
+_PHASE_NAMES = ["new moon", "waxing crescent", "first quarter", "waxing gibbous",
+                "full moon", "waning gibbous", "last quarter", "waning crescent"]
+
+
+def moon_phase(at=None, tz_name="UTC"):
+    """Current Moon phase for the Today greeting: illumination + plain phase name
+    + waxing/waning, from the Sun-Moon elongation (frame-independent). No chart."""
+    import math
+    tz = ZoneInfo(tz_name)
+    now = at.astimezone(tz) if at is not None else datetime.now(tz)
+    now_utc = now.astimezone(ZoneInfo("UTC"))
+    jd = ephemeris.julday(now_utc.year, now_utc.month, now_utc.day,
+                          now_utc.hour + now_utc.minute / 60.0)
+    elong = (ephemeris.planet_lon(jd, "Moon") - ephemeris.planet_lon(jd, "Sun")) % 360
+    octant = int(((elong + 22.5) % 360) // 45)
+    return {
+        "illumination": round((1 - math.cos(math.radians(elong))) / 2, 2),  # 0..1
+        "phase": _PHASE_NAMES[octant],
+        "waxing": elong < 180,
+        "elongation_deg": round(elong, 1),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # "TODAY" HEADS-UP CARDS  (date based, Moon/Sun only — no birth time needed)
 #   • chandra_sandhi_window : Moon at a sign junction = weak/reflective window
 #   • next_eclipse          : soonest upcoming Surya/Chandra Grahan from a date

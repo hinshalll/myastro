@@ -272,14 +272,34 @@ if router is not None:
             "time": now.strftime("%H:%M"),
             "place": place_label, "lat": lat, "lon": lon, "tz": tz,
         }
+        # AI reads the question (any language / phrasing / negation) → the house whose
+        # promise answers it + a positive restatement. Classification only; the KP
+        # verdict below is unchanged. Falls back to a keyword house-map with no API key.
+        from shared.ai.understanding import read_prashna_question
+        u = read_prashna_question(req.question)
+
         dossier = generate_astrology_dossier(prof)
         try:
-            verdict = get_prashna_python_verdict(req.question, dossier)
+            verdict, reason = get_prashna_python_verdict(req.question, dossier, house=u["house"])
         except Exception:
-            verdict = "UNCLEAR"
+            verdict, reason = "UNCLEAR", "The chart was not clear enough to call this one."
+
+        # FREE path (narrate=False): the deterministic KP verdict IS the answer — the
+        # Python verdict is the final word, no AI reading is generated, only the tiny
+        # classify call above. Powers the Ask-the-Moment one-tap yes/no.
+        if not req.narrate:
+            return PrashnaResponse(verdict=str(verdict), reason=reason, reading="",
+                                   topic=u["topic"], interpreted=u["interpreted"])
+
+        # DEPTH path (narrate=True, costs Diyas): the SAME verdict + a warm narrative
+        # grounded in the classical KP text (RAG). The AI only elaborates the verdict,
+        # it never overrides it.
         ctx = _rag(req.question, ("kp6.md",), 8)
         prompt = build_prashna_prompt(req.question, dossier, knowledge_context=ctx)
         return PrashnaResponse(
             verdict=str(verdict),
+            reason=reason,
             reading=generate_content_with_fallback(prompt, task="agent"),
+            topic=u["topic"],
+            interpreted=u["interpreted"],
         )

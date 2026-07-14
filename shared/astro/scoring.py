@@ -1035,19 +1035,25 @@ def calculate_custom_aspect_score(dossier, criteria, profile=None):
     return round(clamp_val(score), 2)
 
 
-def get_prashna_python_verdict(question, dossier_text):
-    q_lower = question.lower()
-    house = 1
-    if any(w in q_lower for w in ["job","career","promotion","business","work","profession"]): house = 10
-    elif any(w in q_lower for w in ["love","marry","marriage","relationship","partner","wedding","spouse"]): house = 7
-    elif any(w in q_lower for w in ["money","wealth","finance","loan","buy","invest","rich","earn"]): house = 2
-    elif any(w in q_lower for w in ["health","sick","recover","surgery","disease","hospital","cure"]): house = 6
-    elif any(w in q_lower for w in ["child","kid","pregnancy","baby","conceive","son","daughter"]): house = 5
-    elif any(w in q_lower for w in ["travel","visa","abroad","foreign","overseas","trip"]): house = 9
-    elif any(w in q_lower for w in ["house","property","home","flat","vehicle","car","land"]): house = 4
-    elif any(w in q_lower for w in ["court","legal","lawsuit","case","enemy","conflict"]): house = 6
-    elif any(w in q_lower for w in ["education","study","degree","exam","course"]): house = 5
-    elif any(w in q_lower for w in ["spiritual","moksha","liberation","guru","pilgrimage"]): house = 12
+def get_prashna_python_verdict(question, dossier_text, house=None):
+    # `house` (1-12) may be supplied by the AI question-reader
+    # (shared.ai.understanding.read_prashna_question), which understands Hinglish /
+    # negation / any phrasing. When it's None we fall back to this offline keyword
+    # map so the tool still works with no API key. Either way the ASTROLOGY below
+    # (the KP promise) is identical — only the topic->house step differs.
+    if house is None:
+        q_lower = question.lower()
+        house = 1
+        if any(w in q_lower for w in ["job","career","promotion","business","work","profession"]): house = 10
+        elif any(w in q_lower for w in ["love","marry","marriage","relationship","partner","wedding","spouse"]): house = 7
+        elif any(w in q_lower for w in ["money","wealth","finance","loan","buy","invest","rich","earn"]): house = 2
+        elif any(w in q_lower for w in ["health","sick","recover","surgery","disease","hospital","cure"]): house = 6
+        elif any(w in q_lower for w in ["child","kid","pregnancy","baby","conceive","son","daughter"]): house = 5
+        elif any(w in q_lower for w in ["travel","visa","abroad","foreign","overseas","trip"]): house = 9
+        elif any(w in q_lower for w in ["house","property","home","flat","vehicle","car","land"]): house = 4
+        elif any(w in q_lower for w in ["court","legal","lawsuit","case","enemy","conflict"]): house = 6
+        elif any(w in q_lower for w in ["education","study","degree","exam","course"]): house = 5
+        elif any(w in q_lower for w in ["spiritual","moksha","liberation","guru","pilgrimage"]): house = 12
 
     kp_score = extract_kp_promise(dossier_text, house)
     if kp_score == 3: return "YES", f"KP H{house} Sub-Lord STRONGLY SIGNIFIES the required houses — event is PROMISED."

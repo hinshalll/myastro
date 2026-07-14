@@ -45,7 +45,9 @@ class TimingRequest(BaseModel):
 
 
 class MuhurtaRequest(BaseModel):
-    event_type: str     # travel|signing|naming|vehicle|housewarming|general
+    event_type: str     # a preset category (one of 14: marriage|travel|vehicle|property|housewarming|
+                        # surgery|medical|education|job|signing|naming|mundan|annaprashana|general) used
+                        # as-is, OR free text read AI-first into the nearest set (keyword fallback offline)
     start_date: str     # "YYYY-MM-DD"
     end_date: str       # "YYYY-MM-DD"
     lat: float
@@ -59,6 +61,37 @@ class DayAlertsRequest(BaseModel):
     tz: str             # IANA tz, e.g. "Asia/Kolkata"
     lat: float | None = None   # optional (eclipse Sutak refinement)
     lon: float | None = None
+
+
+class HoraRequest(BaseModel):
+    lat: float                  # current location (hora + sunrise are location-based)
+    lon: float
+    tz: str                     # IANA tz, e.g. "Asia/Kolkata"
+
+
+class CalendarCheckEvent(BaseModel):
+    date: str                   # "YYYY-MM-DD"
+    start: str                  # "HH:MM" (24h) local start
+    end: str | None = None      # optional
+    id: str | None = None       # the phone-calendar event id (echoed back; server never stores it)
+    title: str | None = None    # optional, echoed for the UI (server doesn't need it)
+
+
+class CalendarCheckRequest(BaseModel):
+    events: list[CalendarCheckEvent]   # the app's upcoming events (read on-device via expo-calendar)
+    lat: float
+    lon: float
+    tz: str                     # IANA tz, e.g. "Asia/Kolkata"
+
+
+class PanchangRequest(BaseModel):
+    profile: dict               # the user (kundli/compute shape) — for the personal day-colour
+    lat: float                  # current location (sunrise + windows are location-based)
+    lon: float
+    tz: str                     # IANA tz, e.g. "Asia/Kolkata"
+    start_date: str | None = None  # "YYYY-MM-DD"; defaults to today (tz)
+    days: int = 3               # 3 = today + next 2 (strip); ~31-35 = month grid
+    full: bool | None = None    # None → auto (full detail when days <= 7)
 
 
 class DecideRequest(BaseModel):

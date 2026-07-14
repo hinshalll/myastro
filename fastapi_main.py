@@ -188,6 +188,10 @@ _FEATURES = [
     ("geo",          "features.geo.api"),       # /search — place autocomplete (label/lat/lon/tz) for onboarding (public)
     ("memory",       "features.memory.api"),    # THE MEMORY (JWT): /facts, /extract, /context — auto-remembered distilled facts
     ("talk",         "features.talk.api"),       # voice companion: POST /talk -> short warm spoken reply (+Kokoro audio if KOKORO_URL set)
+    ("planner",      "features.planner.api"),    # My Day (Today→Plan, JWT): /tasks CRUD — to-dos auto-placed in the day's best windows
+    ("capsule",      "features.capsule.api"),    # Time Capsule (Today→Plan, JWT): note delivered at a future moment (custom/birthday/dasha/jupiter)
+    ("moon",         "features.moon.api"),       # the proactive companion, the Sage (JWT): /check, /messages — openers that glow the floating Sage (module name 'moon' is legacy)
+    ("notify",       "features.notify.api"),     # closed-app push: /run-daily (cron-secret) pushes the Sage's opener + capsule arrivals; /test (JWT) pushes to your own device
 ]
 
 for prefix, module_path in _FEATURES:

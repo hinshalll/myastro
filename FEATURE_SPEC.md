@@ -5,7 +5,7 @@
 > **⚠️ v4 RE-SPINE (2026-06-18) — supersedes v3 below.** Spine is now **Trust + Timing + Companion**
 > (WARM voice; wit only in the share layer — the savage spine is dropped). Nav = **5 tabs: Today ·
 > Timeline · People · Rituals · You** + a top-bar **Readings & Tools hub** (the old Decode) + the
-> floating Moon companion. New hero = the **Timeline** tab (dasha roadmap + Sade Sati + the four big
+> floating Sage companion. New hero = the **Timeline** tab (dasha roadmap + Sade Sati + the four big
 > questions Career/Love/Marriage/Money + the Proof; framing = windows/periods, never fixed dates).
 > The **Memory auto-remembers** (AI extracts durable facts → new `memory_facts` table + Qdrant; chat
 > is ephemeral; "save chat answer" removed). Shareables culled to 4; cut dream/Past-Life/Receipt/
@@ -165,6 +165,87 @@
   reference. The Lahiri/other anchors are frozen constants (no `swisseph` import at runtime).
   `constants.PLANETS` are NAME strings. Docker bakes in `de440s.bsp`; the old `ephe/` SE data
   is excluded from the image. See `docs/ephemeris-decision.md`.
+
+### Recent changes (2026-07-02) — Calendar Doctor + Muhurat custom box (both AI-free)
+- **New endpoint `POST /dashboard/calendar-check`** (`shared/astro/calendar_doctor.py`) — the "Check my plans"
+  judge. The app reads/moves phone-calendar events **on-device** (expo-calendar, Android + iOS); the server
+  receives only event **times** (no titles stored, nothing persisted) and returns each event's verdict
+  (good/ok/weak) + a plain window label + a same-day **"move to" slot** for weak ones (nearest good Choghadiya
+  clear of Rahu Kaal / Yamaganda / Gulika). Pure math, no AI.
+- **Muhurat custom events** — `muhurta.classify_event(text)` keyword-maps free text ("buy a bike" → vehicle,
+  "start a business" → signing) to the nearest classical rule-set, or "general". `POST /dashboard/muhurta`
+  now accepts a free-text `event_type`. Deterministic, no AI.
+- **Muhurat rule-sets expanded 6 → 14 (2026-07-04)** — added marriage, surgery, medical, education,
+  property, job, mundan, annaprashana to `muhurta._EVENT_RULES`, each cross-verified across multiple
+  panchang authorities (Drik Panchang, mPanchang, AstroSage, GaneshaSpeaks, ClickAstro…) with per-entry
+  source notes. **Surgery inverts the universal rules** (sharp/Tikshna stars, Tue/Sat, Rikta tithis
+  favoured) via a new `rikta_ok` per-event flag in `_score_day`. Keyword classifier reordered/expanded.
+  Still deterministic tables; AI only classifies genuinely novel free text.
+- **Ask the Moment = Prashna, free/depth split (2026-07-04)** — `POST /oracle/prashna` gained `narrate`
+  (PrashnaRequest) + `reason` (PrashnaResponse). **`narrate:false` = FREE** deterministic KP verdict only
+  (question topic → house → chart promise → Yes/Delayed/No + plain reason; no AI). **`narrate:true` =
+  DEPTH** (Diyas): same verdict + AI narrative grounded in kp6.md via RAG. The Python verdict is the final
+  word; the AI only elaborates. (Fixed a latent bug where the verdict tuple was stringified.)
+- **AI "understanding" layer for free-text inputs (2026-07-04)** — `shared/ai/understanding.py` +
+  `shared/ai/understanding_prompts.py`. AI-FIRST classifiers that read a user's free-text (English / Hindi /
+  Hinglish / any phrasing / negation) into a small STRUCTURED label the deterministic engine consumes. The
+  AI **classifies only** — it never predicts, answers, picks dates, or does astrology. Three functions, each
+  with a keyword/heuristic **offline fallback** (works with no API key): `read_prashna_question` → `{house
+  1-12, topic, interpreted (positive event phrasing)}` (feeds `get_prashna_python_verdict(..., house=)`, new
+  optional override); `classify_muhurta_event` → one of the 14 categories (used by `_resolve_muhurta_event`,
+  now AI-first); `read_day_task` → `{importance, hora:[planets], nature}` (feeds `place_task(..., prefer_hora=)`,
+  which now matches a task to a suitable planetary-hour as a tiebreaker after Choghadiya quality). Prompts
+  embed Vedic facts **cross-verified across multiple sources** (12 house significations; Hora activity fits;
+  14 muhurta categories). Uses the `json` ladder (free Gemini primary → DeepSeek overflow); tiny + low-freq =
+  negligible cost. Keyword paths remain ONLY as the offline fallback (they misread compound/other-language
+  input, so AI leads when a key is set).
+
+### Recent changes (2026-06-28) — Today screen backend complete (Plan tab + proactive Moon)
+All pure math / frozen engine (no AI), accuracy cross-checked from multiple trusted sources.
+- **`forecast.day_quality(profile, date)`** — the ONE canonical personal day-colour `good/mixed/low`.
+  Both the Today reading and the My-Panchang colour read it, so they can never contradict (the
+  contradiction guard). `band` is now also on `daily_moon_forecast`.
+- **New endpoint `POST /dashboard/panchang`** (`shared/astro/panchang.py`) — the Plan tab's My-Panchang:
+  today + next-2-days strip and the month grid. Per day: sunrise tithi / nakshatra / yoga / karana
+  (classical Udaya-Tithi rule), the personal band, markers (Ekadashi / Purnima / Amavasya / Grahan via
+  `next_eclipse` / Chandrashtama) and the day's strongest window. Eclipse↔tithi cross-check passed.
+- **New endpoint `POST /dashboard/hora`** — the Read greeting's live planetary-hour line + Moon phase.
+  `current_hora()` uses the classical sunrise→sunset / sunset→sunrise 12+12 split, the weekday-lord first
+  hora, and the Chaldean order (Sun→Venus→Mercury→Moon→Saturn→Jupiter→Mars); `moon_phase()` from elongation.
+- **Forecast enrichment** — `daily_moon_forecast` now also returns `band`, `chandrashtama` (Moon in the
+  8th sign from the natal Moon) and the `good_for` / `go_easy` / `nakshatra_nature` activity-fit chips
+  (from `constants.NAK_FIT`, keyed by the classical 7-fold `NAK_NATURES`).
+- **New feature `features/planner/` — My Day** (`/planner/tasks` GET/POST/PATCH/DELETE, JWT). `place_task()`
+  auto-places a typed to-do into the day's best free Choghadiya window (important tasks land in a good
+  window clear of Rahu Kaal; tasks spread out), returning a `notify_at` ~15 min before. Table `day_tasks`.
+- **New feature `features/capsule/` — Time Capsule** (`/capsule`, `/capsule/suggest`, GET, DELETE, JWT).
+  Resolves a future delivery moment: custom date, next birthday, next Dasha chapter (`build_vimshottari_timeline`),
+  or next Jupiter-favours (`_jupiter_from_moon`, houses 2/5/7/9/11). The list endpoint enforces hint(≤3 days,
+  no content) → reveal(on/after delivery, marks delivered). Table `time_capsules`.
+- **New feature `features/moon/` — the proactive companion, the Sage** (module name `moon` is legacy; `/moon/check`, `/moon/messages`, `/messages/{id}/read`,
+  JWT). Deterministic `pick_opener`: look-back > a firing pattern (reuses `memory.personalize_today`) > a gentle
+  nudge; one per day per kind, only when nothing is unread. Table `moon_messages`.
+- **Today across your life + the reading bundle** — `shared/astro/life_areas.py` produces the Love / Work /
+  Money rows from the SAME Moon transit as the reading (chandra_house + band; love=7th/5th·Venus,
+  work=10th/6th·Saturn·Sun, money=2nd·11th·Jupiter; a retrograde karaka softens the tone; no AI, no %).
+  `POST /dashboard/life-areas` returns the rows; `POST /dashboard/today` returns the reading + rows as ONE
+  bundle and `reconcile_chips` drops any reading chip that would contradict a life-area tone (chips and rows
+  can never clash). The Read tab calls `/dashboard/today`. Each life-area row returns `line + detail + why +
+  link` so it opens its OWN sheet (Love→People, Work/Money→Timeline; tab-level links for now).
+- **Festival calendar (data-driven)** — named festivals live in `shared/data/festivals_india.json` (keyed by
+  year, refreshed annually from Drik Panchang; loader `shared/astro/festivals.py`). `POST /dashboard/hora`
+  now returns a `festival` field (the header's "Happy X" greeting) and `POST /dashboard/panchang` marks
+  festival days. 2026 seeded (verify ±1 day); 2027 = empty stub. A missing year safely shows no greeting.
+  Update guide: `FESTIVALS.md`.
+- **Selective memory** — `memory.service._worth_extracting()` now gates `extract_and_save`, so a trivial entry
+  skips the extraction AI call entirely (cost rule), while real facts always go through.
+- **Closed-app push** — `shared/notify/expo_push.send_push()` (Expo's free push API), `PUT /me/push-token`
+  (saves the device token → `app_users.push_token`), and `features/notify/` (`POST /notify/run-daily`,
+  cron-secret-gated, pushes the proactive Sage opener + capsule-arrival alerts to every user with a token;
+  `POST /notify/test`, JWT, pushes to the caller's own device). Known-time events stay as on-device LOCAL
+  notifications. Owner step: set `CRON_SECRET` + point a daily cron at `/notify/run-daily`.
+- New tables (`day_tasks`, `time_capsules`, `moon_messages`) added to `supabase/schema.sql` (idempotent +
+  RLS + `set_updated_at` triggers). All 85 routes boot.
 
 ### Recent changes (2026-05-27) — AI-free quick-decide + clearer timing
 - **New endpoint `POST /dashboard/decide-quick`** — an AI-FREE one-tap "should I do X right

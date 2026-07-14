@@ -54,3 +54,9 @@ class SettingsIn(BaseModel):
     depth_mode: Optional[str] = None      # 'simple' | 'balanced' | 'full'
     language: Optional[str] = None        # 'en' | 'hi' | ...
     settings: Optional[dict[str, Any]] = None
+
+
+# ── Push token (for closed-app notifications) ──────────────────────────────────
+
+class PushTokenIn(BaseModel):
+    token: str                            # ExponentPushToken[...] from the device

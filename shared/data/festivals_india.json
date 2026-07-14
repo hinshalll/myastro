@@ -1,0 +1,34 @@
+{
+  "_about": "Named Hindu festival dates for the Today-screen greeting (Happy X) + the Panchang month markers. THIS IS DATA ONLY — edit this file, never the code. The loader is shared/astro/festivals.py.",
+  "_source": "Cross-checked against drikpanchang.com (the reference almanac). Dates can vary +/-1 day by region/tradition; use the common all-India date.",
+  "_how_to_update": "Once a year (around December, when the next year's dates are finalized): open drikpanchang.com, and add a new \"YYYY\": [ ... ] block below, listing that year's major JOYFUL festivals (only ones you'd wish someone 'Happy X'). Each entry = { \"date\": \"YYYY-MM-DD\", \"name\": \"Festival Name\" }. Optional \"greeting\" field overrides the default 'Happy <name>'. Keep the list sorted by date. Then bump _last_updated and _status. Full guide: FESTIVALS.md.",
+  "_last_updated": "2026-07-02",
+  "_status": {
+    "2026": "populated (starter set — please VERIFY each date against drikpanchang.com; a few festivals shift +/-1 day by tradition)",
+    "2027": "NOT YET ADDED — add in Dec 2026 from drikpanchang.com once finalized (the loader simply shows no greeting for any year that's missing, so nothing breaks)"
+  },
+  "2026": [
+    { "date": "2026-01-14", "name": "Makar Sankranti" },
+    { "date": "2026-01-23", "name": "Vasant Panchami" },
+    { "date": "2026-02-15", "name": "Maha Shivratri" },
+    { "date": "2026-03-04", "name": "Holi" },
+    { "date": "2026-03-19", "name": "Gudi Padwa" },
+    { "date": "2026-03-26", "name": "Ram Navami" },
+    { "date": "2026-04-01", "name": "Hanuman Jayanti" },
+    { "date": "2026-04-14", "name": "Baisakhi" },
+    { "date": "2026-04-19", "name": "Akshaya Tritiya" },
+    { "date": "2026-08-27", "name": "Raksha Bandhan" },
+    { "date": "2026-09-03", "name": "Janmashtami" },
+    { "date": "2026-09-14", "name": "Ganesh Chaturthi" },
+    { "date": "2026-10-11", "name": "Navratri" },
+    { "date": "2026-10-20", "name": "Dussehra" },
+    { "date": "2026-10-28", "name": "Karva Chauth" },
+    { "date": "2026-11-06", "name": "Dhanteras" },
+    { "date": "2026-11-08", "name": "Diwali" },
+    { "date": "2026-11-09", "name": "Govardhan Puja" },
+    { "date": "2026-11-10", "name": "Bhai Dooj" },
+    { "date": "2026-11-15", "name": "Chhath Puja" },
+    { "date": "2026-11-24", "name": "Guru Nanak Jayanti" }
+  ],
+  "2027": []
+}

@@ -9,6 +9,7 @@ from features.dashboard.prompts import build_decide_prompt
 from features.dashboard.schemas import (
     DashboardRequest, DashboardData, DecideRequest, DecideResponse, TimingRequest,
     ForecastRequest, WeekRequest, DayAlertsRequest, RelationshipWeatherRequest, MuhurtaRequest,
+    PanchangRequest, HoraRequest, CalendarCheckRequest,
 )
 
 try:
@@ -16,6 +17,23 @@ try:
     router = APIRouter()
 except ImportError:
     router = None
+
+
+def _resolve_muhurta_event(event_type: str) -> str:
+    """Resolve a Muhurat event to one of the classical rule-sets, for ANY input.
+
+    A preset chip already IS a category (e.g. "marriage") → used as-is, no AI. For
+    a free-text query the AI reader understands it in any language / phrasing
+    (shared.ai.understanding), mapping it to the nearest of the 14 sourced
+    categories; with no API key it falls back to the keyword classifier, then to
+    "general". So the tool answers anything and never errors. The AI only
+    CLASSIFIES — plan_muhurta does all the date/time astrology."""
+    from shared.astro.muhurta import _EVENT_RULES, classify_event
+    from shared.ai.understanding import classify_muhurta_event
+    key = (event_type or "").strip().lower()
+    if key in _EVENT_RULES:
+        return key
+    return classify_muhurta_event(key, classify_event)["event"]
 
 
 if router is not None:
@@ -43,6 +61,33 @@ if router is not None:
         out = daily_moon_forecast(req.profile, req.date)
         out["ok"] = True
         return out
+
+    @router.post("/life-areas")
+    def life_areas(req: ForecastRequest) -> dict:
+        """Love / Work / Money rows for the Today reading. Same { profile } +
+        optional date as /forecast. Derived from the SAME Moon transit as the
+        reading (chandra_house + band), so it can't contradict it. FREE, no AI,
+        NO scores (honest, planet-named).
+        """
+        from shared.astro.life_areas import life_areas as _life_areas
+        return {"ok": True, **_life_areas(req.profile, req.date)}
+
+    @router.post("/today")
+    def today(req: ForecastRequest) -> dict:
+        """The Read tab's ONE bundle: the reading + Love/Work/Money, computed
+        TOGETHER so the reading's activity chips and the life-area rows always
+        agree (the contradiction guard reconciles them). Same { profile } +
+        optional date as /forecast. FREE, deterministic, no AI. (The strongest-
+        window footer + live Hora come from /dashboard/timing + /dashboard/hora;
+        the personal line from /memory/today.)
+        """
+        from shared.astro.forecast import daily_moon_forecast
+        from shared.astro.life_areas import life_areas as _life_areas, reconcile_chips
+        reading = daily_moon_forecast(req.profile, req.date)
+        areas = _life_areas(req.profile, req.date)
+        g, e = reconcile_chips(reading.get("good_for", []), reading.get("go_easy", []), areas)
+        reading["good_for"], reading["go_easy"] = g, e
+        return {"ok": True, "reading": reading, "life_areas": areas}
 
     @router.post("/week")
     def week(req: WeekRequest) -> dict:
@@ -105,10 +150,54 @@ if router is not None:
         plainly when nothing in the range is strongly auspicious. Deterministic.
         """
         from shared.astro.muhurta import plan_muhurta
-        out = plan_muhurta(req.event_type, req.start_date, req.end_date,
+        event = _resolve_muhurta_event(req.event_type)   # preset | keyword | cheap-AI | 'general'
+        out = plan_muhurta(event, req.start_date, req.end_date,
                            req.lat, req.lon, req.tz, req.top_n)
+        out["resolved_event"] = event
         out["ok"] = True
         return out
+
+    @router.post("/panchang")
+    def panchang(req: PanchangRequest) -> dict:
+        """Daily Panchang for the Today → Plan tab: the today+next-2-days strip
+        and the full-month grid.
+
+        FREE: pure math + lookup, NO AI. Each day carries the sunrise tithi /
+        nakshatra / yoga / karana, the PERSONAL day-colour (good/mixed/low — the
+        SAME `day_quality` the Today reading uses, so the calendar and the reading
+        can never disagree), festival markers (Ekadashi / Purnima / Amavasya) and
+        Grahan days, plus the day's strongest window. `days`=3 → the strip; ~31-35
+        → the month grid. `full` defaults to detailed for <=7 days, light beyond.
+        Day-naming uses the classical Udaya Tithi (tithi-at-sunrise) rule.
+        """
+        from datetime import datetime as _dt
+        from zoneinfo import ZoneInfo as _zi
+        from shared.astro.panchang import panchang_range
+        start = req.start_date or _dt.now(_zi(req.tz)).date().isoformat()
+        full = req.full if req.full is not None else (req.days <= 7)
+        out = panchang_range(req.profile, start, req.days, req.lat, req.lon, req.tz, full=full)
+        out["ok"] = True
+        return out
+
+    @router.post("/hora")
+    def hora(req: HoraRequest) -> dict:
+        """Live greeting context for the Today → Read header: the current
+        planetary hour (Hora) as a plain 'good stretch for X' line, plus tonight's
+        Moon phase.
+
+        FREE: pure math, no AI. Date + location based, no birth chart. The hora
+        uses the classical sunrise→sunset / sunset→sunrise 12+12 split with the
+        weekday-lord first hora and the Chaldean sequence (sourced in astro_calc).
+        """
+        from shared.astro.astro_calc import current_hora, moon_phase
+        from shared.astro.festivals import festival_for
+        today = datetime.now(ZoneInfo(req.tz)).date().isoformat()
+        return {
+            "ok": True,
+            "hora": current_hora(req.lat, req.lon, req.tz),
+            "moon_phase": moon_phase(tz_name=req.tz),
+            "festival": festival_for(today),   # {name, greeting, date} or None → header "Happy X"
+        }
 
     @router.post("/decide-quick")
     def decide_quick(req: DecideRequest) -> dict:
@@ -166,6 +255,17 @@ if router is not None:
         out = daily_timing_windows(d, req.lat, req.lon, req.tz)
         out["ok"] = True
         return out
+
+    @router.post("/calendar-check")
+    def calendar_check(req: CalendarCheckRequest) -> dict:
+        """Calendar Doctor: given the user's upcoming events (times only — the app
+        reads them on-device via expo-calendar), flag any that sit in a weak window
+        and suggest a better slot the same day. FREE, pure math, no AI. The server
+        never stores the events; titles are optional and only echoed back for the UI.
+        """
+        from shared.astro.calendar_doctor import check_events
+        events = [e.model_dump() for e in req.events]
+        return {"ok": True, "events": check_events(events, req.lat, req.lon, req.tz)}
 
     @router.post("/decide", response_model=DecideResponse)
     def decide(req: DecideRequest) -> DecideResponse:

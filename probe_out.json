@@ -1,0 +1,433 @@
+{
+ "/dashboard/today": {
+  "status": 200,
+  "body": {
+   "ok": true,
+   "reading": {
+    "date": "2026-07-14",
+    "vibe_word": "Bold",
+    "vibe_score": 0.87,
+    "band": "good",
+    "mood": "Courage is up and you want things moving. Reaching out, speaking up, making the first move.",
+    "opportunity": "Great for conversations, quick trips, and finally starting the thing you've been circling.",
+    "caution": "All this momentum scatters easily, so aim it at one or two things, not ten.",
+    "action": "Make the call or send the message you've been sitting on.",
+    "good_for": [
+     "travel",
+     "moving or vehicles",
+     "making a change"
+    ],
+    "go_easy": [
+     "permanent commitments"
+    ],
+    "nakshatra_nature": "Movable (Chara)",
+    "why": "Right now the Moon is passing through Gemini (its star, Punarvasu). Counted from the sign your Moon was in when you were born, that's the 3rd step around the circle, a stretch that traditionally feels courageous and outgoing. The day's natural rhythm is with you, so progress comes a little more easily.",
+    "sanskrit": "चन्द्रः पुनर्वसु-नक्षत्रे",
+    "astro_state_key": "ch3-tara6-nak6",
+    "moon_nakshatra": "Punarvasu",
+    "moon_sign": "Gemini",
+    "chandra_house": 3,
+    "chandrashtama": false,
+    "tara": "Sadhaka (Achievement)",
+    "tara_quality": "favourable"
+   },
+   "life_areas": {
+    "date": "2026-07-14",
+    "in_focus": null,
+    "love": {
+     "tone": "good",
+     "line": "An easy warmth around your people today.",
+     "detail": "A good day to reach out, enjoy the people you love, or gently mend a small rift, warmth comes easily.",
+     "why": "The Moon isn't especially stirring your relationships today, so it takes the day's overall mood. Venus, the planet of love, is what quietly governs it here.",
+     "planet": "Venus",
+     "link": {
+      "tab": "People",
+      "label": "See today between you and your people"
+     }
+    },
+    "work": {
+     "tone": "good",
+     "line": "A smooth, capable current for work today.",
+     "detail": "A strong stretch to push what matters, take on the hard task, or put yourself forward, effort lands well.",
+     "why": "The Moon isn't especially stirring your work today, so it takes the day's overall mood. Saturn, the planet of work and discipline, is what quietly governs it here.",
+     "planet": "Saturn",
+     "link": {
+      "tab": "Timeline",
+      "label": "See your work across the bigger picture"
+     }
+    },
+    "money": {
+     "tone": "good",
+     "line": "Money feels calm and steady, a fine day to tend it.",
+     "detail": "A favourable day to tend your money, follow up on income, or make a considered move, the flow supports you.",
+     "why": "The Moon isn't especially stirring your money today, so it takes the day's overall mood. Jupiter, the planet of wealth and fortune, is what quietly governs it here.",
+     "planet": "Jupiter",
+     "link": {
+      "tab": "Timeline",
+      "label": "See your money across the bigger picture"
+     }
+    }
+   }
+  }
+ },
+ "/dashboard/forecast": {
+  "status": 200,
+  "body": {
+   "date": "2026-07-14",
+   "vibe_word": "Bold",
+   "vibe_score": 0.87,
+   "band": "good",
+   "mood": "Courage is up and you want things moving. Reaching out, speaking up, making the first move.",
+   "opportunity": "Great for conversations, quick trips, and finally starting the thing you've been circling.",
+   "caution": "All this momentum scatters easily, so aim it at one or two things, not ten.",
+   "action": "Make the call or send the message you've been sitting on.",
+   "good_for": [
+    "travel",
+    "moving or vehicles",
+    "making a change"
+   ],
+   "go_easy": [
+    "permanent commitments",
+    "signing for keeps"
+   ],
+   "nakshatra_nature": "Movable (Chara)",
+   "why": "Right now the Moon is passing through Gemini (its star, Punarvasu). Counted from the sign your Moon was in when you were born, that's the 3rd step around the circle, a stretch that traditionally feels courageous and outgoing. The day's natural rhythm is with you, so progress comes a little more easily.",
+   "sanskrit": "चन्द्रः पुनर्वसु-नक्षत्रे",
+   "astro_state_key": "ch3-tara6-nak6",
+   "moon_nakshatra": "Punarvasu",
+   "moon_sign": "Gemini",
+   "chandra_house": 3,
+   "chandrashtama": false,
+   "tara": "Sadhaka (Achievement)",
+   "tara_quality": "favourable",
+   "ok": true
+  }
+ },
+ "/dashboard/life-areas": {
+  "status": 200,
+  "body": {
+   "ok": true,
+   "date": "2026-07-14",
+   "in_focus": null,
+   "love": {
+    "tone": "good",
+    "line": "An easy warmth around your people today.",
+    "detail": "A good day to reach out, enjoy the people you love, or gently mend a small rift, warmth comes easily.",
+    "why": "The Moon isn't especially stirring your relationships today, so it takes the day's overall mood. Venus, the planet of love, is what quietly governs it here.",
+    "planet": "Venus",
+    "link": {
+     "tab": "People",
+     "label": "See today between you and your people"
+    }
+   },
+   "work": {
+    "tone": "good",
+    "line": "A smooth, capable current for work today.",
+    "detail": "A strong stretch to push what matters, take on the hard task, or put yourself forward, effort lands well.",
+    "why": "The Moon isn't especially stirring your work today, so it takes the day's overall mood. Saturn, the planet of work and discipline, is what quietly governs it here.",
+    "planet": "Saturn",
+    "link": {
+     "tab": "Timeline",
+     "label": "See your work across the bigger picture"
+    }
+   },
+   "money": {
+    "tone": "good",
+    "line": "Money feels calm and steady, a fine day to tend it.",
+    "detail": "A favourable day to tend your money, follow up on income, or make a considered move, the flow supports you.",
+    "why": "The Moon isn't especially stirring your money today, so it takes the day's overall mood. Jupiter, the planet of wealth and fortune, is what quietly governs it here.",
+    "planet": "Jupiter",
+    "link": {
+     "tab": "Timeline",
+     "label": "See your money across the bigger picture"
+    }
+   }
+  }
+ },
+ "/dashboard/hora": {
+  "status": 200,
+  "body": {
+   "ok": true,
+   "hora": {
+    "planet": "Mercury",
+    "line": "a sharp stretch for talking, writing, money, and getting things sorted",
+    "start": "09:07",
+    "end": "10:15",
+    "period": "day",
+    "index": 4,
+    "auspicious": false,
+    "sanskrit": "बुध होरा"
+   },
+   "moon_phase": {
+    "illumination": 0.0,
+    "phase": "new moon",
+    "waxing": false,
+    "elongation_deg": 356.6
+   },
+   "festival": null
+  }
+ },
+ "/dashboard/day-alerts": {
+  "status": 200,
+  "body": {
+   "ok": true,
+   "chandra_sandhi": {
+    "present": true,
+    "start": "17:14",
+    "end": "20:24",
+    "from_sign": "Gemini",
+    "to_sign": "Cancer",
+    "label": "Low window",
+    "note": "A low/reflective window — better for calm tasks; avoid big commitments.",
+    "why": "The Moon is crossing the junction (Chandra Sandhi) between Gemini and Cancer. At a sign boundary the Moon is considered weak, so this is a softer, more reflective stretch rather than a time to push.",
+    "sanskrit": "चन्द्र सन्धि"
+   },
+   "eclipse": {
+    "present": true,
+    "type": "Surya Grahan",
+    "date": "2026-08-12",
+    "days_until": 29,
+    "sutak_start": "2026-08-11 12:00",
+    "sutak_note": "Sutak (the caution period) traditionally begins about 12 hours before, around 11 Aug 12:00.",
+    "why": "A solar eclipse is coming up — traditionally a time to pause new beginnings, keep things low-key and turn inward.",
+    "sanskrit": "सूर्य ग्रहण"
+   }
+  }
+ },
+ "/dashboard/week": {
+  "status": 200,
+  "body": {
+   "start_date": "2026-07-14",
+   "days": [
+    {
+     "date": "2026-07-14",
+     "vibe_word": "Bold",
+     "vibe_score": 0.87,
+     "band": "good",
+     "mood": "Courage is up and you want things moving. Reaching out, speaking up, making the first move.",
+     "opportunity": "Great for conversations, quick trips, and finally starting the thing you've been circling.",
+     "caution": "All this momentum scatters easily, so aim it at one or two things, not ten.",
+     "action": "Make the call or send the message you've been sitting on.",
+     "good_for": [
+      "travel",
+      "moving or vehicles",
+      "making a change"
+     ],
+     "go_easy": [
+      "permanent commitments",
+      "signing for keeps"
+     ],
+     "nakshatra_nature": "Movable (Chara)",
+     "why": "Right now the Moon is passing through Gemini (its star, Punarvasu). Counted from the sign your Moon was in when you were born, that's the 3rd step around the circle, a stretch that traditionally feels courageous and outgoing. The day's natural rhythm is with you, so progress comes a little more easily.",
+     "sanskrit": "चन्द्रः पुनर्वसु-नक्षत्रे",
+     "astro_state_key": "ch3-tara6-nak6",
+     "moon_nakshatra": "Punarvasu",
+     "moon_sign": "Gemini",
+     "chandra_house": 3,
+     "chandrashtama": false,
+     "tara": "Sadhaka (Achievement)",
+     "tara_quality": "favourable",
+     "is_today": true
+    },
+    {
+     "date": "2026-07-15",
+     "vibe_word": "Tender",
+     "vibe_score": 0.26,
+     "band": "low",
+     "mood": "Your heart pulls toward home and comfort today, and you may feel softer and more easily touched than usual.",
+     "opportunity": "Lovely for rest, nesting, and slow time with the people who feel like home.",
+     "caution": "A wistful, low mood might drift in. That's the day talking, not you, so let it pass.",
+     "action": "Give yourself permission to slow right down and just be home.",
+     "good_for": [
+      "quick tasks",
+      "buying and selling",
+      "learning or sport"
+     ],
+     "go_easy": [
+      "slow, heavy projects",
+      "long commitments"
+     ],
+     "nakshatra_nature": "Swift (Kshipra)",
+     "why": "Right now the Moon is passing through Cancer (its star, Pushya). Counted from the sign your Moon was in when you were born, that's the 4th step around the circle, a stretch that traditionally feels homeward and soft-hearted. It leans more toward tending and resting than pushing hard.",
+     "sanskrit": "चन्द्रः पुष्य-नक्षत्रे",
+     "astro_state_key": "ch4-tara7-nak7",
+     "moon_nakshatra": "Pushya",
+     "moon_sign": "Cancer",
+     "chandra_house": 4,
+     "chandrashtama": false,
+     "tara": "Naidhana (Destruction)",
+     "tara_quality": "challenging",
+     "is_today": false
+    },
+    {
+     "date": "2026-07-16",
+     "vibe_word": "Tender",
+     "vibe_score": 0.59,
+     "band": "mixed",
+     "mood": "Your heart pulls toward home and comfort today, and you may feel softer and more easily touched than usual.",
+     "opportunity": "Lovely for rest, nesting, and slow time with the people who feel like home.",
+     "caution": "A wistful, low mood might drift in. That's the day talking, not you, so let it pass.",
+     "action": "Give yourself permission to slow right down and just be home.",
+     "good_for": [
+      "focus and discipline",
+      "ending a bad habit",
+      "hard conversations"
+     ],
+     "go_easy": [
+      "romance or weddings",
+      "gentle new starts"
+     ],
+     "nakshatra_nature": "Sharp (Tikshna)",
+     "why": "Right now the Moon is passing through Cancer (its star, Ashlesha). Counted from the sign your Moon was in when you were born, that's the 4th step around the circle, a stretch that traditionally feels homeward and soft-hearted. The day's natural rhythm is with you, so progress comes a little more easily.",
+     "sanskrit": "चन्द्रः आश्लेषा-नक्षत्रे",
+     "astro_state_key": "ch4-tara8-nak8",
+     "moon_nakshatra": "Ashlesha",
+     "moon_sign": "Cancer",
+     "chandra_house": 4,
+     "chandrashtama": false,
+     "tara": "Mitra (Friendship)",
+     "tara_quality": "favourable",
+     "is_today": false
+    },
+    {
+     "date": "2026-07-17",
+     "vibe_word": "Restless",
+     "vibe_score": 0.55,
+     "band": "mixed",
+     "mood": "Part of you wants play, romance, a little attention, with a restless flicker running underneath.",
+     "opportunity": "Fine for light creativity and fun, as long as you keep the stakes low.",
+     "caution": "Not your steadiest day, so skip the big gamble and don't go chasing applause.",
+     "action": "Channel the buzzy energy into something playful that can't backfire.",
+     "good_for": [
+      "tackling hard problems",
+      "bold moves",
+      "cutting something off"
+     ],
+     "go_easy": [
+      "weddings or tender starts",
+      "delicate talks"
+     ],
+     "nakshatra_nature": "Fierce (Ugra)",
+     "why": "Right now the Moon is passing through Leo (its star, Magha). Counted from the sign your Moon was in when you were born, that's the 5th step around the circle, a stretch that traditionally feels stimulation-seeking and a touch unsettled. The day's natural rhythm is with you, so progress comes a little more easily.",
+     "sanskrit": "चन्द्रः मघा-नक्षत्रे",
+     "astro_state_key": "ch5-tara9-nak9",
+     "moon_nakshatra": "Magha",
+     "moon_sign": "Leo",
+     "chandra_house": 5,
+     "chandrashtama": false,
+     "tara": "Parama Mitra (Great Joy)",
+     "tara_quality": "favourable",
+     "is_today": false
+    },
+    {
+     "date": "2026-07-18",
+     "vibe_word": "Restless",
+     "vibe_score": 0.4,
+     "band": "low",
+     "mood": "Part of you wants play, romance, a little attention, with a restless flicker running underneath.",
+     "opportunity": "Fine for light creativity and fun, as long as you keep the stakes low.",
+     "caution": "Not your steadiest day, so skip the big gamble and don't go chasing applause.",
+     "action": "Channel the buzzy energy into something playful that can't backfire.",
+     "good_for": [
+      "tackling hard problems",
+      "bold moves",
+      "cutting something off"
+     ],
+     "go_easy": [
+      "weddings or tender starts",
+      "delicate talks"
+     ],
+     "nakshatra_nature": "Fierce (Ugra)",
+     "why": "Right now the Moon is passing through Leo (its star, Purva Phalguni). Counted from the sign your Moon was in when you were born, that's the 5th step around the circle, a stretch that traditionally feels stimulation-seeking and a touch unsettled. There's no strong pull either way, so set your own steady pace.",
+     "sanskrit": "चन्द्रः पूर्वफाल्गुनी-नक्षत्रे",
+     "astro_state_key": "ch5-tara1-nak10",
+     "moon_nakshatra": "Purva Phalguni",
+     "moon_sign": "Leo",
+     "chandra_house": 5,
+     "chandrashtama": false,
+     "tara": "Janma (Birth)",
+     "tara_quality": "neutral",
+     "is_today": false
+    },
+    {
+     "date": "2026-07-19",
+     "vibe_word": "Capable",
+     "vibe_score": 0.81,
+     "band": "good",
+     "mood": "You feel ready to take problems head-on and clear out whatever's been in your way.",
+     "opportunity": "Strong for work, health habits, and finally getting the upper hand on a nagging issue.",
+     "caution": "That problem-hunting sharpness can tip into picking fights, so keep it aimed at tasks, not people.",
+     "action": "Knock out the one thing that's been quietly nagging at you.",
+     "good_for": [
+      "settling things for good",
+      "big purchases",
+      "putting down roots"
+     ],
+     "go_easy": [
+      "sudden changes",
+      "quick flips"
+     ],
+     "nakshatra_nature": "Fixed (Dhruva)",
+     "why": "Right now the Moon is passing through Virgo (its star, Uttara Phalguni). Counted from the sign your Moon was in when you were born, that's the 6th step around the circle, a stretch that traditionally feels productive and good at clearing problems. The day's natural rhythm is with you, so progress comes a little more easily.",
+     "sanskrit": "चन्द्रः उत्तरफाल्गुनी-नक्षत्रे",
+     "astro_state_key": "ch6-tara2-nak11",
+     "moon_nakshatra": "Uttara Phalguni",
+     "moon_sign": "Virgo",
+     "chandra_house": 6,
+     "chandrashtama": false,
+     "tara": "Sampat (Wealth)",
+     "tara_quality": "favourable",
+     "is_today": false
+    },
+    {
+     "date": "2026-07-20",
+     "vibe_word": "Capable",
+     "vibe_score": 0.48,
+     "band": "mixed",
+     "mood": "You feel ready to take problems head-on and clear out whatever's been in your way.",
+     "opportunity": "Strong for work, health habits, and finally getting the upper hand on a nagging issue.",
+     "caution": "That problem-hunting sharpness can tip into picking fights, so keep it aimed at tasks, not people.",
+     "action": "Knock out the one thing that's been quietly nagging at you.",
+     "good_for": [
+      "quick tasks",
+      "buying and selling",
+      "learning or sport"
+     ],
+     "go_easy": [
+      "slow, heavy projects",
+      "long commitments"
+     ],
+     "nakshatra_nature": "Swift (Kshipra)",
+     "why": "Right now the Moon is passing through Virgo (its star, Hasta). Counted from the sign your Moon was in when you were born, that's the 6th step around the circle, a stretch that traditionally feels productive and good at clearing problems. It leans more toward tending and resting than pushing hard.",
+     "sanskrit": "चन्द्रः हस्त-नक्षत्रे",
+     "astro_state_key": "ch6-tara3-nak12",
+     "moon_nakshatra": "Hasta",
+     "moon_sign": "Virgo",
+     "chandra_house": 6,
+     "chandrashtama": false,
+     "tara": "Vipat (Danger)",
+     "tara_quality": "challenging",
+     "is_today": false
+    }
+   ],
+   "ok": true
+  }
+ },
+ "/rituals/today": {
+  "status": 200,
+  "body": {
+   "date": "2026-07-14",
+   "weekday": "Tuesday",
+   "is_planet_day": true,
+   "ritual": {
+    "planet": "Mars",
+    "action": "Chant Mars's mantra 108 times (one mala).",
+    "mantra": "Om Krām Krīm Kraum Saḥ Bhaumāya Namaḥ",
+    "daily_count": 108,
+    "tip": "Plant a neem tree. Feed sweets to younger siblings. Donate red lentils on Tuesdays.",
+    "deity": "Hanuman / Subramanya / Mangal",
+    "why": "Today is Tuesday, ruled by Mars — a planet your chart asks you to strengthen."
+   }
+  }
+ }
+}

@@ -18,11 +18,15 @@ Plain English everywhere; Sanskrit only inside `why` / `sanskrit`.
 from datetime import date as _date, time as _time, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from shared.astro.constants import PLANETS
+from shared.astro.constants import PLANETS, NAK_NATURES, NAK_FIT
 from shared.astro.astro_calc import (
     local_to_julian_day, get_planet_longitude_and_speed,
     nakshatra_info, sign_index_from_lon, sign_name, calculate_tara_bala,
 )
+
+# Transiting Moon's nakshatra name → its classical 7-fold nature label
+# (e.g. "Swift (Kshipra)"), used for the reading's activity-fit chips.
+_NAK_TO_NATURE = {n: label for label, names in NAK_NATURES.items() for n in names}
 
 # Devanagari names for the transiting Moon's nakshatra (index 0..26), used only
 # inside the `sanskrit` string. Plain-English meaning lives in the lookup below.
@@ -119,6 +123,27 @@ _ORDINAL = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th",
             7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th"}
 
 
+# ── THE one day-colour threshold (contradiction guard) ──────────────────────
+# Every surface that paints a day good / mixed / low for the user reads from
+# here: the Today reading, the 3-day + month Panchang, and the week rail. If
+# these ever used different cut-offs the app would contradict itself (a "good"
+# reading on a day the calendar marked "low"). One function, one source.
+_BAND_LABEL = {
+    "good":  "a good day for you",
+    "mixed": "a mixed day",
+    "low":   "a low-key day",
+}
+
+
+def quality_band(score: float) -> str:
+    """Coarse personal day-colour from a 0..1 vibe score: good / mixed / low."""
+    if score >= 0.60:
+        return "good"
+    if score < 0.45:
+        return "low"
+    return "mixed"
+
+
 def _natal_moon_lon(profile: dict) -> float:
     """Natal Moon longitude. Unknown birth time → noon placeholder (Moon-based
     parts stay usable; this matches the kundli _profile_to_birthdata fallback)."""
@@ -160,6 +185,8 @@ def daily_moon_forecast(profile: dict, on_date=None) -> dict:
     transit = _transit_moon_lon(on_date, tz)
 
     nak, _nak_lord, _pada = nakshatra_info(transit)
+    nature = _NAK_TO_NATURE.get(nak, "Mixed (Mishra)")
+    fit = NAK_FIT[nature]                       # activity-fit chips for the reading
     t_sidx = sign_index_from_lon(transit)
     n_sidx = sign_index_from_lon(natal)
     house = ((t_sidx - n_sidx) % 12) + 1
@@ -181,14 +208,29 @@ def daily_moon_forecast(profile: dict, on_date=None) -> dict:
            f"the circle, a stretch that traditionally feels {m['theme']}. {_TARA_CLAUSE[quality]}")
     sanskrit = f"चन्द्रः {_NAK_DEVANAGARI[nak_idx]}-नक्षत्रे"
 
+    # Chandrashtama — the Moon in the 8th sign from the natal Moon (Janma Rashi).
+    # Classically a low, sensitive ~2.25-day stretch, ~once a month, to avoid big
+    # moves (confirmed against multiple sources). It IS this house-8 case, so the
+    # score already reflects it; we surface it by name so the UI can flag it even
+    # when Tara Bala softens the number.
+    is_chandrashtama = (house == 8)
+    if is_chandrashtama:
+        why += (" This is also your Chandrashtama, when the Moon passes through the 8th sign from "
+                "the one you were born under. It comes round about once a month and tends to feel "
+                "low and sensitive, so keep things light and save the big moves for another day.")
+
     return {
         "date": on_date.isoformat(),
         "vibe_word": m["vibe"],
         "vibe_score": score,
+        "band": quality_band(score),   # good / mixed / low — the one canonical day-colour
         "mood": m["mood"],
         "opportunity": m["opportunity"],
         "caution": m["caution"],
         "action": m["action"],
+        "good_for": fit["good_for"],            # 2-3 short chips (nakshatra activity-fit)
+        "go_easy": fit["go_easy"],              # 2-3 short chips
+        "nakshatra_nature": nature,             # e.g. "Swift (Kshipra)" (behind a "why?")
         "why": why,
         "sanskrit": sanskrit,
         # Everything the lookup keys on → identical states share this key (cacheable).
@@ -197,24 +239,36 @@ def daily_moon_forecast(profile: dict, on_date=None) -> dict:
         "moon_nakshatra": nak,
         "moon_sign": sign,
         "chandra_house": house,
+        "chandrashtama": is_chandrashtama,
         "tara": tara["tara"],
         "tara_quality": quality,
     }
 
 
-def _band(score: float) -> str:
-    """Coarse good / neutral / difficult band for the 7-day rail's colour."""
-    if score >= 0.60:
-        return "good"
-    if score < 0.45:
-        return "difficult"
-    return "neutral"
+def day_quality(profile: dict, on_date=None) -> dict:
+    """THE personal day-colour for a profile + date — the contradiction guard.
+
+    The Today reading hero, the 3-day strip + month grid in My Panchang, and the
+    week rail all colour a day from this, so they can never disagree. Pure math +
+    lookup (reuses daily_moon_forecast), no AI. Same { profile } contract.
+    Returns { date, band: good|mixed|low, score, label, vibe_word }.
+    """
+    f = daily_moon_forecast(profile, on_date)
+    band = f["band"]
+    return {
+        "date": f["date"],
+        "band": band,
+        "score": f["vibe_score"],
+        "label": _BAND_LABEL[band],
+        "vibe_word": f["vibe_word"],
+        "chandrashtama": f.get("chandrashtama", False),
+    }
 
 
 def weekly_moon_forecast(profile: dict, start_date=None, days: int = 7) -> dict:
     """`days` consecutive daily forecasts from start_date for the Today tab's
-    "next N days" rail. Each entry is the full daily_moon_forecast plus a coarse
-    `band` (good/neutral/difficult) for the rail colour and an `is_today` flag.
+    "next N days" rail. Each entry is the full daily_moon_forecast (which already
+    carries the canonical `band` good/mixed/low for the rail colour) + an `is_today` flag.
 
     Pure math + lookup, no AI. Same { profile } contract as daily_moon_forecast;
     works at every birth-time tier. `start_date`: None → today (profile's tz).
@@ -230,7 +284,7 @@ def weekly_moon_forecast(profile: dict, start_date=None, days: int = 7) -> dict:
     for i in range(max(1, days)):
         d = start_date + timedelta(days=i)
         f = daily_moon_forecast(profile, d)
-        f["band"] = _band(f["vibe_score"])
+        # band is already set by daily_moon_forecast (the one canonical threshold)
         f["is_today"] = (d == today)
         out.append(f)
     return {"start_date": start_date.isoformat(), "days": out}
@@ -249,6 +303,7 @@ def astro_state_for(profile: dict, on_date=None) -> dict:
         "moon_sign": f.get("moon_sign"),
         "moon_nakshatra": f.get("moon_nakshatra"),
         "chandra_house": f.get("chandra_house"),
+        "chandrashtama": f.get("chandrashtama", False),
         "tara_quality": f.get("tara_quality"),
         "vibe_word": f.get("vibe_word"),
         "vibe_score": f.get("vibe_score"),

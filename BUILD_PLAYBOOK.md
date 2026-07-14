@@ -6,7 +6,7 @@
 >
 > **UPDATED 2026-06-18 for blueprint v4** (Trust + Timing + Companion spine; warm voice, wit in the
 > share layer). Nav is now **5 tabs: Today · Timeline · People · Rituals · You** + a top-bar
-> **Readings & Tools hub** (the old Decode) + the floating **Moon companion**. See
+> **Readings & Tools hub** (the old Decode) + the floating **Sage companion**. See
 > `MOBILE_APP_BLUEPRINT.md` v4 for the authoritative structure. Key v4 deltas baked in below.
 
 ---
@@ -40,7 +40,7 @@ folder has uncommitted frontend work — commit it.
   journal, streaks, patterns) goes live.
 - **Render env vars:** `LOCATIONIQ_API_KEY` (place search), `DEEPSEEK_API_KEY` (AI failover), the 3
   Supabase keys.
-- **Commit the `mobile/` folder** (your AI Studio work is uncommitted; also `FRONTEND_PROGRESS.md`).
+- **Commit the `mobile/` folder** when there's frontend work to save.
 - **Assets:** the 12 mood images (`assets/today/<word>.png`: settled/guarded/bold/tender/restless/
   capable/warm/deep/wandering/driven/upbeat/quiet), the 3 reveal images by gender, the ritual image.
 - **Later/launch:** Apple+Google IAP setup, Expo push credentials, a Facebook App ID (for the
@@ -49,7 +49,7 @@ folder has uncommitted frontend work — commit it.
 
 ## 3. FRONTEND BUILD (the plan)
 > **⭐ FRONTEND RESTARTED (2026-06-25).** The finalized, backend-accurate, **tool-agnostic** design
-> prompts (the full Today screen + Moon chat + Diyas wallet, and the whole onboarding flow + Login)
+> prompts (the full Today screen + Sage chat + Diyas wallet, and the whole onboarding flow + Login)
 > now live verbatim in **`FRONTEND_PROMPTS.md`** (repo root). Design in **Claude Design OR Google
 > Stitch** (the prompts work in both) → port with **Google Antigravity 2 (use Gemini 3.1 Pro)** → I
 > wire the backend + we test in Expo Go. (The earlier Claude Design Today build was rejected; AI
@@ -74,7 +74,7 @@ folder has uncommitted frontend work — commit it.
   opts; exact unlocks houses, rough sharpens Moon only) · reveal → leads with timing+trust, then the
   **Proof** wow.
 - **Global elements (every screen):** top cluster (avatar + Diya chip + **Readings & Tools icon**),
-  Moon companion FAB (chat, ephemeral + auto-remember).
+  Sage companion FAB (chat, ephemeral + auto-remember).
 - **Today** — LOCKED, no structural change (forecast, check-in 2-tap, **Mirror**, good/avoid, ritual,
   event, nav).
 - **Timeline (NEW hero tab)** — current chapter (Mahadasha+Antardasha) · life roadmap · **Sade Sati
@@ -90,9 +90,9 @@ folder has uncommitted frontend work — commit it.
 - **Readings & Tools hub (old Decode, top-bar + contextual):** kundli (basic/premium PDF) + **Trust
   badge** + full-chart transparency · readings (Full Life/Marriage/Purpose/Prashna) · **Auspicious
   Days planner** (+calendar sync) · tools (numerology/palm/face/tarot/varshaphal) · **Pro view**.
-- **Overlays/screens:** Chat (Moon) · Diyas wallet · paywall/Plus · Diya top-up · share-card sheet.
+- **Overlays/screens:** Chat (the Sage) · Diyas wallet · paywall/Plus · Diya top-up · share-card sheet.
 - **CUT (don't build):** dream log, Past-Life, Receipt, Rank-circle, glossary, save-chat-answer.
-- **DEFERRED to post-launch (built, dormant):** the voice "talk to the Moon" feature (`features/talk/`
+- **DEFERRED to post-launch (built, dormant):** the voice "talk to the Sage" feature (`features/talk/`
   + `voice/kokoro_service.py`). On-device STT (free) → `/talk` (RAG-grounded, translate-first for
   Hindi) → free Kokoro TTS (`en`+`hi`). Shelved for v1: can't be flawless at the cost (multi-hop
   latency, unverified Kokoro Hindi voice, free-Kokoro-only). Code is harmless/dormant; flip on later.
@@ -178,7 +178,7 @@ calendar sync on Auspicious Days, personalize the forecast with the Memory, and 
   Render auto-deploys.
 
 ## 8. THINGS EASILY MISSED (my notes to self)
-- The `mobile/` folder is uncommitted — commit it; keep `FRONTEND_PROGRESS.md` updated.
+- The `mobile/` folder is the frontend; commit it when there's work to save.
 - The Streamlit app (`ui_streamlit/`) is the working reference — don't break it.
 - The chat companion = **the Moon** (Chandra), NOT a flame (flame = the Diya currency, would clash).
 - Depth-mode lives in **Settings**, not onboarding (default simple + per-card "why?" tap).

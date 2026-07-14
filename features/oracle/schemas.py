@@ -64,8 +64,13 @@ class PrashnaRequest(BaseModel):
     lat: float | None = None
     lon: float | None = None
     tz: str | None = None
+    narrate: bool = True         # False = free deterministic verdict only (no AI);
+                                 # True = verdict + warm AI+RAG reading (costs Diyas)
 
 
 class PrashnaResponse(BaseModel):
     verdict: str                 # YES / NO / DELAYED / UNCLEAR
-    reading: str
+    reason: str = ""             # the plain KP reason (always present, no AI)
+    reading: str = ""            # the warm narrative (only when narrate=True)
+    topic: str = ""              # what the question was read as being about
+    interpreted: str = ""        # the question restated (positive event phrasing)

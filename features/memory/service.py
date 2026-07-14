@@ -41,6 +41,47 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip().lower())
 
 
+# Relationship / life-event / goal / fear words — a strong signal that an entry
+# holds something durable worth remembering.
+_SIGNAL_WORDS = {
+    # people / relationships
+    "partner", "boyfriend", "girlfriend", "wife", "husband", "spouse", "mom", "mum",
+    "mother", "dad", "father", "sister", "brother", "son", "daughter", "kid", "kids",
+    "child", "friend", "bestie", "boss", "colleague", "manager", "crush", "ex",
+    "family", "married", "marriage", "dating", "engaged", "relationship",
+    # life events
+    "job", "work", "interview", "exam", "test", "wedding", "moved", "move", "moving",
+    "quit", "fired", "hired", "promotion", "promoted", "started", "launched", "breakup",
+    "broke", "divorce", "pregnant", "baby", "diagnosed", "surgery", "died", "death",
+    "funeral", "graduated", "accepted", "rejected", "offer", "deal", "signed", "bought",
+    "sold", "loan", "debt", "raise", "salary", "business", "startup", "college", "school",
+    # goals / fears
+    "want", "hope", "dream", "goal", "plan", "planning", "afraid", "scared", "worried",
+    "fear", "anxious", "decided", "decision", "future", "scared",
+}
+
+
+def _worth_extracting(text: str) -> bool:
+    """Cheap, deterministic gate: should we spend the extraction AI call on this?
+
+    Skips obvious trivia ("feeling tired", "had coffee", "meh") to keep cost down,
+    but is BIASED toward extracting (a missed fact is worse than an occasional
+    spent call): anything with a relationship/event/goal word, a proper noun, a
+    number/date, or real length still goes through.
+    """
+    t = (text or "").strip()
+    if not t:
+        return False
+    words = re.findall(r"[A-Za-z']+", t)
+    if {w.lower() for w in words} & _SIGNAL_WORDS:
+        return True
+    if any(w[:1].isupper() for w in words[1:]):    # a proper noun beyond the first word
+        return True
+    if any(ch.isdigit() for ch in t):              # a date / amount / age
+        return True
+    return len(words) >= 20                         # a long entry: worth a look anyway
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Extraction (cheap structured AI; robust — never raises)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -106,7 +147,10 @@ def _extract_facts_ai(text: str, existing: list[str]) -> list[dict]:
 def extract_and_save(user_id: str, text: str, source: str = "chat") -> dict:
     """Distil durable facts from `text` and MERGE them into the user's memory.
     Server-side (SERVICE client, like the wallet). Never raises.
-    Returns {ok, added, reinforced}."""
+    Returns {ok, added, reinforced, skipped}."""
+    if not _worth_extracting(text):
+        # Trivia / pure mood — don't pay for an AI call (selective memory, cost rule).
+        return {"ok": True, "added": 0, "reinforced": 0, "skipped": True}
     try:
         svc = db.get_service_client()
     except Exception:
@@ -144,7 +188,7 @@ def extract_and_save(user_id: str, text: str, source: str = "chat") -> dict:
                 added += 1
         except Exception:
             continue
-    return {"ok": True, "added": added, "reinforced": reinforced}
+    return {"ok": True, "added": added, "reinforced": reinforced, "skipped": False}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

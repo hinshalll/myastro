@@ -86,6 +86,91 @@ _EVENT_RULES: dict[str, dict] = {
                        "Shravana", "Dhanishta", "Revati"},
         "good_wd": {0, 2, 3, 4}, "avoid_wd": {1, 5, 6},
     },
+    # Vivaha — the classical wedding stars (drikpanchang authoritative list,
+    # mpanchang, ganeshaspeaks). Mon/Wed/Thu/Fri favoured; Tue/Sat/Sun avoided.
+    # NOTE: panchanga-based auspicious DATES; a real wedding muhurat also weighs
+    # both charts + guna milan (our matchmaking tool), so we frame these as
+    # "generally auspicious wedding days".
+    "marriage": {
+        "label": "a wedding",
+        "nakshatras": {"Rohini", "Mrigashira", "Magha", "Uttara Phalguni", "Hasta",
+                       "Swati", "Anuradha", "Mula", "Uttara Ashadha",
+                       "Uttara Bhadrapada", "Revati"},
+        "good_wd": {0, 2, 3, 4}, "avoid_wd": {1, 5, 6},
+    },
+    # Surgery / operation — the SPECIAL case that INVERTS the universal rules
+    # (Muhurta-for-surgery texts; starspeak, reliableastrology, clickastro,
+    # indiadivine): the sharp/Tikshna stars (Ardra, Ashlesha, Jyeshtha, Mula) for
+    # the "cutting", Tuesday (Mars = surgery) & Saturday (Saturn = disease) are
+    # BEST, and the Rikta tithis (4/9/14) are FAVOURABLE here, not avoided. Hence
+    # `rikta_ok`. Framed as gentle guidance — surgery timing is best confirmed with
+    # a doctor and an astrologer.
+    "surgery": {
+        "label": "surgery or an operation",
+        "nakshatras": {"Ardra", "Ashlesha", "Jyeshtha", "Mula"},
+        "good_wd": {1, 5}, "avoid_wd": set(),
+        "rikta_ok": True,
+    },
+    # Starting medical treatment / medicine (distinct from cutting) — the healing
+    # set led by Ashwini (star of the divine physicians), plus the soft/steady
+    # stars (clickastro, truthstar). Mon/Wed/Thu/Fri; Saturn's day eased off.
+    "medical": {
+        "label": "starting treatment",
+        "nakshatras": {"Ashwini", "Rohini", "Mrigashira", "Punarvasu", "Pushya",
+                       "Hasta", "Chitra", "Swati", "Anuradha", "Shravana",
+                       "Dhanishta", "Shatabhisha", "Uttara Bhadrapada", "Revati"},
+        "good_wd": {0, 2, 3, 4}, "avoid_wd": {5},
+    },
+    # Vidyarambha — starting studies (drikpanchang, astrosage, ganeshaspeaks):
+    # Ashwini/Rohini/Punarvasu/Hasta/Swati/Anuradha/Mula/Uttara Bhadrapada + the
+    # learning stars. Wed/Thu/Fri (Mercury/Jupiter/Venus) favoured; Tue/Sat eased.
+    "education": {
+        "label": "starting studies",
+        "nakshatras": {"Ashwini", "Rohini", "Mrigashira", "Punarvasu", "Pushya",
+                       "Hasta", "Chitra", "Swati", "Anuradha", "Mula", "Shravana",
+                       "Revati", "Uttara Bhadrapada"},
+        "good_wd": {2, 3, 4}, "avoid_wd": {1, 5},
+    },
+    # Buying property / land (drikpanchang, mpanchang, anytimeastro): the fixed
+    # (Dhruva) stars anchor immovable assets, plus soft ones. Tue (Mars = land) /
+    # Thu / Fri favoured; Sat/Sun eased. (Panchak caution is nakshatra-based and
+    # partly captured by the star set.)
+    "property": {
+        "label": "buying property or land",
+        "nakshatras": {"Rohini", "Mrigashira", "Uttara Phalguni", "Uttara Ashadha",
+                       "Uttara Bhadrapada", "Chitra", "Swati", "Anuradha",
+                       "Dhanishta", "Shatabhisha", "Revati"},
+        "good_wd": {1, 3, 4}, "avoid_wd": {5, 6},
+    },
+    # Joining a new job (astrotales, ganeshaspeaks, indastro): the mild/friendly
+    # stars for a lasting livelihood. Sun/Mon/Wed/Thu/Fri auspicious; Tue/Sat eased.
+    "job": {
+        "label": "starting a new job",
+        "nakshatras": {"Ashwini", "Rohini", "Mrigashira", "Punarvasu", "Pushya",
+                       "Hasta", "Chitra", "Swati", "Anuradha", "Uttara Phalguni",
+                       "Uttara Ashadha", "Uttara Bhadrapada", "Revati"},
+        "good_wd": {0, 2, 3, 4, 6}, "avoid_wd": {1, 5},
+    },
+    # Mundan / Chudakarana — a child's first haircut (drikpanchang, astrosage,
+    # 99pandit): movable + gentle + short stars, and Jyeshtha. Mon/Wed/Thu/Fri.
+    "mundan": {
+        "label": "a mundan (first haircut)",
+        "nakshatras": {"Ashwini", "Mrigashira", "Punarvasu", "Pushya", "Hasta",
+                       "Chitra", "Swati", "Jyeshtha", "Shravana", "Dhanishta",
+                       "Shatabhisha", "Revati"},
+        "good_wd": {0, 2, 3, 4}, "avoid_wd": {1, 5, 6},
+    },
+    # Annaprashana — a baby's first solid food (drikpanchang, clickastro,
+    # ganeshaspeaks): the nourishing stars (Pushya/Rohini/Shravana/Revati foremost).
+    # Mon/Wed/Thu/Fri; Shukla paksha and Purnima especially good.
+    "annaprashana": {
+        "label": "a baby's first-food ceremony",
+        "nakshatras": {"Rohini", "Mrigashira", "Punarvasu", "Pushya", "Hasta",
+                       "Chitra", "Swati", "Anuradha", "Shravana", "Dhanishta",
+                       "Uttara Phalguni", "Uttara Ashadha", "Uttara Bhadrapada",
+                       "Revati"},
+        "good_wd": {0, 2, 3, 4}, "avoid_wd": {1, 5, 6},
+    },
     # General — the broadly auspicious set (Pushya foremost).
     "general": {
         "label": "an important new start",
@@ -96,6 +181,64 @@ _EVENT_RULES: dict[str, dict] = {
         "good_wd": {0, 2, 3, 4}, "avoid_wd": {1, 5},
     },
 }
+
+
+# Free-text → the nearest event rule-set (for the "type a custom thing" box).
+# Deterministic keyword match, NO AI. Specific categories are checked before the
+# generic "signing" bucket so "buy a car" → vehicle, "buy a house" → housewarming.
+# Order matters — the FIRST matching set wins, so specific life-events are listed
+# before the broad "signing" (business) net. Baby ceremonies (mundan/annaprashana)
+# come before "naming" so "baby's first haircut" isn't caught by a naming keyword.
+_EVENT_KEYWORDS = [
+    ("travel", ("travel", "trip", "journey", "flight", "vacation", "holiday",
+                "yatra", "pilgrimage", "tour", "visit abroad")),
+    ("vehicle", ("car", "bike", "scooter", "vehicle", "truck", "auto", "motorcycle",
+                 "new ride")),
+    ("marriage", ("wedding", "marry", "married", "marriage", "shaadi", "shadi",
+                  "vivah", "vivaah", "betroth", "engagement", "sagai", "roka",
+                  "nuptial")),
+    ("property", ("property", "land", "plot", "real estate", "real-estate",
+                  "registry", "registration", "buy a house", "buy house",
+                  "buy a flat", "buy flat", "buy a home", "buy home", "buy land",
+                  "purchase property", "buy property", "buy a plot", "site")),
+    ("housewarming", ("housewarming", "house warming", "griha pravesh", "griha",
+                      "pravesh", "move in", "moving in", "move into",
+                      "shift to", "new house pooja", "new home pooja")),
+    ("surgery", ("surgery", "operation", "operate", "operated", "surgical",
+                 "transplant", "c-section", "cesarean", "caesarean")),
+    ("medical", ("treatment", "medicine", "medication", "therapy", "chemo",
+                 "dialysis", "start medicine", "begin treatment", "healing",
+                 "recovery start", "physiotherapy")),
+    ("education", ("education", "study", "studies", "school", "college",
+                   "admission", "exam", "course", "tuition", "vidyarambh",
+                   "vidyarambha", "aksharabhyasa", "learning", "degree", "class")),
+    ("mundan", ("mundan", "mundana", "tonsure", "first haircut", "chudakaran",
+                "choodakaran", "choodakarana", "chudakarana", "choula",
+                "shave head", "hair cutting ceremony")),
+    ("annaprashana", ("annaprashan", "annaprashana", "first food", "first rice",
+                      "rice ceremony", "feeding ceremony", "weaning",
+                      "first solid")),
+    ("naming", ("naming", "namkaran", "namakaran", "name ceremony", "baby name",
+                "name my baby", "newborn", "christening", "cradle")),
+    ("job", ("job", "joining", "interview", "promotion", "appraisal",
+             "employment", "new role", "offer letter", "join office", "new job",
+             "resume", "placement")),
+    ("signing", ("business", "deal", "contract", "agreement", "sign",
+                 "office", "startup", "company", "shop", "invest", "buy",
+                 "purchase", "loan", "launch", "open", "venture", "money",
+                 "raise", "salary")),
+]
+
+
+def classify_event(text: str) -> str:
+    """Map a free-text event ('start a YouTube channel', 'buy a bike') to the
+    nearest classical rule-set, or 'general'. Deterministic, no AI."""
+    t = (text or "").lower()
+    for event, kws in _EVENT_KEYWORDS:
+        if any(k in t for k in kws):
+            return event
+    return "general"
+
 
 # Universal tithi rules (apply to every event).
 _RIKTA_TITHIS = {4, 9, 14}                       # "empty" days — avoid
@@ -144,7 +287,10 @@ def _score_day(rules: dict, nak: str, tithi_str: str, yoga: str, karana: str, wd
     if amavasya:
         score -= 0.40
     elif t_num in _RIKTA_TITHIS:
-        score -= 0.22
+        # Rikta tithis (4/9/14) are "empty" days avoided for most events, BUT some
+        # (notably surgery) classically FAVOUR them — `rikta_ok` skips the penalty.
+        if not rules.get("rikta_ok"):
+            score -= 0.22
     elif purnima or t_num in _AUSPICIOUS_TITHIS:
         score += 0.08
 
@@ -199,7 +345,10 @@ def plan_muhurta(event_type: str, start_date, end_date, lat: float, lon: float,
     """
     # (Ephemeris adapter is always Lahiri-sidereal — no global state to set.)
 
-    rules = _EVENT_RULES.get((event_type or "").lower(), _EVENT_RULES["general"])
+    key = (event_type or "").lower()
+    if key not in _EVENT_RULES:
+        key = classify_event(key)          # free-text ("buy a bike") → nearest rules
+    rules = _EVENT_RULES[key]
     label = rules["label"]
 
     start = _date.fromisoformat(start_date) if isinstance(start_date, str) else start_date

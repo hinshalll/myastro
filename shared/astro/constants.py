@@ -56,6 +56,28 @@ NAK_ADVICE = {
     "Sharp (Tikshna)": "Focused energy — excellent for research, analysis, and ending bad habits.",
 }
 
+# Activity-fit chips for the Today reading's "Good for" / "Go easy on" rows, keyed
+# by the same classical 7-fold nakshatra nature above. Warm, plain, layman words
+# (no jargon). The suitable activities are the classical Muhurta uses of each
+# category; "go easy on" is its opposite-natured work. Confirmed against multiple
+# sources (Drik Panchang's seven-category classification, Muhurta Chintamani).
+NAK_FIT = {
+    "Fixed (Dhruva)":  {"good_for": ["settling things for good", "big purchases", "putting down roots"],
+                        "go_easy":  ["sudden changes", "quick flips"]},
+    "Movable (Chara)": {"good_for": ["travel", "moving or vehicles", "making a change"],
+                        "go_easy":  ["permanent commitments", "signing for keeps"]},
+    "Fierce (Ugra)":   {"good_for": ["tackling hard problems", "bold moves", "cutting something off"],
+                        "go_easy":  ["weddings or tender starts", "delicate talks"]},
+    "Mixed (Mishra)":  {"good_for": ["routine tasks", "clearing pending work", "prayer or worship"],
+                        "go_easy":  ["big new beginnings", "risky bets"]},
+    "Swift (Kshipra)": {"good_for": ["quick tasks", "buying and selling", "learning or sport"],
+                        "go_easy":  ["slow, heavy projects", "long commitments"]},
+    "Tender (Mridu)":  {"good_for": ["love and people", "art or music", "small comforts"],
+                        "go_easy":  ["confrontation", "harsh decisions"]},
+    "Sharp (Tikshna)": {"good_for": ["focus and discipline", "ending a bad habit", "hard conversations"],
+                        "go_easy":  ["romance or weddings", "gentle new starts"]},
+}
+
 DASHA_YEARS = {"Ketu":7,"Venus":20,"Sun":6,"Moon":10,"Mars":7,
                "Rahu":18,"Jupiter":16,"Saturn":19,"Mercury":17}
 
