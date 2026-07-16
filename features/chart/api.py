@@ -39,6 +39,24 @@ if router is not None:
                     detail="A birthplace (lat/lon) is needed to read the chart.")
             raise
 
+    @router.post("/reveal")
+    def reveal(req: InterpretRequest) -> dict:
+        """The free onboarding Reveal bundle, from the REAL sidereal chart.
+
+        FREE: pure data + composition, NO AI (instant). Returns exactly what the app's
+        Reveal screen renders — { ok, first, mood, has_rising, sun/moon/rising (each with
+        sign, nakshatra, degree, and ecliptic longitude for the natal-wheel angle),
+        insights:[{icon, role, title, deg, line}], proof, precision_note }. Rising is
+        included only with an exact birth time; otherwise a Moon-led read. Same { profile }
+        shape as /kundli/compute (needs lat/lon)."""
+        try:
+            return service.reveal(req.profile)
+        except ValueError as e:
+            if str(e) == "birthplace_required":
+                raise HTTPException(status_code=422,
+                    detail="A birthplace (lat/lon) is needed to read the chart.")
+            raise
+
     @router.post("/houses")
     def houses(req: InterpretRequest) -> dict:
         """The 12 houses, each as a warm, plain-English card (the deeper dive).

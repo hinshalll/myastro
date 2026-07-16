@@ -5,7 +5,12 @@ import { View, Text, Pressable } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Defs, LinearGradient as SvgLinear, Stop, Path, G } from "react-native-svg";
-import { Mood, ECLIPSE, READ_CHIPS, PERSONAL_LINES, LIFE_AREAS, MIRROR } from "../theme";
+import { Mood, demoFallback } from "../theme";
+// PERSONAL_LINES is deliberately NOT imported. It is the one constant that claimed to
+// remember the user ("You usually soften on days like this") and it was shown to people who
+// had never checked in once. It is earned from /memory/today or it does not appear.
+import { READ_CHIPS, LIFE_AREAS } from "../theme.demo";
+import type { LiveReading, LiveArea, LiveEclipse, LiveRitual, LiveSandhi } from "../api/today";
 import { INK, INK2, GRAY, WASH, HAIR, aA, sans, serif, mono, cardStyle, shadow } from "../ui/palette";
 import { Press, Pill, Label, GlossIcon, RadialGlow } from "../ui/atoms";
 import { Icon } from "../ui/Icon";
@@ -15,27 +20,52 @@ import { useRiseIn } from "../ui/motion";
 const GOODC = "#2E7D5B", EASYC = "#B4503E";
 
 // ===== EclipseCard =====
-export function EclipseCard({ mood, delay = 0, onOpen, type, onToggleType }: any) {
+// WIRED, and deliberately has NO demo fallback: an eclipse card is a dated, specific,
+// slightly alarming claim ("a solar eclipse in 3 days"). Inventing one is the worst kind
+// of lie this app could tell, so no live eclipse means NO CARD. The old solar/lunar toggle
+// was a design-preview affordance for flipping between the two looks; with real data the
+// sky decides, not a tap.
+export function EclipseCard({ mood, delay = 0, onOpen, live }: { mood: Mood; delay?: number; onOpen: () => void; live: LiveEclipse }) {
   const { accent, accentDeep } = mood;
   const riseA = useRiseIn(delay);
-  const t = type || ECLIPSE.type;
+  if (!live) return null;
+  const t = live.type;
   const tile = t === "solar" ? ["#F6B24A", "#CE7C1B"] : ["#8385C8", "#4B4B88"];
   return (
     <Animated.View style={[{ marginBottom: 14 }, riseA]}>
       <Press scale={0.99} onPress={onOpen}>
         <View style={cardStyle({ paddingVertical: 14, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 13, borderColor: aA(accent, 0.25) })}>
-          <Pressable onPress={onToggleType}>
-            <View>
-              <GlossIcon c1={tile[0]} c2={tile[1]} size={42} radius={13}><EclipseGlyph type={t} size={24} /></GlossIcon>
-              <View style={{ position: "absolute", right: -5, bottom: -5, width: 18, height: 18, borderRadius: 999, backgroundColor: "#FFF", borderWidth: 1, borderColor: HAIR, alignItems: "center", justifyContent: "center", ...shadow({ y: 1, blur: 4, opacity: 0.22, elevation: 2 }) } as any}>
-                <Icon n="sync" s={11} c={accentDeep} sw={2} />
-              </View>
-            </View>
-          </Pressable>
+          <GlossIcon c1={tile[0]} c2={tile[1]} size={42} radius={13}><EclipseGlyph type={t} size={24} /></GlossIcon>
           <View style={{ flex: 1 }}>
             <Label c={aA(accentDeep, 0.9)}>Heads up</Label>
-            <Text style={{ fontFamily: serif(500), fontSize: 17, color: INK, marginTop: 2 }}>A {t} eclipse in {ECLIPSE.inDays} days</Text>
-            <Text style={{ fontFamily: sans(400), fontSize: 12.5, color: GRAY, marginTop: 2, lineHeight: 17 }}>{ECLIPSE.short ? ECLIPSE.short[t] : ""}</Text>
+            <Text style={{ fontFamily: serif(500), fontSize: 17, color: INK, marginTop: 2 }}>
+              A {t} eclipse {live.inDays === 0 ? "today" : live.inDays === 1 ? "tomorrow" : `in ${live.inDays} days`}
+            </Text>
+            <Text style={{ fontFamily: sans(400), fontSize: 12.5, color: GRAY, marginTop: 2, lineHeight: 17 }}>{live.short}</Text>
+          </View>
+          <Icon n="chevR" s={17} c={GRAY} />
+        </View>
+      </Press>
+    </Animated.View>
+  );
+}
+
+// ===== SandhiCard =====
+// The Moon crossing a sign boundary = a real, dated low window (at most one a day). Same
+// rule as the eclipse: no live window, no card. Nothing to invent, nothing to hedge.
+export function SandhiCard({ mood, delay = 0, onOpen, live }: { mood: Mood; delay?: number; onOpen: () => void; live: LiveSandhi }) {
+  const { accent, accentDeep } = mood;
+  const riseA = useRiseIn(delay);
+  if (!live) return null;
+  return (
+    <Animated.View style={[{ marginBottom: 14 }, riseA]}>
+      <Press scale={0.99} onPress={onOpen}>
+        <View style={cardStyle({ paddingVertical: 14, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 13, borderColor: aA(accent, 0.25) })}>
+          <GlossIcon c1="#8385C8" c2="#4B4B88" size={42} radius={13}><EclipseGlyph type="lunar" size={24} /></GlossIcon>
+          <View style={{ flex: 1 }}>
+            <Label c={aA(accentDeep, 0.9)}>A low window</Label>
+            <Text style={{ fontFamily: serif(500), fontSize: 17, color: INK, marginTop: 2 }}>{live.start} to {live.end}</Text>
+            <Text style={{ fontFamily: sans(400), fontSize: 12.5, color: GRAY, marginTop: 2, lineHeight: 17 }} numberOfLines={2}>{live.note}</Text>
           </View>
           <Icon n="chevR" s={17} c={GRAY} />
         </View>
@@ -55,12 +85,18 @@ function Chip({ label, tone }: { label: string; tone: "good" | "easy" }) {
   );
 }
 
-export function ReadingCard({ mood, delay = 0, onCycle, onShare, onTiming }: any) {
+export function ReadingCard({ mood, delay = 0, onCycle, onShare, onTiming, live, strongWindow, personal }: any) {
   const { accent, accentDeep, glow } = mood;
   const riseA = useRiseIn(delay);
   const [whyOpen, setWhyOpen] = useState(false);
-  const chips = (READ_CHIPS as any)[mood.key] || { good: [], easy: [] };
-  const personal = (PERSONAL_LINES as any)[mood.key];
+  // demoFallback fires ONLY when live is missing, which is exactly the case worth shouting
+  // about: it throws in prod and raises the on-screen DEMO badge in dev. `mood.forecast` is
+  // the prototype's placeholder prose, not this user's reading.
+  const lv: LiveReading | null = live || null;
+  const chips = demoFallback("Read · reading chips", lv && { good: lv.good, easy: lv.easy, offDay: lv.offDay },
+    (READ_CHIPS as any)[mood.key] || { good: [], easy: [] });
+  const readingLine = demoFallback("Read · today's reading", lv?.mood, mood.forecast.mood);
+  const whyText = demoFallback("Read · why this?", lv?.why, mood.forecast.why);
   return (
     <Animated.View style={[{ marginBottom: 24 }, riseA]}>
       <View style={cardStyle({ padding: 20, overflow: "hidden" })}>
@@ -74,7 +110,7 @@ export function ReadingCard({ mood, delay = 0, onCycle, onShare, onTiming }: any
           </View>
           <MoodEmblem mood={mood} size={60} />
         </View>
-        <Text style={{ fontFamily: serif(400), fontSize: 18, lineHeight: 26, color: INK2, marginTop: 14 }}>{mood.forecast.mood}</Text>
+        <Text style={{ fontFamily: serif(400), fontSize: 18, lineHeight: 26, color: INK2, marginTop: 14 }}>{readingLine}</Text>
         {personal ? (
           <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start", marginTop: 14 }}>
             <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: accent, marginTop: 7 }} />
@@ -99,7 +135,7 @@ export function ReadingCard({ mood, delay = 0, onCycle, onShare, onTiming }: any
             <Icon n="clock" s={17} c={accentDeep} sw={1.9} />
             <View style={{ flex: 1, flexDirection: "row" }}>
               <Text style={{ fontFamily: sans(700), fontSize: 13, color: INK }}>Strongest window today</Text>
-              <Text style={{ fontFamily: sans(700), fontSize: 13, color: accentDeep }}>{"  ·  11:40–12:30"}</Text>
+              <Text style={{ fontFamily: sans(700), fontSize: 13, color: accentDeep }}>{`  ·  ${strongWindow || "11:40–12:30"}`}</Text>
             </View>
             <Icon n="chevR" s={16} c={accentDeep} />
           </View>
@@ -121,7 +157,7 @@ export function ReadingCard({ mood, delay = 0, onCycle, onShare, onTiming }: any
         {whyOpen ? (
           <Animated.View entering={FadeIn.duration(280)} style={{ marginTop: 14 }}>
             <View style={{ padding: 15, borderRadius: 14, backgroundColor: WASH, borderWidth: 1, borderColor: HAIR }}>
-              <Text style={{ fontFamily: serif(400), fontSize: 15.5, lineHeight: 24, color: INK2 }}>{mood.forecast.why}</Text>
+              <Text style={{ fontFamily: serif(400), fontSize: 15.5, lineHeight: 24, color: INK2 }}>{whyText}</Text>
             </View>
           </Animated.View>
         ) : null}
@@ -131,9 +167,12 @@ export function ReadingCard({ mood, delay = 0, onCycle, onShare, onTiming }: any
 }
 
 // ===== LifeAreas =====
-export function LifeAreas({ mood, delay = 0, onArea }: any) {
+export function LifeAreas({ mood, delay = 0, onArea, live }: any) {
   const riseA = useRiseIn(delay);
-  const la = (LIFE_AREAS as any)[mood.key] || {};
+  const lv: { love: LiveArea; work: LiveArea; money: LiveArea } | null = live || null;
+  const la = demoFallback("Read · Love/Work/Money", lv && {
+    love: lv.love.line, work: lv.work.line, money: lv.money.line,
+  }, (LIFE_AREAS as any)[mood.key] || {});
   const rows = [
     { k: "Love", v: la.love, c1: "#E48AA6", c2: "#C55C7E", ic: "heart" },
     { k: "Work", v: la.work, c1: "#6E86C4", c2: "#4C63A0", ic: "work" },
@@ -182,10 +221,15 @@ function BookEmblem({ mood }: { mood: Mood }) {
   );
 }
 
+// The invite is static UI copy, not fabricated user data, so it lives here rather than in
+// theme.demo. (The old code read MIRROR.invites[0] and never rotated, so this is the same
+// string it always showed — it just no longer drags a demo import onto the Read tab.)
+const MIRROR_INVITE = "Anything on your heart tonight?";
+
 export function JournalCard({ mood, delay = 0, written, onOpen }: any) {
   const { accent, accentDeep, glow } = mood;
   const riseA = useRiseIn(delay);
-  const invite = useRef((MIRROR.invites || ["What's on your mind?"])[0]).current;
+  const invite = MIRROR_INVITE;
   return (
     <Animated.View style={[{ marginBottom: 24 }, riseA]}>
       <Press scale={0.99} onPress={onOpen}>
@@ -227,9 +271,12 @@ export function JournalCard({ mood, delay = 0, written, onOpen }: any) {
 }
 
 // ===== RitualPill =====
-export function RitualPill({ mood, delay = 0, onBegin }: any) {
+export function RitualPill({ mood, delay = 0, onBegin, live }: any) {
   const { accentDeep } = mood;
   const riseA = useRiseIn(delay);
+  const lv: LiveRitual | null = live || null;
+  const title = lv ? lv.title : "light a lamp at dusk";
+  const sub = lv ? lv.sub : "breathe slowly for one minute, a good day for Saturn";
   return (
     <Animated.View style={[{ marginBottom: 24 }, riseA]}>
       <View style={{ marginBottom: 10 }}><Label>Today's ritual</Label></View>
@@ -237,8 +284,8 @@ export function RitualPill({ mood, delay = 0, onBegin }: any) {
         <Pill radius={18} style={{ paddingVertical: 13, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 13 }}>
           <GlossIcon c1={"#F5B642"} c2={"#C77A1E"}><IconFlame /></GlossIcon>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: sans(800), fontSize: 15.5, color: INK }}>light a lamp at dusk <Text style={{ fontFamily: sans(600), color: GRAY }}>· +2 🪔</Text></Text>
-            <Text style={{ fontFamily: sans(400), fontSize: 12.5, color: GRAY, marginTop: 1 }}>breathe slowly for one minute, a good day for Saturn</Text>
+            <Text style={{ fontFamily: sans(800), fontSize: 15.5, color: INK }}>{title} <Text style={{ fontFamily: sans(600), color: GRAY }}>· +2 🪔</Text></Text>
+            <Text style={{ fontFamily: sans(400), fontSize: 12.5, color: GRAY, marginTop: 1 }}>{sub}</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             <Text style={{ fontFamily: sans(700), fontSize: 13, color: accentDeep }}>Begin</Text>

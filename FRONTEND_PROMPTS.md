@@ -373,9 +373,20 @@ vertical slice first**, verifies on the web target, user checks in Expo Go, then
 
 # 2 — ONBOARDING FLOW (+ Login)
 
+> **Updated 2026-07-15 — endpoint shapes verified live; Supabase is now set up.** Build this to
+> MATCH THE EXISTING BUILT APP exactly (the ASTROLO Today/Chat/Readings screens) — same design
+> system (`astro.tsx`): bright white, Hanken Grotesk / Newsreader / Spline Sans Mono, one calm
+> indigo accent for onboarding, glossy tiles, soft ROUNDED transparent shadows (never square),
+> pills, warm plain-English voice (no em dashes, never AI-sounding). Every step: a small mono
+> step indicator, back arrow, one primary button, roomy spacing, gentle rise-in. **The daily
+> readings already run on the captured profile alone — sign-up only adds saving + "remembers
+> you" features.** The Supabase project is LIVE (keys in `.streamlit/secrets.toml`), so sign-up/
+> login is REAL (Supabase Auth), not stubbed.
+
 Flow: **Welcome → Name+gender → Birth date+place → Birth time → Reveal → Sign-up**, with **Login**
 branching off the Welcome link. No app name/logo. Depth-mode is NOT asked here (it's a Settings toggle,
-default 'simple'). Keep the LocationIQ attribution on the place screen (required).
+default 'simple'). **Keep the LocationIQ attribution on the place screen — REQUIRED** ("Search by
+LocationIQ", linking https://locationiq.com; it's a condition of the geocoder we use).
 
 **1 — Welcome**
 > First screen, same calm visual system. No app name/logo. Headline "Meet yourself, exactly as you are."
@@ -392,10 +403,11 @@ default 'simple'). Keep the LocationIQ attribution on the place screen (required
 > Step titled "When and where were you born?", step indicator, generous spacing. A clear date-of-birth
 > picker (day/month/year); and a place search showing live city suggestions as they type ("Mumbai, India",
 > "Pune, India"), selecting one fills it in. A small note "your town is enough," and directly beneath it a
-> subtle attribution line "Search by LocationIQ." "Continue" enabled once both set. Capture `birthDate`
-> ("YYYY-MM-DD"), `birthPlace` as `{label,lat,lon,tz}`. Wiring: place field calls `POST /geo/search
-> { query, limit:5 }` → `{ results:[{label,lat,lon,tz}] }`; the "Search by LocationIQ" credit MUST stay
-> visible. Maps to `birth_date`, `birth_place`(=label), `lat`, `lon`, `tz`.
+> subtle attribution line "Search by LocationIQ" (linking https://locationiq.com). "Continue" enabled
+> once both set. Capture `birthDate` ("YYYY-MM-DD"), `birthPlace` as `{label,lat,lon,tz}`. Wiring:
+> place field calls `POST /geo/search { query }` → **VERIFIED** `{ results:[{label,lat,lon,tz}] }`
+> (already wired in `mobile/src/api/geo.ts`); the "Search by LocationIQ" credit MUST stay visible.
+> Maps to `birth_date`, `birth_place`(=label), `lat`, `lon`, `tz`.
 
 **4 — Birth time (3 levels, with consequences)**
 > Step about birth time, step indicator, designed so the user always understands their choice. "Do you
@@ -421,9 +433,12 @@ default 'simple'). Keep the LocationIQ attribution on the place screen (required
 > gracefully. Then "Want to see how real this is? Pick a day that mattered to you," and on a past date it
 > reveals what the sky was doing then and how it fits (optional, with "Maybe later"). A primary "Continue"
 > to Sign-up. Gentle loading ("Reading your sky...") + soft fallback. No sign-up/paywall here. Wiring: post
-> `{ name, date:birthDate, time:birthTime or "", tz, lat, lon, gender }` to `/chart/interpret` →
-> `{ headline, core:[{title,body,sanskrit,why}], current_chapter, precision_note }`. The Proof posts
-> `{ profile, date }` to `/companion/proof` → `{ headline, story }`. Mock for now.
+> `{ profile }` (profile = `{ name, date:birthDate, time:birthTime or "12:00", place:label, lat,
+> lon, tz, gender, exact_time }`) to `/chart/interpret` → **VERIFIED** `{ headline, core:[{title,
+> body,sanskrit,why}], birth_star:{title,body}, current_chapter:{title,body}, precision_note }`
+> (render `headline` + the `core` cards + `birth_star` + `current_chapter`; "why?" reveals each
+> card's `sanskrit`). The Proof posts `{ profile, date }` to `/companion/proof` → **VERIFIED**
+> `{ headline, story, running:{mahadasha,antardasha,since} }`. All real + stateless (no auth).
 
 **6 — Sign-up (last onboarding screen)**
 > The only place we ask, after they've felt the value. Headline "Let's keep your story safe." Line "So

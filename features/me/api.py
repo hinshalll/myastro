@@ -81,7 +81,9 @@ if router is not None:
         payload: CheckinIn, user: CurrentUser = Depends(get_current_user)
     ) -> dict:
         checkin = service.save_checkin(user, payload.model_dump())
-        streak = service.increment_streak(user, "checkin")
+        # The streak counts the day the CHECK-IN is for, which the client already told us.
+        # Recomputing "today" here would use the server's UTC day and stall real streaks.
+        streak = service.increment_streak(user, "checkin", today=payload.date)
         return {"checkin": checkin, "streak": streak}
 
     # ── Journal ──────────────────────────────────────────────────────────────

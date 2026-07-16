@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from datetime import date, time as _time
 
+from shared.timeloc import resolve_today
+
 
 def _profile_to_birthdata(p: dict):
     """Mirror of the kundli converter — keeps this feature self-contained.
@@ -137,12 +139,17 @@ _WEEKDAY_NAME = ["Monday", "Tuesday", "Wednesday", "Thursday",
                  "Friday", "Saturday", "Sunday"]
 
 
-def build_today_ritual(profile: dict, on_date: str | None = None) -> dict:
+def build_today_ritual(profile: dict, on_date: str | None = None, tz: str | None = None) -> dict:
     """One small, doable ritual for the Today card.
 
     Prefers the planet ruling today's weekday IF it's one the chart asks the
     user to support ("It's Saturday — do your Saturn remedy"); otherwise the
     top priority planet; otherwise a gentle generic practice.
+
+    `tz` is bucket D (LOCATION_TIME_AUDIT.md): the WEEKDAY decides which planet's remedy is
+    offered, so it must be the user's weekday. This used to fall back to `date.today()` — the
+    SERVER's day — and the server is UTC, so for the first 5.5 hours of every Indian day it
+    offered the PREVIOUS day's planet ("do your Saturn remedy" on a Sunday).
     """
     from shared.astro.kundli import compute_chart, PLANET_REMEDIES
 
@@ -150,7 +157,8 @@ def build_today_ritual(profile: dict, on_date: str | None = None) -> dict:
     rem = getattr(chart, "remedies", None) or {}
     priorities = [p for p in (rem.get("priority_planets") or []) if p in PLANET_REMEDIES]
 
-    today = date.fromisoformat(on_date) if on_date else date.today()
+    # explicit client date > explicit client tz > the profile's tz > IST. Never the server's.
+    today = resolve_today(on_date, tz or profile.get("tz"))
     wd = today.weekday()
     day_planet = _WEEKDAY_PLANET[wd]
 

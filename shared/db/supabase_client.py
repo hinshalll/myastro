@@ -19,6 +19,8 @@ from datetime import date as _date, timedelta
 from functools import lru_cache
 from typing import Any, Optional
 
+from shared.timeloc import user_today
+
 from shared.db.secrets import (
     supabase_anon_key,
     supabase_service_role_key,
@@ -203,14 +205,23 @@ def get_streak(client, user_id: str, kind: str = "checkin") -> Optional[dict]:
     return rows[0] if rows else None
 
 
-def increment_streak(client, user_id: str, kind: str = "checkin", today: Any = None) -> dict:
+def increment_streak(client, user_id: str, kind: str = "checkin",
+                     today: Any = None, tz: str | None = None) -> dict:
     """Bump a streak with calendar awareness:
       • same day again  → no change (already counted)
       • yesterday       → count + 1
       • older / first   → reset to 1
+
+    A streak is a CALENDAR question, so it must use the USER's day (bucket D,
+    LOCATION_TIME_AUDIT.md). Pass `today` (best) or `tz`.
+
+    This used to fall back to `_date.today()` — the SERVER's day, and the server is UTC. That
+    silently BROKE streaks: check in at 23:00 IST Monday (17:30 UTC Mon) then 02:00 IST Tuesday
+    (20:30 UTC Mon) and both land on the same UTC day, so the second hits "same day again → no
+    change". The user checked in two days running and watched their streak stall for no reason.
     """
     if today is None:
-        today = _date.today()
+        today = user_today(tz)
     elif isinstance(today, str):
         today = _date.fromisoformat(today)
 

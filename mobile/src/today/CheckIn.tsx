@@ -4,6 +4,7 @@ import { View, Text } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Mood, CHECKIN_REFLECTION } from "../theme";
+import { saveCheckin, fetchCheckinStreak } from "../api/checkin";
 import { INK, INK2, GRAY, WASH, HAIR, aA, sans, serif } from "../ui/palette";
 import { Press, Pill, Label, RadialGlow } from "../ui/atoms";
 import { Flame } from "../ui/Icon";
@@ -23,14 +24,64 @@ function ChipRow({ items, onPick }: { items: string[]; onPick: (w: string) => vo
   );
 }
 
+// ── When the check-in is allowed to ask ──────────────────────────────────────
+// EVENING ONLY, in the user's own timezone: from 5pm until midnight, then it's gone.
+//
+// This is an ACCURACY rule, not a UX preference. The pattern engine
+// (features/memory/service.py) correlates a WHOLE DAY's energy against that day's sky:
+// "On day-stars like today, you've tended to run low." Ask at 8am and you have not measured
+// the day, you've measured breakfast — and then stored it labelled as the day. That is
+// fabricated data with a true-looking label, the same sin as a fake ascendant, and it would
+// quietly poison the one feature that makes the app smarter over time.
+//
+// It also gives the day a shape: MORNING the app tells you about your day (the reading),
+// EVENING it asks how it went. The reading is the morning ritual; this is the evening one.
+export const CHECKIN_OPENS_HOUR = 17; // 5pm
+
+/**
+ * True only between 5pm and midnight WHERE THE USER PHYSICALLY IS. Midnight ends it: a day can
+ * only be reported by the person who lived it, on the day they lived it.
+ *
+ * Uses the DEVICE clock deliberately. "How did your day go?" is about the day this person just
+ * lived, which happens in the timezone they are standing in — not the timezone they were born
+ * in. Someone who signed up in India and is now in California must be asked at 5pm California
+ * time. The birth profile's tz belongs to the natal chart and nothing else.
+ *
+ * (That inconsistency is now FIXED on the other side too: the daily readings used to compute
+ * hora/panchang/timing from the BIRTH place, so a traveller's check-in and their reading
+ * disagreed about which day it was. Both now use where the user actually is — see
+ * api/place.ts::getCurrentPlace.)
+ */
+export function checkInWindowOpen(now: Date = new Date()): boolean {
+  const h = now.getHours();
+  return h >= CHECKIN_OPENS_HOUR && h < 24;
+}
+
 export function CheckInSheet({ mood, onEarn, onClose }: { mood: Mood; onEarn: (n: number) => void; onClose: (done: boolean) => void }) {
   const { accent, accentDeep, glow } = mood;
   const [mSel, setMSel] = useState<string | null>(null);
   const [eSel, setESel] = useState<string | null>(null);
+  const [streak, setStreak] = useState<number | null>(null);
+  const [saved, setSaved] = useState<boolean | null>(null);   // null = still saving
   const both = !!(mSel && eSel);
   const reflection = both ? CHECKIN_REFLECTION(mSel!, eSel!, mood.key) : "";
+
+  // The real streak, or nothing. This used to read "12 days in a row" for everyone, including
+  // someone opening the app for the very first time.
+  useEffect(() => { fetchCheckinStreak().then(setStreak).catch(() => setStreak(null)); }, []);
+
+  // The answer is the whole point: it feeds the pattern engine that later says "on day-stars
+  // like today, you've tended to run low". Before this, it was collected and dropped.
   useEffect(() => {
-    if (both) { onEarn(1); const t = setTimeout(() => onClose(true), 2600); return () => clearTimeout(t); }
+    if (!both) return;
+    let alive = true;
+    saveCheckin(mSel!, eSel!).then((r) => {
+      if (!alive) return;
+      setSaved(r.ok);
+      if (r.ok) { onEarn(1); if (r.streak) setStreak(r.streak); }
+    });
+    const t = setTimeout(() => onClose(true), 2600);
+    return () => { alive = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mSel, eSel]);
 
@@ -38,10 +89,14 @@ export function CheckInSheet({ mood, onEarn, onClose }: { mood: Mood; onEarn: (n
     <View>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Label c={aA(accentDeep, 0.9)}>Check in</Label>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-          <Flame s={13} c={accent} />
-          <Text style={{ fontFamily: sans(700), fontSize: 12, color: GRAY }}>12 days in a row</Text>
-        </View>
+        {/* The streak is a claim about the user's own history, so it appears only when it is
+            real. It used to say "12 days in a row" to someone on their very first evening. */}
+        {streak && streak > 1 ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <Flame s={13} c={accent} />
+            <Text style={{ fontFamily: sans(700), fontSize: 12, color: GRAY }}>{streak} days in a row</Text>
+          </View>
+        ) : null}
       </View>
       <Text style={{ fontFamily: serif(500), fontSize: 24, color: INK, marginTop: 6, letterSpacing: -0.3 }}>
         {both ? "Thanks for checking in." : !mSel ? "How are you today?" : "And your energy?"}
@@ -78,10 +133,18 @@ export function CheckInSheet({ mood, onEarn, onClose }: { mood: Mood; onEarn: (n
           <View style={{ marginTop: 13, padding: 15, borderRadius: 14, backgroundColor: WASH }}>
             <Text style={{ fontFamily: serif(400, true), fontSize: 16, lineHeight: 23, color: INK2 }}>{reflection}</Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginTop: 14, justifyContent: "center" }}>
-            <Flame s={15} c={glow} />
-            <Text style={{ fontFamily: sans(800), fontSize: 13, color: accentDeep }}>+1 diya lit</Text>
-          </View>
+          {/* Only celebrate a save that actually happened. "+1 diya lit" over a check-in that
+              was silently dropped is the app thanking you for something it threw away. */}
+          {saved === false ? (
+            <Text style={{ fontFamily: sans(600), fontSize: 12.5, color: GRAY, marginTop: 14, textAlign: "center" }}>
+              I couldn't keep this one. Sign in and I'll remember the next.
+            </Text>
+          ) : saved ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginTop: 14, justifyContent: "center" }}>
+              <Flame s={15} c={glow} />
+              <Text style={{ fontFamily: sans(800), fontSize: 13, color: accentDeep }}>+1 diya lit</Text>
+            </View>
+          ) : null}
         </Animated.View>
       )}
 

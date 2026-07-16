@@ -3,8 +3,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { Mood, MUHURAT, CAL_DOCTOR, ASK_MOMENT, TIME_CAPSULE } from "../theme";
+import { Mood } from "../theme";
+import { MUHURAT, CAL_DOCTOR, ASK_MOMENT, TIME_CAPSULE } from "../theme.demo";
 import { INK, INK2, GRAY, WASH, HAIR, ORANGE, aA, sans, serif, mono, shadow } from "../ui/palette";
+import { askQuick, planMuhurta } from "../api/plan";
 import { Press, Pill, Label } from "../ui/atoms";
 import { Icon } from "../ui/Icon";
 import { useSpin, useGlowPulse } from "../ui/motion";
@@ -33,9 +35,14 @@ export function MuhuratSheet({ mood }: { mood: Mood }) {
   const [pick, setPick] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
   const [loading, setLoading] = useState(false);
-  const res = (MUHURAT.results as any).default;
-  const choose = (e: string) => { setPick(e); setLoading(true); setTimeout(() => setLoading(false), 1400); };
+  const [res, setRes] = useState<any[]>([]);
+  const choose = async (e: string) => {
+    setPick(e); setLoading(true);
+    try { setRes(await planMuhurta(e)); } catch { setRes([]); }
+    setLoading(false);
+  };
   const go = () => { const t = custom.trim(); if (t) choose(t); };
+  const shown = res.length ? res : (MUHURAT.results as any).default;  // fall back to demo on error
   return (
     <View>
       <Label c={aA(accentDeep, 0.9)}>Find a good day</Label>
@@ -60,7 +67,7 @@ export function MuhuratSheet({ mood }: { mood: Mood }) {
       ) : (
         <>
           <View style={{ marginTop: 16, gap: 10 }}>
-            {res.map((r: any, i: number) => (
+            {shown.map((r: any, i: number) => (
               <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 13, paddingHorizontal: 15, borderRadius: 16, backgroundColor: i === 0 ? aA(accent, 0.08) : WASH, borderWidth: 1, borderColor: i === 0 ? aA(accent, 0.24) : HAIR }}>
                 <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: accentDeep, alignItems: "center", justifyContent: "center" }}><Text style={{ fontFamily: serif(600), fontSize: 15, color: "#FFF" }}>{i + 1}</Text></View>
                 <View style={{ flex: 1 }}>
@@ -124,7 +131,13 @@ export function AskMomentSheet({ mood, onTalk, seed }: { mood: Mood; onTalk: (q:
   const [q, setQ] = useState(seed || "");
   const [phase, setPhase] = useState<"ask" | "casting" | "done">("ask");
   const [ans, setAns] = useState<any>(null);
-  const cast = () => { if (!q.trim()) return; setPhase("casting"); setTimeout(() => { setAns(ASK_MOMENT.answers[q.trim().length % ASK_MOMENT.answers.length]); setPhase("done"); }, 1400); };
+  const cast = async () => {
+    if (!q.trim()) return;
+    setPhase("casting");
+    try { setAns(await askQuick(q.trim())); }
+    catch { setAns({ verdict: "Proceed gently", why: "I couldn't reach the sky just now — give it a moment and ask again." }); }
+    setPhase("done");
+  };
   const reset = () => { setPhase("ask"); setAns(null); setQ(""); };
   const vc = ans ? (ans.verdict === "Yes" ? "#2F8E66" : ans.verdict === "Wait" ? "#B5781A" : accentDeep) : accentDeep;
   return (

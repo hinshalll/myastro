@@ -345,7 +345,7 @@ def chandra_sandhi_window(d, tz_name, orb_deg=_SANDHI_ORB_DEG):
         "from_sign": from_sign,
         "to_sign": to_sign,
         "label": "Low window",
-        "note": "A low/reflective window — better for calm tasks; avoid big commitments.",
+        "note": "A softer, more reflective window. Better for calm tasks than big commitments.",
         "why": (f"The Moon is crossing the junction (Chandra Sandhi) between {from_sign} "
                 f"and {to_sign}. At a sign boundary the Moon is considered weak, so this "
                 f"is a softer, more reflective stretch rather than a time to push."),
@@ -366,16 +366,23 @@ def next_eclipse(d, tz_name="UTC", lat=None, lon=None, horizon_days=30):
         # No eclipse in search horizon — return a safe "hide the card" payload.
         return {"present": False, "type": None, "date": None,
                 "days_until": None, "sutak_start": None, "sutak_note": "",
-                "why": "", "sanskrit": ""}
+                "short": "", "why": "", "sanskrit": ""}
 
+    # `short` is the CARD line, `why` is the SHEET body. They must not be the same
+    # sentence: the card already headlines "A solar eclipse in N days", so opening the
+    # sheet has to add something, not echo it back.
     if ev["type"] == "Surya Grahan":
         sanskrit = "सूर्य ग्रहण"
-        why = ("A solar eclipse is coming up — traditionally a time to pause new "
-               "beginnings, keep things low-key and turn inward.")
+        short = "A good stretch to pause big new beginnings and keep things low-key."
+        why = ("Traditionally this is a time to pause new beginnings, keep things low-key "
+               "and turn inward. The old texts treat the hours around an eclipse as "
+               "unsettled, so the custom is to rest rather than to start.")
     else:
         sanskrit = "चन्द्र ग्रहण"
-        why = ("A lunar eclipse is coming up — emotions can run high, so it's a time "
-               "for rest, reflection and gentle routines.")
+        short = "A time for rest and gentle routines, since feelings can run high."
+        why = ("Feelings tend to run high around a lunar eclipse, so tradition treats it "
+               "as a time for rest, reflection and gentle routines rather than for big "
+               "decisions.")
 
     # Eclipse date from the adapter is UTC. Anchor sutak window to local-midnight
     # of that date so the time-of-day label stays meaningful even though we don't
@@ -392,6 +399,7 @@ def next_eclipse(d, tz_name="UTC", lat=None, lon=None, horizon_days=30):
         "sutak_note": (f"Sutak (the caution period) traditionally begins about "
                        f"{ev['sutak_hours']} hours before, around "
                        f"{sutak_start.strftime('%d %b %H:%M')}."),
+        "short": short,
         "why": why,
         "sanskrit": sanskrit,
     }

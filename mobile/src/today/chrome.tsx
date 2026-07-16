@@ -5,7 +5,8 @@ import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { Mood, NAME } from "../theme";
+import { Mood } from "../theme";
+import { getFirstName } from "../api/profile";
 import { INK, GRAY, WASH, HAIR, ORANGE, aA, sans, serif, shadow } from "../ui/palette";
 import { Press, Pill, RadialGlow } from "../ui/atoms";
 import { Icon, Flame } from "../ui/Icon";
@@ -48,7 +49,7 @@ export function TopCluster({ mood, bal, bump, alert, onProfile, onWallet, onBell
           style={{ width: 44, height: 44, borderRadius: 999, padding: 2, ...shadow({ y: 3, blur: 10, opacity: 0.4, color: accentDeep, elevation: 4 }) } as any}
         >
           <View style={{ flex: 1, borderRadius: 999, backgroundColor: WASH, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFF" }}>
-            <Text style={{ fontFamily: serif(600), fontSize: 18, color: INK }}>{NAME[0]}</Text>
+            <Text style={{ fontFamily: serif(600), fontSize: 18, color: INK }}>{(getFirstName()[0] || "•").toUpperCase()}</Text>
           </View>
         </LinearGradient>
       </Press>

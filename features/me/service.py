@@ -103,8 +103,12 @@ def get_streak(user, kind: str = "checkin") -> dict | None:
     return db.get_streak(user.client, user.user_id, kind)
 
 
-def increment_streak(user, kind: str = "checkin") -> dict:
-    return db.increment_streak(user.client, user.user_id, kind)
+def increment_streak(user, kind: str = "checkin", today: str | None = None) -> dict:
+    """`today` = the USER's date (bucket D). Pass the check-in's own `date` — the client
+    already sends it and it is authoritative. Without it we fall back to the server's day,
+    which is UTC and silently stalls streaks across the IST/UTC boundary. See
+    shared/db/supabase_client.increment_streak."""
+    return db.increment_streak(user.client, user.user_id, kind, today=today)
 
 
 # ── Settings (depth-mode, language, settings jsonb) ───────────────────────────

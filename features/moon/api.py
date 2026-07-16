@@ -10,11 +10,10 @@ chat REPLY itself is the existing AI Ask endpoint; this only handles the
 proactive openers.
 """
 
-from datetime import date as _date
-
 from features.moon.schemas import MoonCheckRequest
 from features.moon.service import build_opener
 from shared.db import supabase_client as db
+from shared.timeloc import resolve_today
 
 try:
     from fastapi import APIRouter, Depends, HTTPException
@@ -32,7 +31,10 @@ if router is not None:
         """Run the proactive check. Generates at most one opener/day/kind, and
         only when nothing is already unread (so the Sage never piles up). On the
         user's very first open it sends the one-time welcome/intro first."""
-        today = _date.fromisoformat(req.today) if req.today else _date.today()
+        # NOT _date.today(): the server is UTC, so that handed every Indian user YESTERDAY
+        # between 00:00 and 05:30 IST. The Sage would seal an opener against the wrong day and
+        # then refuse to send the right one (moon_message_exists is keyed on for_date).
+        today = resolve_today(req.today, req.tz)
         unread = db.list_moon_messages(user.client, user.user_id, unread_only=True)
         if not unread:
             if not db.moon_welcomed(user.client, user.user_id):

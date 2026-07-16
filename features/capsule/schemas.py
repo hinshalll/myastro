@@ -8,7 +8,8 @@ except ImportError:
 
 class CapsuleSuggestRequest(BaseModel):
     profile: dict                    # to compute the 3 suggested delivery moments
-    today: str | None = None         # "YYYY-MM-DD"; defaults to today (server)
+    today: str | None = None         # "YYYY-MM-DD" in the USER's current timezone
+    tz: str | None = None            # IANA fallback when `today` is absent (see shared/timeloc.py)
 
 
 class CapsuleCreate(BaseModel):
@@ -16,4 +17,5 @@ class CapsuleCreate(BaseModel):
     occasion: str = "custom"         # 'custom' | 'birthday' | 'dasha' | 'jupiter'
     deliver_on: str | None = None    # required when occasion == 'custom'
     profile: dict | None = None      # required for birthday / dasha / jupiter
-    today: str | None = None         # "YYYY-MM-DD"; for resolving computed moments
+    today: str | None = None         # "YYYY-MM-DD" in the USER's current tz; resolves computed moments
+    tz: str | None = None            # IANA fallback when `today` is absent (see shared/timeloc.py)

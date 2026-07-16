@@ -23,4 +23,4 @@ if router is not None:
     @router.post("/today")
     def today(req: TodayRitualRequest) -> dict:
         from features.rituals.service import build_today_ritual
-        return build_today_ritual(req.profile, req.date)
+        return build_today_ritual(req.profile, req.date, req.tz)

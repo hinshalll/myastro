@@ -357,6 +357,14 @@ and what chapter you're in"), then immediately offers **the Proof** ("pick a dat
 so the wow lands before any sign-up or payment. Continue = sign-up → `POST /me/profiles` +
 `PUT /me/settings`. Depth-mode is a Settings toggle (default `simple`), not an onboarding step.
 
+**Implemented (2026-07-15, Expo, `mobile/src/onboarding/`):** the reveal is driven by a dedicated
+`POST /chart/reveal` (real sidereal Sun/Moon/Rising + ecliptic longitudes so the natal wheel seats each
+luminary at its true angle, warm nakshatra/sign lines from the verified atoms, a personal proof) — so
+the wheel and symbols are genuinely per-chart. **Auth = Google + email/password only on Android.**
+Apple Sign-In is intentionally **deferred to the iOS build** — it's an Apple-platform requirement, not
+needed on Android now; add it when the iOS app is made. Sign-in is Supabase Auth (anon key, client-side)
+→ JWT → `POST /me/profiles`.
+
 ---
 
 ## 7. The Trust system (the marketed differentiator)

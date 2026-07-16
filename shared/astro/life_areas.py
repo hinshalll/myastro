@@ -74,6 +74,12 @@ _HOUSE_THEME = {
     ("work", 10): "work and standing area", ("work", 6): "daily-work and problem-solving area",
     ("money", 11): "gains and income area", ("money", 2): "savings and belongings area",
 }
+# The domain's significator houses, as a label for the sheet. Counted from the natal
+# Moon (gochara is judged from Chandra lagna), which is why these hold at every
+# birth-time tier — no ascendant needed. The app must NOT keep its own copy of this
+# table: one source of truth, or the two drift and the sheet starts naming a house
+# the reading never used.
+_HOUSE_LABEL = {"love": "7th & 5th", "work": "10th & 6th", "money": "2nd & 11th"}
 # Where "more about this" lives. Tab-level for now (features get linked once the
 # rest of the frontend exists). Only shown if a destination is set.
 _LINK = {
@@ -143,6 +149,8 @@ def life_areas(profile: dict, on_date=None) -> dict:
             "detail": _DETAIL[(dom, tone)],     # the sheet's fuller "what it means"
             "why": why.strip(),                 # the sheet's plain astrology reason
             "planet": karaka,
+            "houses": _HOUSE_LABEL[dom],        # the sheet's "7th & 5th house" label
+            "in_focus": house in spec["focus"], # is the Moon actually lighting this up today?
             "link": _LINK.get(dom),             # where "more" lives (tab-level for now)
         }
     return out

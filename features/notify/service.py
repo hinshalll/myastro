@@ -21,6 +21,7 @@ from datetime import date as _date
 from shared.db import supabase_client as db
 from shared.notify.expo_push import send_push
 from shared.companion import COMPANION_NAME
+from shared.timeloc import user_today
 
 
 class _ServiceUser:
@@ -33,11 +34,33 @@ class _ServiceUser:
         self.client = db.get_service_client()
 
 
+def _user_tz(client, user_id: str) -> str | None:
+    """This user's timezone, from their saved self-profile.
+
+    A cron job has no client to ask, so the stored profile is the best we have. NOTE it is the
+    BIRTH tz — if the user has moved, it is wrong, and only an explicit tz from the app can fix
+    that. Still enormously better than the server's UTC, which is wrong for every Indian user.
+    """
+    try:
+        profs = db.list_profiles(client, user_id)
+    except Exception:
+        return None
+    for p in profs:
+        if p.get("relation_tag") == "self" or p.get("source") == "self":
+            return p.get("tz")
+    return profs[0].get("tz") if profs else None
+
+
 def run_for_user(user_id: str, token: str | None = None, today=None) -> dict:
     """Generate + (optionally) push the day's proactive items for one user.
     Returns {user_id, generated, sent}. Never raises."""
-    today = today or _date.today()
     su = _ServiceUser(user_id)
+    # PER-USER day, never the server's. This job runs on Render (UTC) for a userbase that is
+    # not in UTC: `_date.today()` handed every Indian user YESTERDAY between 00:00 and 05:30
+    # IST, so the Sage pushed the wrong day's opener and then suppressed the right one
+    # (moon_message_exists is keyed on for_date). See shared/timeloc.py.
+    if today is None:
+        today = user_today(_user_tz(su.client, user_id))
     pushes: list[tuple[str, str, dict]] = []
 
     # 1) The proactive Sage opener (same gate as /moon/check: only if nothing unread).
@@ -80,7 +103,12 @@ def run_for_user(user_id: str, token: str | None = None, today=None) -> dict:
 
 
 def run_daily(today=None) -> dict:
-    """Run the proactive job for every user who has a push token. Returns a summary."""
+    """Run the proactive job for every user who has a push token. Returns a summary.
+
+    LEAVE `today` AS None IN PRODUCTION. It is a debug/backfill override that forces the SAME
+    day on every user — which is only ever correct if the entire userbase is in one timezone.
+    With today=None each user resolves their own day from their own tz (see run_for_user).
+    """
     try:
         svc = db.get_service_client()
         users = db.list_push_users(svc)

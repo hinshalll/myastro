@@ -8,6 +8,7 @@ rule: a capsule's note stays hidden until its day, shows only a hint in the last
 
 from datetime import date as _date
 
+from shared.timeloc import resolve_today
 from features.capsule.schemas import CapsuleSuggestRequest, CapsuleCreate
 from features.capsule.service import resolve_occasion, suggest_moments
 from shared.db.supabase_client import (
@@ -28,14 +29,14 @@ if router is not None:
     def suggest(req: CapsuleSuggestRequest,
                 user: "CurrentUser" = Depends(get_current_user)) -> dict:
         """The 3 computed 'or pick a moment' options (birthday / dasha / jupiter)."""
-        today = _date.fromisoformat(req.today) if req.today else _date.today()
+        today = resolve_today(req.today, req.tz)   # NOT _date.today() — server is UTC
         return {"ok": True, "suggestions": suggest_moments(req.profile, today)}
 
     @router.post("")
     def create(req: CapsuleCreate,
                user: "CurrentUser" = Depends(get_current_user)) -> dict:
         """Seal a capsule. Resolves the delivery date from the chosen occasion."""
-        today = _date.fromisoformat(req.today) if req.today else _date.today()
+        today = resolve_today(req.today, req.tz)   # NOT _date.today() — server is UTC
         try:
             deliver_on, label = resolve_occasion(req.occasion, req.profile, today, req.deliver_on)
         except ValueError as e:
@@ -51,11 +52,14 @@ if router is not None:
         return {"ok": True, "capsule": cap}
 
     @router.get("")
-    def list_caps(today: str | None = None,
+    def list_caps(today: str | None = None, tz: str | None = None,
                   user: "CurrentUser" = Depends(get_current_user)) -> dict:
         """The user's capsules. Notes are revealed only on/after delivery; the
         last 2-3 days show a hint; earlier capsules stay fully sealed."""
-        tdy = _date.fromisoformat(today) if today else _date.today()
+        # This is the one that hurts most if the day is wrong: the whole promise is that the
+        # capsule opens on ITS day. A UTC "today" opens it a day early for anyone west of
+        # Greenwich and holds it a day late for India between 00:00 and 05:30 IST.
+        tdy = resolve_today(today, tz)
         out = []
         for c in list_time_capsules(user.client, user.user_id):
             deliver = _date.fromisoformat(c["deliver_on"])

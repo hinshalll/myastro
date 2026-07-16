@@ -154,12 +154,23 @@ src/
 
 ---
 
-## 6. NEXT — wire the live backend (decided strategy)
+## 6. Backend wiring — STATUS (updated 2026-07-15)
 
-**Wire the Today tab to the live Render APIs FIRST (one full vertical slice), NOT finish all
-screens first.** Rationale: Today is the daily-driver; wiring one tab end-to-end solves every
-integration problem once (auth, API client, shape mismatches, loading/error states, base URL),
-after which the rest is fast. Avoids a 100%-fake app that hits all integration snags at the end.
+> **✅ DONE: the whole Today tab (Read + Plan) is wired to the live backend + verified live +
+> accuracy-swept across 4 profiles.** The API seam is built: `mobile/src/api/` = `config` (base-URL
+> switch, `SEED_PROFILE`), `profile` (get/setProfile), `client` (apiPost/apiGet + `setAuthToken`),
+> `today` (loadToday → reading/life-areas/hora/eclipse/ritual/timing/panchang), `plan` (askQuick,
+> planMuhurta), `geo` (searchPlaces). **Full per-feature contract + what's next = `MOBILE_API_MAP.md`
+> (read it).** Dev loop: local backend `uvicorn fastapi_main:app --host 0.0.0.0 --port 8000`; app
+> `USE_LOCAL=true` → LAN `192.168.18.21:8000`; flip false for Render (already current, 84 routes).
+> **NEXT: onboarding** (user building in Claude Design, prompt = `FRONTEND_PROMPTS.md` §2 → I port +
+> wire), then Readings/Chat, then the JWT/stateful set. Supabase is set up (keys in
+> `.streamlit/secrets.toml`). The strategy below is why we wired Today first — kept for context.
+
+**Wire the Today tab to the live APIs FIRST (one full vertical slice), NOT finish all screens
+first.** Rationale: Today is the daily-driver; wiring one tab end-to-end solves every integration
+problem once (auth, API client, shape mismatches, loading/error states, base URL), after which the
+rest is fast. Avoids a 100%-fake app that hits all integration snags at the end. *(This is done.)*
 
 **Frontend ↔ backend edit workflow (the seam):**
 - Frontend edits → `mobile/src/`. The data CONTRACT (expected shapes) = `mobile/src/theme.ts`.

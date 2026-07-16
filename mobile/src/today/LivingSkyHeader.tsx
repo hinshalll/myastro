@@ -6,13 +6,19 @@ import { View, Text, Pressable } from "react-native";
 import Animated from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Defs, RadialGradient, Stop, Circle } from "react-native-svg";
-import { Mood, NAME, DATE, HORA_LINE, FESTIVAL } from "../theme";
+import { Mood, demoFallback } from "../theme";
+import { HORA_LINE } from "../theme.demo";
+import { getFirstName } from "../api/profile";
+import { currentDateLabel, currentHour } from "../api/place";
 import { aA, serif, mono, shadow } from "../ui/palette";
 import { useRiseIn, useFloatY, useTwinkle, useCloudDrift, useGlowPulse } from "../ui/motion";
 import { PhaseMoon } from "../ui/mood";
 import { RadialGlow } from "../ui/atoms";
 
-function nowH() { const d = new Date(); return d.getHours() + d.getMinutes() / 60; }
+// The hour AT THE PLACE WE COMPUTE FOR, not the device's. This drives the sky scene and the
+// greeting, so if it drifted from the reading's place the header would say "Good morning" over
+// an evening reading. Even where the maths is identical, the LABEL is timezone-bound.
+function nowH() { return currentHour(); }
 function skyNameFor(h: number) { if (h >= 5 && h < 8) return "dawn"; if (h >= 8 && h < 17) return "day"; if (h >= 17 && h < 20) return "dusk"; return "night"; }
 
 const SKIES: Record<string, any> = {
@@ -52,11 +58,21 @@ function SunDisc({ sunC, glowC, size = 44 }: any) {
   );
 }
 
-export function LivingSkyHeader({ mood, delay = 0 }: { mood: Mood; delay?: number }) {
+export function LivingSkyHeader({ mood, delay = 0, hora }: { mood: Mood; delay?: number; hora?: any }) {
   const riseA = useRiseIn(delay);
+  // The hora line is a live claim about the current planetary hour ("a good stretch for money
+  // and focus right now"), so falling back to a canned one states something false about this
+  // minute. Guarded: throws in prod, raises the DEMO badge in dev.
+  const horaText = demoFallback("Read · the planetary-hour line", hora?.line, HORA_LINE);
+  // The festival had a demo constant too, but it was hardcoded null, so it never rendered.
+  // The live festival is the only one there has ever been.
+  const festivalText = hora?.festival?.name ?? null;
   const floatA = useFloatY(7);
   const dotA = useGlowPulse(2.6);
   const liveName = useMemo(() => skyNameFor(nowH()), []);
+  // Today's real date (replaces the demo constant), named for the place we compute the sky FOR
+  // so the header and the reading always agree about which day this is. See api/place.ts.
+  const liveDate = useMemo(() => currentDateLabel(), []);
   const [ov, setOv] = useState<string | null>(null);
   const name = ov || liveName;
   const sky = SKIES[name];
@@ -85,23 +101,23 @@ export function LivingSkyHeader({ mood, delay = 0 }: { mood: Mood; delay?: numbe
           </View>
           {/* greeting */}
           <View style={{ marginTop: 22 }}>
-            <Text style={{ fontFamily: mono(600), fontSize: 10.5, letterSpacing: 1.6, textTransform: "uppercase", color: sky.sub }}>{DATE}</Text>
+            <Text style={{ fontFamily: mono(600), fontSize: 10.5, letterSpacing: 1.6, textTransform: "uppercase", color: sky.sub }}>{liveDate}</Text>
             <Text style={{ fontFamily: serif(500), fontSize: 27, color: sky.ink, letterSpacing: -0.5, marginTop: 3, maxWidth: 216 }}>
-              {greet}, <Text style={{ fontFamily: serif(500, true) }}>{NAME}</Text>
+              {greet}, <Text style={{ fontFamily: serif(500, true) }}>{getFirstName()}</Text>
             </Text>
-            {FESTIVAL && (
+            {festivalText ? (
               <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, marginTop: 9, paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999, backgroundColor: aA("#FFF", dark ? 0.18 : 0.55) }}>
                 <Text style={{ fontSize: 12 }}>🪔</Text>
-                <Text style={{ fontFamily: serif(500, true), fontSize: 14, color: sky.ink }}>{FESTIVAL}</Text>
+                <Text style={{ fontFamily: serif(500, true), fontSize: 14, color: sky.ink }}>{festivalText}</Text>
               </View>
-            )}
-            {HORA_LINE ? (
+            ) : null}
+            {horaText ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginTop: 10 }}>
                 <View style={{ width: 10, height: 10, alignItems: "center", justifyContent: "center" }}>
                   <Animated.View style={[{ position: "absolute", width: 10, height: 10, borderRadius: 999, backgroundColor: aA(!dark ? "#3E9C7A" : "#8FE0BF", 0.5) }, dotA]} />
                   <View style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: !dark ? "#3E9C7A" : "#8FE0BF" }} />
                 </View>
-                <Text style={{ fontFamily: serif(400, true), fontSize: 15, lineHeight: 21, color: sky.sub, maxWidth: 224 }}>{HORA_LINE}</Text>
+                <Text style={{ fontFamily: serif(400, true), fontSize: 15, lineHeight: 21, color: sky.sub, maxWidth: 224 }}>{horaText}</Text>
               </View>
             ) : null}
           </View>

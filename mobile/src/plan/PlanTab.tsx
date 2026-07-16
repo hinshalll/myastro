@@ -3,7 +3,8 @@ import React from "react";
 import { View, Text } from "react-native";
 import Animated from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { Mood, ASK_MOMENT, PANCHANG_SOON } from "../theme";
+import { Mood } from "../theme";
+import { ASK_MOMENT, PANCHANG_SOON } from "../theme.demo";
 import { INK, INK2, GRAY, WASH, HAIR, aA, sans, serif, cardStyle, shadow } from "../ui/palette";
 import { Press, Pill, Label, GlossIcon } from "../ui/atoms";
 import { Icon } from "../ui/Icon";
@@ -47,9 +48,10 @@ function AskMomentCard({ mood, delay, onAsk }: any) {
   );
 }
 
-function MyPanchang({ mood, delay, onMonth }: any) {
+function MyPanchang({ mood, delay, onMonth, days }: any) {
   const { accent, accentDeep } = mood;
   const riseA = useRiseIn(delay);
+  const list = days && days.length ? days : PANCHANG_SOON;
   return (
     <Animated.View style={[{ marginBottom: 14 }, riseA]}>
       <View style={cardStyle({ padding: 18 })}>
@@ -61,7 +63,7 @@ function MyPanchang({ mood, delay, onMonth }: any) {
           <GlossIcon c1={"#C9A6E8"} c2={"#7E54A0"}><Icon n="cal" s={19} c="#FFF" sw={1.8} /></GlossIcon>
         </View>
         <View style={{ marginTop: 14, gap: 10 }}>
-          {PANCHANG_SOON.map((d: any, i: number) => (
+          {list.map((d: any, i: number) => (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 13, borderRadius: 14, backgroundColor: WASH, borderWidth: 1, borderColor: HAIR }}>
               <View style={{ width: 78 }}>
                 <Text style={{ fontFamily: sans(800), fontSize: 13, color: INK }}>{d.day}</Text>
@@ -88,7 +90,7 @@ function MyPanchang({ mood, delay, onMonth }: any) {
   );
 }
 
-export function PlanTab({ mood, onMonth, onTool }: { mood: Mood; onMonth: () => void; onTool: (k: string, seed?: string) => void }) {
+export function PlanTab({ mood, onMonth, onTool, timing, panchang }: { mood: Mood; onMonth: () => void; onTool: (k: string, seed?: string) => void; timing?: any; panchang?: any }) {
   const { accent, accentDeep, glow } = mood;
   const Entry = ({ ic, c1, c2, title, sub, onPress }: any) => (
     <Press scale={0.985} onPress={onPress} style={{ marginBottom: 10 }}>
@@ -105,10 +107,10 @@ export function PlanTab({ mood, onMonth, onTool }: { mood: Mood; onMonth: () => 
   return (
     <View>
       <View style={{ marginHorizontal: 2, marginBottom: 12 }}><Label>Today</Label></View>
-      <MyDay mood={mood} delay={0} />
+      <MyDay mood={mood} delay={0} live={timing} />
       <AskMomentCard mood={mood} delay={60} onAsk={(seed: string) => onTool("ask", seed)} />
       <View style={{ marginHorizontal: 2, marginTop: 24, marginBottom: 12 }}><Label>Plan ahead</Label></View>
-      <MyPanchang mood={mood} delay={120} onMonth={onMonth} />
+      <MyPanchang mood={mood} delay={120} onMonth={onMonth} days={panchang} />
       <Entry ic="compass" c1={glow} c2={accentDeep} title="Find a good day" sub="the best dates and times for something that matters" onPress={() => onTool("muhurat")} />
       <Entry ic="scan" c1={"#2E9C7E"} c2={"#1F7660"} title="Check my plans" sub="we'll check your calendar against your good and bad times" onPress={() => onTool("doctor")} />
       <Entry ic="capsule" c1={"#D98A2B"} c2={"#B26C18"} title="Time Capsule" sub="write to your future self, the sky delivers it" onPress={() => onTool("capsule")} />

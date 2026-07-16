@@ -1,8 +1,6 @@
 """features.numerology.prompts — full-report + cycles prompts."""
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
+from shared.timeloc import FALLBACK_TZ, user_now
 from shared.astro.constants import PERSONAL_YEAR_MEANINGS
 from shared.astro.astro_calc import (
     get_personal_year, get_personal_month, get_personal_day, get_pinnacle_cycles,
@@ -13,15 +11,20 @@ def build_full_report_prompt(
     name: str, dob_str: str, lp: int, dest: int, soul: int, pers: int,
     astro_dossier: str | None = None, user_q: str = "",
     system: str = "Western (Pythagorean)", knowledge_context: str = "",
+    tz: str = FALLBACK_TZ,
 ) -> str:
+    # Personal year/month/day are DATE-based, so they belong to the user's own day (bucket D in
+    # LOCATION_TIME_AUDIT.md). The engine already accepts a tz; this caller used to drop it and
+    # hard-code Asia/Kolkata, which quietly gave every non-Indian user India's personal day —
+    # and gave everyone the wrong personal YEAR across the New Year boundary.
     is_vedic = system == "Indian/Vedic (Chaldean)"
     sys_name = "Chaldean (Indian/Vedic)" if is_vedic else "Pythagorean (Western)"
-    py = get_personal_year(dob_str)
-    pm = get_personal_month(dob_str)
-    pd = get_personal_day(dob_str)
+    py = get_personal_year(dob_str, tz)
+    pm = get_personal_month(dob_str, tz)
+    pd = get_personal_day(dob_str, tz)
     r1, r2, r3, r4 = get_pinnacle_cycles(dob_str)
     y = int(dob_str.split('-')[0])
-    cur_age = datetime.now(ZoneInfo("Asia/Kolkata")).year - y
+    cur_age = user_now(tz).year - y
 
     def which_p():
         for s, e, n, c in [r1, r2, r3, r4]:
@@ -64,7 +67,7 @@ LOCKED CORE NUMBERS:
   Personality : {pers}{' ★ Master Number' if pers in [11, 22, 33] else ''}
 
 LOCKED TIMING NUMBERS:
-  Personal Year  ({datetime.now(ZoneInfo('Asia/Kolkata')).year}): {py} — {PERSONAL_YEAR_MEANINGS.get(py, '')}
+  Personal Year  ({user_now(tz).year}): {py} — {PERSONAL_YEAR_MEANINGS.get(py, '')}
   Personal Month (this month): {pm}
   Personal Day   (today): {pd}
 

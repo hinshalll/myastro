@@ -12,4 +12,6 @@ class RemediesRequest(BaseModel):
 
 class TodayRitualRequest(BaseModel):
     profile: dict
-    date: str | None = None   # "YYYY-MM-DD"; defaults to today
+    date: str | None = None   # "YYYY-MM-DD" in the USER's current tz
+    tz: str | None = None     # IANA fallback when `date` is absent; the WEEKDAY picks the
+                              # remedy planet, so it must be the user's day (shared/timeloc.py)

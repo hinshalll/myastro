@@ -38,6 +38,132 @@ alter table public.app_users drop constraint if exists app_users_depth_mode_chec
 alter table public.app_users
   add constraint app_users_depth_mode_check check (depth_mode in ('simple','balanced','full'));
 
+-- ── Identity columns (AUTH_OTP_PLAN.md "THE IDENTITY MODEL") ────────────────
+-- One account = one door; phone / email+password / Google / Truecaller are just
+-- KEYS to it. Supabase already models that (auth.users = the person, auth.identities
+-- = their keys), so we NEVER invent a second account concept here — app_users.id IS
+-- auth.users.id, so linking a new key to an existing account needs no work on our side.
+--
+-- Why these columns exist at all: whichever key a user arrives with, something is
+-- always missing. Google hands us email + name + avatar and NEVER a phone (there is
+-- no phone scope). Truecaller hands us a verified phone + name and no verified email.
+-- So we mirror both here and fill the gap later by asking (progressive profiling).
+--
+-- All additive. Nothing below drops a column or a row.
+alter table public.app_users add column if not exists phone           text;
+alter table public.app_users add column if not exists phone_verified  boolean not null default false;
+alter table public.app_users add column if not exists full_name       text;
+alter table public.app_users add column if not exists avatar_url      text;
+alter table public.app_users add column if not exists timezone        text;      -- IANA, e.g. 'Asia/Kolkata'
+-- How they first got in: 'phone' | 'google' | 'email' | 'truecaller'. Analytics +
+-- lets us ask for the RIGHT missing piece, rather than nagging for both.
+alter table public.app_users add column if not exists signup_method   text;
+-- DPDP Act: consent must be recorded, with the version of the terms consented to.
+alter table public.app_users add column if not exists consent_at      timestamptz;
+alter table public.app_users add column if not exists consent_version text;
+alter table public.app_users add column if not exists last_seen_at    timestamptz;
+
+-- One phone = one account. PARTIAL index so the many NULL phones (every Google or
+-- email signup before they add a number) don't collide with each other — a plain
+-- unique index would still allow multiple NULLs in Postgres, but being explicit
+-- documents the intent and keeps the index small.
+create unique index if not exists app_users_phone_key
+  on public.app_users(phone) where phone is not null;
+create index if not exists app_users_email_idx on public.app_users(email);
+
+-- ── Auto-create the app_users row on signup (the linking safety net) ────────
+-- Without this, signing up creates an auth.users row and NO app_users row, so the
+-- app looks logged-in with an empty account. This fires for EVERY key (phone,
+-- Google, email, Truecaller-via-phone) and copies across whatever that key gave us.
+--
+-- `on conflict (id) do update` is what makes it safe to re-run AND makes linking
+-- work: if the row already exists we only FILL BLANKS (coalesce keeps the existing
+-- value), so a later Google login can add an email to a phone-created account
+-- without ever overwriting what is already there. It can never duplicate an account,
+-- because id is auth.users.id.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.app_users (id, email, phone, full_name, avatar_url, signup_method)
+  values (
+    new.id,
+    new.email,
+    new.phone,
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'),
+    new.raw_user_meta_data->>'avatar_url',
+    case
+      when new.phone is not null then 'phone'
+      when new.raw_app_meta_data->>'provider' is not null then new.raw_app_meta_data->>'provider'
+      else 'email'
+    end
+  )
+  -- NB: inside ON CONFLICT DO UPDATE the existing row is referenced by the BARE
+  -- table name (app_users.x), never schema-qualified — public.app_users.x errors.
+  on conflict (id) do update set
+    email      = coalesce(app_users.email,      excluded.email),
+    phone      = coalesce(app_users.phone,      excluded.phone),
+    full_name  = coalesce(app_users.full_name,  excluded.full_name),
+    avatar_url = coalesce(app_users.avatar_url, excluded.avatar_url);
+  return new;
+end;
+$$;
+
+-- Recreating only the trigger we are about to define — not a destructive drop.
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Keep app_users in step when Supabase later verifies a phone/email on an EXISTING
+-- user (e.g. they add a number to a Google account). Again fill-blanks only.
+create or replace function public.handle_user_updated()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.app_users as a set
+    email          = coalesce(new.email, a.email),
+    phone          = coalesce(new.phone, a.phone),
+    phone_verified = (new.phone_confirmed_at is not null)
+  where a.id = new.id;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_updated on auth.users;
+create trigger on_auth_user_updated
+  after update on auth.users
+  for each row execute function public.handle_user_updated();
+
+-- Backfill any accounts that predate the trigger. Safe to re-run: fills blanks only.
+insert into public.app_users (id, email, phone, signup_method)
+select u.id, u.email, u.phone, case when u.phone is not null then 'phone' else 'email' end
+from auth.users u
+on conflict (id) do update set
+  email = coalesce(app_users.email, excluded.email),
+  phone = coalesce(app_users.phone, excluded.phone);
+
+-- ── Owner-only contacts view (never exposed to the app) ─────────────────────
+-- How the owner reads collected numbers/emails: Supabase dashboard or a service-role
+-- server call. There is deliberately NO app endpoint that lists users. This view has
+-- no RLS policy granting anon/authenticated access, so only service_role can read it.
+create or replace view public.owner_contacts as
+select
+  u.id, u.full_name, u.email, u.phone, u.phone_verified,
+  u.signup_method, u.timezone, u.consent_at, u.consent_version,
+  u.created_at, u.last_seen_at,
+  (select p.birth_date from public.profiles p
+    where p.owner = u.id and p.source = 'self' limit 1) as birth_date
+from public.app_users u;
+
+revoke all on public.owner_contacts from anon, authenticated;
+
 -- ── Profiles: the user themselves + people they save (People tab) ───────────
 -- source: 'self' (the account owner) | 'friend' (a live app user) | 'manual' (static chart)
 create table if not exists public.profiles (

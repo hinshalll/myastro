@@ -3,7 +3,8 @@ import React from "react";
 import { View, Text, ScrollView } from "react-native";
 import Animated from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { Mood, NAME } from "../theme";
+import { Mood } from "../theme";
+import { getFirstName } from "../api/profile";
 import { PAPER, INK, GRAY, HAIR, aA, sans, serif, mono, cardStyle, shadow } from "../ui/palette";
 import { Press, Pill, Label, GlossIcon } from "../ui/atoms";
 import { Icon, Flame } from "../ui/Icon";
@@ -58,7 +59,7 @@ export function DecodeScreen({ mood, bal, onWallet, onProfile, onBell, insetTop 
             </Animated.View>
             <View style={{ flex: 1 }}>
               <Label c={aA(accentDeep, 0.9)}>Your kundli</Label>
-              <Text style={{ fontFamily: serif(500), fontSize: 21, color: INK, marginTop: 3 }}>{NAME}</Text>
+              <Text style={{ fontFamily: serif(500), fontSize: 21, color: INK, marginTop: 3 }}>{getFirstName()}</Text>
               <Text style={{ fontFamily: sans(400), fontSize: 12, color: GRAY, marginTop: 2 }}>14 Aug 1998 · 4:20 am · Jaipur</Text>
               <Press scale={0.96} style={{ marginTop: 11, alignSelf: "flex-start" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><Text style={{ fontFamily: sans(700), fontSize: 12.5, color: accentDeep }}>Open full chart</Text><Icon n="arrowR" s={13} c={accentDeep} sw={2} /></View>

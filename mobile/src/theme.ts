@@ -32,7 +32,137 @@ export interface Mood {
   forecast: Forecast;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DEMO-DATA GUARD — see DEMO_DATA_LEDGER.md
+//
+// The fakes themselves live in `theme.demo.ts`, which THROWS at import in a production
+// build. This file holds only the guard used at call sites, plus the design system.
+//
+// The danger it fixes: demo data looks exactly like real data. Nothing goes red. Forget to pass
+// `live` and the app confidently shows Aarav's chart to a real person and nobody notices — the
+// same silent-plausible-wrong failure as the birth_time_known bug. Vigilance does not scale;
+// a thrown error does.
+//
+// prod → throw. An unwired screen must break the build, not lie to a user.
+// dev  → keep working (the port stays usable) but SAY SO ON SCREEN. A console.warn is not a
+//        giveaway: nobody testing on a phone reads the Metro log, so a silent dev fallback is
+//        still a screen quietly telling a lie. Every fallback notifies subscribers, and
+//        <DemoBadge/> (ui/DemoBadge.tsx) renders the running list right on top of the app.
+// ─────────────────────────────────────────────────────────────────────────────
+type DemoListener = (seen: string[]) => void;
+const __DEMO_LISTENERS = new Set<DemoListener>();
+const __DEMO_WARNED = new Set<string>();   // console: once per key, ever
+let __DEMO_CURRENT = new Set<string>();    // what is fake as of the LAST render pass
+let __DEMO_PENDING = new Set<string>();    // what this render pass has reported so far
+let __DEMO_STICKY = new Set<string>();     // module-load facts; not tied to a render
+let __DEMO_FLUSHING = false;
+
+// WHY THE LEDGER IS PER-RENDER, NOT CUMULATIVE.
+//
+// A card falls back for the ~300ms before loadToday() resolves, then re-renders with the real
+// reading. A cumulative ledger counts that flash forever, so the badge sat at "7 FAKE SOURCES"
+// while only 2 were still fake. A guard that always screams is a guard nobody reads — it becomes
+// wallpaper, and then it is worse than nothing, because it looks like cover.
+//
+// So each render pass rebuilds the list from scratch: fallbacks that fired this pass are the
+// ones actually on screen. React re-renders the whole Read tree when `today` lands, so a slot
+// that went live simply stops reporting and drops off. Flushed on a microtask, which is after
+// the synchronous render burst but before paint.
+function __flushSoon() {
+  if (__DEMO_FLUSHING) return;
+  __DEMO_FLUSHING = true;
+  Promise.resolve().then(() => {
+    __DEMO_FLUSHING = false;
+    const next = new Set([...__DEMO_STICKY, ...__DEMO_PENDING]);
+    __DEMO_PENDING = new Set();
+    const changed = next.size !== __DEMO_CURRENT.size || [...next].some((k) => !__DEMO_CURRENT.has(k));
+    __DEMO_CURRENT = next;
+    if (changed) {
+      const snapshot = demoLedger();
+      __DEMO_LISTENERS.forEach((fn) => fn(snapshot));
+    }
+  });
+}
+
+function __recordDemo(where: string) {
+  __DEMO_PENDING.add(where);
+  if (!__DEMO_WARNED.has(where)) {
+    __DEMO_WARNED.add(where);
+    console.warn(`[Myastro:DEMO] "${where}" is showing FAKE data (no live value passed).`);
+  }
+  __flushSoon();
+}
+
+/**
+ * Called by theme.demo.ts at import, so the badge shows even for screens that never fall back.
+ * Sticky: a module import is a fact about the BUILD, not about this render, so it can't be
+ * rebuilt each pass like a fallback can.
+ */
+export function markDemoModuleLoaded() {
+  __DEMO_STICKY.add("theme.demo module imported");
+  __flushSoon();
+}
+
+/**
+ * Wrap a FALLBACK. Fires only when `live` was absent and we actually fell back to fake data —
+ * which is precisely the condition worth screaming about. Prefer this over `live || DEMO`.
+ *
+ *   const reading = demoFallback("read.reading", live, DEMO_READING);
+ *
+ * `sticky` for fakes that are a fact about the SESSION rather than about one render — the seed
+ * profile is read inside an async loader, not during render, so a per-render ledger would drop
+ * it on the next flush while it is still very much fake. Clear it with clearDemoFact() at the
+ * moment it stops being true.
+ */
+export function demoFallback<T>(where: string, live: T | null | undefined, fake: T, opts?: { sticky?: boolean }): T {
+  if (live !== null && live !== undefined) return live;
+  if (!__DEV__) {
+    throw new Error(
+      `[Myastro] "${where}" fell back to demo data in a production build (live was missing). ` +
+      `Showing fabricated content to a user is never acceptable — render an error state instead.`
+    );
+  }
+  if (opts?.sticky) __DEMO_STICKY.add(where);
+  __recordDemo(where);
+  return fake;
+}
+
+/**
+ * Call once at the TOP of the app's render body (AstroApp does).
+ *
+ * Without this the ledger can only ever grow: __flushSoon fires from __recordDemo, so a pass in
+ * which NOTHING falls back schedules no flush at all, and the list from the loading flash sticks
+ * forever. That is precisely the pass we care about — it is the good news. This gives the ledger
+ * a heartbeat: React renders top-down, so scheduling here means the microtask lands after the
+ * whole subtree has reported, and whatever went live simply stops reporting and drops off.
+ */
+export function demoTick(): void {
+  if (__DEV__) __flushSoon();
+}
+
+/** The paired release for a sticky fact: call it the moment the thing stops being fake. */
+export function clearDemoFact(where: string): void {
+  if (!__DEV__) return;
+  __DEMO_STICKY.delete(where);
+  __DEMO_PENDING.delete(where);
+  __DEMO_CURRENT.delete(where);
+  const snapshot = demoLedger();
+  __DEMO_LISTENERS.forEach((fn) => fn(snapshot));
+}
+
+/** Dev helper: what is fake RIGHT NOW (as of the last render pass). */
+export function demoLedger(): string[] {
+  return [...__DEMO_CURRENT].sort();
+}
+
+/** Subscribe to the demo ledger (used by <DemoBadge/>). Returns an unsubscribe. */
+export function subscribeDemo(fn: DemoListener): () => void {
+  __DEMO_LISTENERS.add(fn);
+  return () => { __DEMO_LISTENERS.delete(fn); };
+}
+
 // 12 moods, accent + motion personality only. Forecast copy stays warm, plain English.
+
 export const MOODS: Mood[] = [
   { key: "Settled", vibe: "A soft, homeward kind of day.",
     accent: "#C2724E", accentDeep: "#9E5635", glow: "#E7A578", wash: "rgba(194,114,78,0.06)", moon: "#F0DFC8",
@@ -90,14 +220,6 @@ MOODS.forEach((m) => { MOOD_BY_KEY[m.key] = m; });
 // The mood-cycle order used by the preview tap + the app container.
 export const CYCLE: MoodKey[] = ["Settled", "Bold", "Tender", "Restless", "Capable", "Warm", "Deep", "Wandering", "Driven", "Upbeat", "Quiet", "Guarded"];
 
-export const AHEAD = [
-  { day: "TUE", date: 17, mood: "Capable",  status: "good"      as const, good: "10:20a", avoid: "4:00p" },
-  { day: "WED", date: 18, mood: "Restless", status: "difficult" as const, good: "8:10a",  avoid: "1:30p" },
-  { day: "THU", date: 19, mood: "Warm",     status: "good"      as const, good: "11:40a", avoid: "6:15p" },
-  { day: "FRI", date: 20, mood: "Quiet",    status: "neutral"   as const, good: "9:00a",  avoid: "3:45p" },
-  { day: "SAT", date: 21, mood: "Upbeat",   status: "good"      as const, good: "12:10p", avoid: "7:00p" },
-];
-
 // CHECKIN_REFLECTION — compares how the user feels to the DAY'S actual energy (the sky).
 const DAY_TONE: Record<string, "low" | "open" | "high"> = {
   Settled: "low", Guarded: "low", Tender: "low", Deep: "low", Quiet: "low",
@@ -135,244 +257,3 @@ export function CHECKIN_REFLECTION(moodSel: string, energySel: string, dayKey: s
   return "Noted. Whatever today holds, you've already done the kind thing by checking in.";
 }
 
-// DAY_LINE — the warm one-liner in the greeting.
-export const DAY_LINE: Record<string, string> = {
-  Settled: "A calm, homebound day.", Guarded: "A day to hold a little back.",
-  Bold: "A day with some fire in it.", Tender: "A soft, feeling day.",
-  Restless: "A busy, restless day.", Capable: "A steady, get-things-done day.",
-  Warm: "A warm, social day.", Deep: "A quiet, inward day.",
-  Wandering: "An open, drifting day.", Driven: "A focused, push-ahead day.",
-  Upbeat: "A light, easy day.", Quiet: "A slow, restful day.",
-};
-
-// DAY CLOCK — today's windows from sunrise to sunrise (decimal 6..30 scale).
-export const DAY_CLOCK = {
-  sunrise: 6,
-  windows: [
-    { name: "Early calm", start: 6, end: 9, q: "neutral", tip: "a slow, gentle start" },
-    { name: "Rahu Kaal", start: 9, end: 10.5, q: "hold", tip: "hold big decisions, let it pass" },
-    { name: "Building", start: 10.5, end: 11.8, q: "good", tip: "good for steady work" },
-    { name: "Abhijit", start: 11.8, end: 12.6, q: "best", tip: "the day's strongest 48 minutes" },
-    { name: "Open afternoon", start: 12.6, end: 15, q: "good", tip: "good for important talks" },
-    { name: "Ordinary hours", start: 15, end: 16.5, q: "neutral", tip: "fine for everyday things" },
-    { name: "Warm evening", start: 16.5, end: 18, q: "good", tip: "a kind window for people" },
-    { name: "Wind down", start: 18, end: 19.5, q: "hold", tip: "ease off, don't push" },
-    { name: "Night", start: 19.5, end: 30, q: "rest", tip: "rest, the day is done" },
-  ],
-  bestName: "Abhijit", avoidName: "Rahu Kaal",
-};
-
-// TODAY AT A GLANCE — the day's almanac in plain words.
-export const ALMANAC = {
-  nakshatra: "Rohini", nakFlavor: "a warm, settling star",
-  tithi: "Shukla Saptami", tithiNote: "the waxing seventh",
-  special: "Sarvartha Siddhi", specialNote: "good for new starts",
-  festival: null as string | null,
-  best90: "4:10 to 5:40pm",
-};
-
-// IN FOCUS — set only when one life area is genuinely active today, else null.
-export const FOCUS = { area: "Work", to: "Timeline", line: "Work in focus today" } as { area: string; to: string; line: string } | null;
-
-// LIFE AREAS — Love · Work · Money, one honest line each, naming the planet, NO scores.
-export const LIFE_AREAS: Record<string, { love: string; work: string; money: string }> = {
-  Settled:   { love: "warm and easy at home, Venus is with you", work: "steady, unhurried progress, Saturn steadies you", money: "a calm day for money, nothing to chase" },
-  Guarded:   { love: "keep a little back, Venus asks for care", work: "guard your focus, Saturn wants boundaries", money: "hold the big spends, the flow's mixed" },
-  Bold:      { love: "make the first move, Venus is bright", work: "a day to push and ask, the Sun backs you", money: "fine for a bold call, just not a gamble" },
-  Tender:    { love: "closeness comes easy, Venus is soft", work: "be gentle with feedback, Saturn feels heavy", money: "steady, let big money wait a day" },
-  Restless:  { love: "give each other room, Venus is fidgety", work: "short tasks win, focus is scattered", money: "skip impulse buys, the itch is restless" },
-  Capable:   { love: "show up in small ways, Venus is quiet", work: "a strong day to finish things, Saturn rewards you", money: "good for money talks, you're clear-headed" },
-  Warm:      { love: "reach out, Venus opens doors", work: "people go your way today, the Sun warms it", money: "generous flow, just don't overdo it" },
-  Deep:      { love: "honest talk lands well, Venus goes deep", work: "reflection over action, Saturn turns inward", money: "hold the big spends, the flow's mixed" },
-  Wandering: { love: "let plans stay loose, Venus roams", work: "explore, don't commit, focus drifts", money: "wait on decisions, the picture's unclear" },
-  Driven:    { love: "don't rush closeness, Venus takes a back seat", work: "big goals move today, the Sun drives you", money: "a fair day to invest, stay measured" },
-  Upbeat:    { love: "light and playful, Venus sparkles", work: "momentum is easy, ride it", money: "flow's good, watch small leaks" },
-  Quiet:     { love: "small gestures over grand ones, Venus rests", work: "an easy day, save the big push", money: "rest the wallet too, no big moves" },
-};
-
-// LIFE_AREA_META — per-area constants the row's sheet adds on top of the day's line.
-export const LIFE_AREA_META: Record<string, { planet: string; houses: string; detail: string; why: string; link: { label: string; tab: string } }> = {
-  Love: {
-    planet: "Venus", houses: "7th & 5th",
-    detail: "Venus, your love marker, colours the people closest to you today. Meet them where they are and let the easy moments land. The harder conversation will keep for a clearer day, there's no need to force it now.",
-    why: "Venus is your love marker, and today the Moon is passing through your partnership area, which softens how you reach for the people you care about.",
-    link: { label: "See People", tab: "People" },
-  },
-  Work: {
-    planet: "Saturn", houses: "10th & 6th",
-    detail: "Saturn steadies your work today and rewards patient, honest effort over rushing. Pick the one thing that matters most and give it your full attention, rather than scattering across ten small tasks.",
-    why: "Saturn rules your house of work and discipline, and the Sun is lighting your sector of daily effort, so slow and steady carries you furthest right now.",
-    link: { label: "See your Timeline", tab: "Timeline" },
-  },
-  Money: {
-    planet: "Jupiter", houses: "2nd & 11th",
-    detail: "Jupiter is watching your money houses today, so let the day's tone set the size of your moves. Small, sensible steps are fine; keep the bigger commitments for a window that feels clearer.",
-    why: "Jupiter rules your gains and growth, and today it's aspecting your houses of money and income, which is why the timing of a bigger spend matters more than usual.",
-    link: { label: "See your Timeline", tab: "Timeline" },
-  },
-};
-
-// FESTIVAL — a warm one-line wish woven into the header when present, else null.
-export const FESTIVAL = null as string | null;
-
-// READING CHIPS — short "good for" / "go easy on" tags per mood (2–3 each).
-export const READ_CHIPS: Record<string, { good: string[]; easy: string[]; offDay?: boolean }> = {
-  Settled:   { good: ["home things", "tidying up"], easy: ["big launches", "crowds"] },
-  Guarded:   { good: ["boundaries", "saying no"], easy: ["oversharing", "new deals"], offDay: true },
-  Bold:      { good: ["asking", "starting"], easy: ["snapping", "rushing"] },
-  Tender:    { good: ["closeness", "honesty"], easy: ["criticism", "big crowds"] },
-  Restless:  { good: ["short tasks", "errands"], easy: ["signing", "long meetings"], offDay: true },
-  Capable:   { good: ["hard tasks", "money talks", "finishing"], easy: ["overloading"] },
-  Warm:      { good: ["people", "invitations"], easy: ["overdoing it"] },
-  Deep:      { good: ["reflection", "planning"], easy: ["signing", "travel"] },
-  Wandering: { good: ["exploring", "ideas"], easy: ["firm plans", "deadlines"], offDay: true },
-  Driven:    { good: ["big goals", "building"], easy: ["forcing", "skipping rest"] },
-  Upbeat:    { good: ["reaching out", "fun"], easy: ["overpromising"] },
-  Quiet:     { good: ["rest", "small things"], easy: ["big pushes", "decisions"], offDay: true },
-};
-
-// PERSONAL_LINES — the app fills this from the user's OWN history. null collapses gracefully.
-export const PERSONAL_LINES: Record<string, string> = {
-  Settled:   "You usually soften on days like this, let yourself.",
-  Guarded:   "Last few guarded days, you pulled back and felt better for it.",
-  Bold:      "When the sky runs hot, you tend to move fast, aim first.",
-  Tender:    "You feel these days deeply. That's not a flaw of yours.",
-  Restless:  "You usually run scattered on days like this, so pick one thing.",
-  Capable:   "Your best work tends to land on mornings like this one.",
-  Warm:      "You open up easily on warm days, someone will be glad you did.",
-  Deep:      "You usually run low on days like this, so go gentle with yourself.",
-  Wandering: "You drift on days like this, and you always find your way back.",
-  Driven:    "When you lock in like today, you tend to forget to rest.",
-  Upbeat:    "These bright days lift you fast, just leave room for the dip after.",
-  Quiet:     "You've been needing a slow day. This is the one.",
-};
-
-// PLANETARY HOUR line — the greeting's quiet one-liner for the current hora.
-export const HORA_LINE = "a good stretch for money and focus right now";
-
-// ECLIPSE — the rare "heads up". Backend sends one of these (or null on ordinary days).
-export const ECLIPSE: any = {
-  type: "solar",
-  inDays: 3,
-  date: "21 August",
-  sutakDate: "20 August",
-  sutakTime: "11:30pm",
-  sutakHours: 12,
-  sanskrit: "सूर्य ग्रहण",
-  short: {
-    solar: "A good week to pause big new beginnings and keep things low-key.",
-    lunar: "A time for rest and gentle routines, since feelings can run high.",
-  },
-  full: {
-    solar: "Traditionally a time to pause new beginnings, keep things low-key, and turn inward.",
-    lunar: "Emotions can run high, so it's a time for rest, reflection, and gentle routines.",
-  },
-};
-
-// MIRROR — the private journal where the user writes to Sage.
-export const MIRROR: any = {
-  invites: [
-    "Anything on your heart tonight?",
-    "Tell Sage about your day.",
-    "What's sitting with you right now?",
-    "How are you, really, tonight?",
-    "Anything you want to set down?",
-  ],
-  placeholders: [
-    "Whatever it is, you can say it here. It's just me, and I'm listening.",
-    "Start anywhere. There's no right way to do this.",
-    "Pour it out. I'm here, and I'm not going anywhere.",
-  ],
-  responses: {
-    heavy:   "That sounds heavy. You don't have to carry it alone tonight.",
-    happy:   "I'm glad. Hold onto this one.",
-    tender:  "Thank you for trusting me with that. I've got it now.",
-    tired:   "You've done enough for today. Let it rest here with me.",
-    return:  "You've been here before, and you came through it. You will again.",
-  },
-  distress: {
-    line: "I'm really glad you told me. You matter, and you don't have to sit with this alone.",
-    help: "If things feel too heavy, talking to someone can help. KIRAN, a free helpline, is there any time at 1800-599-0019.",
-  },
-};
-
-// ============================ PLAN TAB DATA ============================
-export const PANCHANG_SOON = [
-  { day: "Today",    date: "1 Jul", quality: "good"  as const, note: "a settling, homeward day", good: "11:40a–12:30p", low: "9:00–10:30a" },
-  { day: "Tomorrow", date: "2 Jul", quality: "mixed" as const, note: "bright morning, tired evening", good: "8:10–9:30a", low: "4:00–5:15p" },
-  { day: "Thu",      date: "3 Jul", quality: "low"   as const, note: "a low-key day, keep it light", good: "12:10–1:00p", low: "6:30–7:45p" },
-];
-
-// MONTH — a calendar month, each day coloured good/mixed/low, with marks + planned tasks.
-function buildMonth() {
-  const marks: Record<number, any> = {
-    4:  { kind: "moon", label: "Full moon" },
-    9:  { kind: "task", label: "Send the pitch" },
-    12: { kind: "festival", label: "Guru Purnima" },
-    18: { kind: "grahan", label: "Chandra Grahan" },
-    19: { kind: "moon", label: "New moon" },
-    24: { kind: "dasha", label: "Jupiter dasha begins" },
-    27: { kind: "task", label: "Call mom" },
-  };
-  let s = 5;
-  const r = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-  const days = Array.from({ length: 31 }, (_, i) => {
-    const n = i + 1;
-    const q = r();
-    const quality = n <= 3 ? (["good", "mixed", "low"][i] as any) : (q < 0.42 ? "good" : q < 0.75 ? "mixed" : "low");
-    return { n, quality, mark: marks[n] || null };
-  });
-  return { name: "July 2026", startWeekday: 3, days };
-}
-export const MONTH = buildMonth();
-
-export function dayDetail(n: number) {
-  const d = MONTH.days[n - 1] || MONTH.days[0];
-  const why = d.quality === "good" ? "The Moon sits kindly for you, and no rough angles cut across the day."
-    : d.quality === "low" ? "A heavier angle passes overhead, so it's a day to keep low-key."
-    : "A mixed day, bright in parts and slow in others. Lean on the good hours.";
-  return { ...d, why, good: "11:40a – 12:30p", low: "9:00 – 10:30a" };
-}
-
-// FIND A GOOD DAY (Muhurat).
-export const MUHURAT = {
-  events: ["Travel", "Buy something", "Start a job", "Start a business", "Sign papers", "Wedding", "Naming", "Invest", "Ask for a raise"],
-  results: {
-    default: [
-      { date: "Sat, 5 Jul", time: "7:20 – 9:05am", note: "the strongest window this week" },
-      { date: "Tue, 8 Jul", time: "11:48am – 12:36pm", note: "short but very clean" },
-      { date: "Fri, 11 Jul", time: "4:10 – 5:40pm", note: "good, with the Moon on your side" },
-    ],
-  },
-};
-
-// CHECK MY PLANS (Calendar Doctor).
-export const CAL_DOCTOR = [
-  { title: "Salary talk with boss", when: "Today, 9:40am", status: "weak", why: "sits in a hold-off stretch", better: "move to 11:50am" },
-  { title: "Coffee with Riya", when: "Today, 5:00pm", status: "ok", why: "a warm, easy window", better: null },
-  { title: "Sign the lease", when: "Tomorrow, 4:30pm", status: "weak", why: "a tired part of the day", better: "move to 8:30am" },
-  { title: "Gym", when: "Tomorrow, 7:00am", status: "ok", why: "fine for everyday things", better: null },
-];
-
-// ASK THE MOMENT — one-shot oracle.
-export const ASK_MOMENT = {
-  samples: ["Will I get the job?", "Should I send this text?", "Should I take the offer?"],
-  answers: [
-    { verdict: "Yes", why: "The hour leans your way, and the Moon backs a clear move right now." },
-    { verdict: "Wait", why: "A passing angle muddies this moment. Give it an hour and ask again." },
-    { verdict: "Lean B", why: "The second path sits in a cleaner part of the sky for you today." },
-  ],
-};
-
-// TIME CAPSULE — write to your future self.
-export const TIME_CAPSULE = {
-  moments: ["your next birthday", "your next Dasha chapter", "the next time Jupiter favours you"],
-  shelf: [
-    { note: "Remember why you started this.", to: "your next birthday", on: "14 Aug 2026", state: "sealed" as const },
-    { note: "You were braver than you thought.", to: "a hard day last spring", on: "20 Mar 2026", state: "landed" as const },
-  ],
-};
-
-// Demo identity (backend fills NAME/DATE from the profile + system date on wire-up).
-export const NAME = "Aarav";
-export const DATE = "Tuesday, 17 June";

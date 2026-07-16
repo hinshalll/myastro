@@ -2,7 +2,8 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import Animated from "react-native-reanimated";
-import { Mood, MONTH, dayDetail } from "../theme";
+import { Mood } from "../theme";
+import { MONTH, dayDetail } from "../theme.demo";
 import { PAPER, INK, INK2, GRAY, WASH, HAIR, aA, sans, serif, mono } from "../ui/palette";
 import { Press, Pill, Label } from "../ui/atoms";
 import { Icon } from "../ui/Icon";

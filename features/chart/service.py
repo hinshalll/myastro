@@ -334,6 +334,140 @@ def _ord(n: int) -> str:
             8:"8th",9:"9th",10:"10th",11:"11th",12:"12th"}.get(n, f"{n}th")
 
 
+# ── the free Reveal (onboarding payoff) — real Vedic Sun/Moon/Rising ─────────────
+# One warm, evocative trait word per Moon sign for "A {mood} soul, {name}." (the Moon
+# is the emotional core/mind in Jyotish, so the Moon's SIGN sets the temperament word).
+# Each word is faithful to that rashi's classical nature (matches SIGN_ESSENCE /
+# SIGN_QUALITIES.nature) and consonant-leading so the "A {mood}" article always reads right.
+# Falls back to the essence lead adjective.
+_MOOD_BY_SIGN = {
+    "Aries": "bold", "Taurus": "steady", "Gemini": "curious", "Cancer": "tender",
+    "Leo": "warm", "Virgo": "thoughtful", "Libra": "gentle", "Scorpio": "deep",
+    "Sagittarius": "restless", "Capricorn": "driven", "Aquarius": "free", "Pisces": "dreamy",
+}
+
+
+def _first_sentence(text: str) -> str:
+    t = (text or "").strip()
+    i = t.find(". ")
+    return t[: i + 1] if i != -1 else t
+
+
+def _reveal_marker(p) -> dict:
+    """A luminary's real placement: sign, nakshatra, degree-in-sign, absolute ecliptic
+    longitude (the wheel angle), and house."""
+    lon = float(getattr(p, "longitude", 0.0) or 0.0)
+    return {
+        "sign": p.sign,
+        "nakshatra": getattr(p, "nakshatra", None),
+        "deg": int(lon % 30),
+        "lon": round(lon, 2),
+        "house": getattr(p, "house", None),
+    }
+
+
+def _clean_reveal_text(s: str) -> str:
+    """Enforce the copy rules on any reveal line: no dashes of any kind (house rule),
+    tidy spacing."""
+    s = str(s or "").strip().strip('"').strip()
+    for d in ("—", "–", " -- ", " - "):
+        s = s.replace(d, ", ")
+    while ", ," in s:
+        s = s.replace(", ,", ",")
+    while "  " in s:
+        s = s.replace("  ", " ")
+    return s.replace(" ,", ",").strip()
+
+
+def _reveal_proof(first, chart, time_known, sun, moon, nak_shadow) -> str:
+    """The 'it knows me' line — PRE-WRITTEN from verified atoms, NO AI. Two beats:
+      1. the outer-vs-inner tension (who they are, from _headline), then
+      2. the Moon nakshatra's gently-framed private pattern (NAK_SHADOW — the classically
+         cross-checked 'flip side', which is where the scary-accurate recognition lives).
+    Both are deterministic + verified, so it reads uncannily personal with zero
+    hallucination and covers every one of the 27 birth-stars."""
+    beats = []
+    tension = _clean_reveal_text(_headline(chart, time_known, sun.sign, moon.sign))
+    if tension:
+        beats.append(tension if tension.endswith(".") else tension.rstrip(". ") + ".")
+    shadow = _clean_reveal_text((nak_shadow or "").replace("The flip side:", "").strip())
+    if shadow:
+        shadow = shadow[0].upper() + shadow[1:]
+        beats.append(shadow if shadow.endswith(".") else shadow.rstrip(". ") + ".")
+    proof = " ".join(beats)
+    if first and first != "you" and proof:
+        proof = f"{first}, " + proof[0].lower() + proof[1:]
+    return proof
+
+
+def reveal(profile: dict) -> dict:
+    """The onboarding Reveal, from the REAL sidereal chart. Fully PRE-WRITTEN + verified,
+    NO AI (an ungrounded model can distort even a rephrasing task, and the app's rule is
+    AI only with RAG). The placements (Sun/Moon/Rising sign, nakshatra, degree, ecliptic
+    longitude for the wheel angle) are engine-computed; the prose is composed from
+    classically-sourced atoms — SIGN_ESSENCE (12 signs, per BPHS/Phaladeepika/Saravali/
+    Brihat Jataka) and the Moon's NAKSHATRA body + its gently-framed shadow (27 birth-stars,
+    multi-source verified). Each line stays in its own bucket, matched to its card. Scarily
+    personal (the shadow is the recognition) with zero hallucination; covers every chart.
+    No jargon, no dashes. Rising only with an exact birth time, else Moon-led. Same
+    { profile } shape as /kundli/compute."""
+    from features.chart.nakshatras import NAKSHATRA, NAK_SHADOW
+
+    chart, time_known = _build_chart(profile)
+    P = chart.planets
+    sun, moon = P["Sun"], P["Moon"]
+    first = (profile.get("name") or "").strip().split(" ")[0] or "you"
+
+    sun_m = _reveal_marker(sun)
+    moon_m = _reveal_marker(moon)
+    rising_m = None
+    if time_known:
+        alon = float(getattr(chart.lagna, "longitude", 0.0) or 0.0)
+        rising_m = {"sign": chart.lagna.sign, "deg": int(alon % 30), "lon": round(alon, 2)}
+
+    # verified atoms, each bucketed to its own card:
+    #   Sun card    -> the core self          (Sun sign essence)
+    #   Moon card   -> the private inner world (the Moon's nakshatra nature)
+    #   Rising card -> the face they lead with (Rising sign essence)
+    nak_body = NAKSHATRA.get(moon.nakshatra, {}).get("body", "")
+    nak_shadow = NAK_SHADOW.get(moon.nakshatra, "")
+
+    mood = _MOOD_BY_SIGN.get(moon.sign) or _pre(moon.sign).split(",")[0].strip().lower()
+    sun_line = _clean_reveal_text(f"At your core, you're {_pre(sun.sign)}.")
+    moon_line = _clean_reveal_text(_first_sentence(nak_body)) or "There is a quiet, private world inside you that few people ever get to see."
+    proof = _reveal_proof(first, chart, time_known, sun, moon, nak_shadow)
+
+    if time_known:
+        rising = {"icon": "rise", "role": "The rising", "title": f"{chart.lagna.sign} rising",
+                  "deg": rising_m["deg"],
+                  "line": _clean_reveal_text(f"The face you lead with, {_pre(chart.lagna.sign)}. Now sharpened by your exact minute.")}
+    else:
+        rising = {"icon": "rise", "role": "Your time", "title": "A Moon-led chart", "deg": None,
+                  "line": "Rich already, even without your exact time. Add it later to unlock your rising sign and houses."}
+
+    insights = [
+        {"icon": "sun", "role": "The core", "title": f"Sun in {sun.sign}", "deg": sun_m["deg"], "line": sun_line},
+        {"icon": "moon", "role": "Inner tide", "title": f"Moon in {moon.nakshatra}", "deg": moon_m["deg"], "line": moon_line},
+        rising,
+    ]
+
+    return {
+        "ok": True,
+        "first": first,
+        "mood": mood,
+        "has_rising": time_known,
+        "sun": sun_m,
+        "moon": moon_m,
+        "rising": rising_m,
+        "insights": insights,
+        "proof": proof,
+        "ai": False,
+        "precision_note": None if time_known else (
+            "Your birth time isn't set, so this reads from your Sun and Moon. "
+            "Add your exact time to unlock your rising sign and houses."),
+    }
+
+
 def _current_chapter(chart) -> dict:
     """The Vimshottari Mahadasha running now, as a warm 'season you're in' card."""
     from shared.astro.astro_calc import build_vimshottari_timeline

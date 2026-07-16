@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput } from "react-native";
 import Animated from "react-native-reanimated";
-import { Mood, DAY_CLOCK } from "../theme";
+import { Mood } from "../theme";
+import { DAY_CLOCK } from "../theme.demo";
 import { INK, GRAY, WASH, HAIR, aA, sans, serif, cardStyle, shadow } from "../ui/palette";
 import { Press, Label } from "../ui/atoms";
 import { Icon } from "../ui/Icon";
@@ -11,8 +12,8 @@ import { useRiseIn, useGlowPulse, useSpin } from "../ui/motion";
 import { SkyScene } from "./SkyScene";
 import { nowH, fmtH, qFill } from "./util";
 
-const W = DAY_CLOCK.windows;
-const SR = DAY_CLOCK.sunrise || 6;
+const W_DEMO = DAY_CLOCK.windows;
+const SR_DEMO = DAY_CLOCK.sunrise || 6;
 const span = 24;
 
 function Spinner({ accent, accentDeep, size = 24 }: any) {
@@ -24,9 +25,12 @@ function Spinner({ accent, accentDeep, size = 24 }: any) {
   );
 }
 
-export function MyDay({ mood, delay = 0 }: { mood: Mood; delay?: number }) {
+export function MyDay({ mood, delay = 0, live }: { mood: Mood; delay?: number; live?: any }) {
   const { accent, accentDeep } = mood;
   const riseA = useRiseIn(delay);
+  // live timing (choghadiya windows + sunrise) drives the slider; fall back to demo when absent
+  const W = live && live.windows && live.windows.length ? live.windows : W_DEMO;
+  const SR = live ? live.sunrise : SR_DEMO;
   const dotA = useGlowPulse(2.4);
   const [now, setNow] = useState(() => { let h = nowH(); if (h < SR) h += 24; return h; });
   const [tasks, setTasks] = useState<any[]>([{ text: "Send the pitch", win: 3, done: false }]);

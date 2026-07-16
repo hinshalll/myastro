@@ -4,7 +4,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Image, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
-import { Mood, NAME } from "../theme";
+import { Mood } from "../theme";
+import { getFirstName } from "../api/profile";
 import { PAPER, INK, GRAY, HAIR, aA, sans, serif, mono } from "../ui/palette";
 import { Press, Pill } from "../ui/atoms";
 import { Icon } from "../ui/Icon";
@@ -15,10 +16,15 @@ const sage1 = require("../assets/chatsage1.png");
 const sage2 = require("../assets/chatsage2.png");
 const sage3 = require("../assets/chatsage3.png");
 
-const OPENERS = [
-  { kind: "a pattern I noticed", lines: [`Hey ${NAME}. I've been noticing something — you tend to feel lighter on the days you write to me in the morning. Today's a soft one, so maybe start there?`], chips: ["Tell me more", "Maybe later"] },
-  { kind: "looking back", lines: [`Hi ${NAME}. A week ago you were dreading that conversation at work. I've been wondering — how did it land?`], chips: ["It went okay", "Still on my mind"] },
-  { kind: "just checking in", lines: [`Hey ${NAME}. It's been a couple of quiet days. No agenda, I just wanted you to know I'm here. How are you, really?`], chips: ["I'm alright", "Not my best"] },
+// A FUNCTION, not a const array. As a module-scope array with `${NAME}` baked in, the demo name
+// "Aarav" was frozen at import and greeted every real user by the wrong name — the most visible
+// fake in the app. Taking the name at call time means it follows the real profile.
+// NOTE: the openers themselves are still placeholder copy (they claim memories we do not have
+// yet). This screen stays unwired until the RAG/memory path lands — see DEMO_DATA_LEDGER.md.
+const openersFor = (n: string) => [
+  { kind: "a pattern I noticed", lines: [`Hey ${n}. I've been noticing something. You tend to feel lighter on the days you write to me in the morning. Today's a soft one, so maybe start there?`], chips: ["Tell me more", "Maybe later"] },
+  { kind: "looking back", lines: [`Hi ${n}. A week ago you were dreading that conversation at work. I've been wondering, how did it land?`], chips: ["It went okay", "Still on my mind"] },
+  { kind: "just checking in", lines: [`Hey ${n}. It's been a couple of quiet days. No agenda, I just wanted you to know I'm here. How are you, really?`], chips: ["I'm alright", "Not my best"] },
 ];
 const REPLY = {
   low: ["That sounds heavy, and I'm glad you told me. You don't have to carry today all at once — just the next hour.", "I hear you. With your Moon where it is right now, these days ask more of you than usual. Go slow, it's allowed.", "Thank you for being honest with me. Let's keep today small and kind. What would feel like a little relief?"],
@@ -67,6 +73,7 @@ export function ChatScreen({ mood, seed, opener = 0, onBack, insetTop }: any) {
   const { accent, accentDeep, glow } = mood;
   const floatA = useFloatY(6);
   const haloA = useHalo(5);
+  const OPENERS = React.useMemo(() => openersFor(getFirstName()), []);
   const op = OPENERS[opener % OPENERS.length];
   const seedMsgs = seed ? [{ me: true, t: seed }, { me: false, t: "Good question to bring me. With the day this tender, I'd wait until late morning — the words will land softer then." }] : [];
   const [msgs, setMsgs] = useState<any[]>([{ me: false, t: op.lines[0], kind: op.kind }, ...seedMsgs]);

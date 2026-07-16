@@ -6,7 +6,9 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Svg, { Defs, LinearGradient as SvgLinear, Stop, Path } from "react-native-svg";
-import { Mood, DATE, MIRROR } from "../theme";
+import { Mood } from "../theme";
+import { MIRROR } from "../theme.demo";
+import { currentDateLabel } from "../api/place";
 import { PAPER, INK, GRAY, WASH, HAIR, aA, sans, serif, mono, shadow } from "../ui/palette";
 import { Press, Pill, Label, RadialGlow } from "../ui/atoms";
 import { Icon } from "../ui/Icon";
@@ -14,6 +16,10 @@ import { useFloatY, useHalo, useGlowPulse } from "../ui/motion";
 import { isDistress } from "../safety";
 
 const sage2 = require("../assets/sage2.png");
+
+// The real date (was the demo constant, frozen at "Tuesday, 17 June"), named for the place we
+// compute the sky for — so a journal entry is filed under the same day the reading describes.
+const todayLabel = () => currentDateLabel();
 
 function Crescent({ accent }: { accent: string }) {
   return (
@@ -83,7 +89,8 @@ export function JournalScreen({ mood, onBack, onSave, onTalk, insetTop = 44 }: a
           <View style={{ paddingHorizontal: 22, paddingTop: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
               <Crescent accent={accent} />
-              <Text style={{ fontFamily: mono(500), fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: aA(accentDeep, 0.8) }}>{DATE}</Text>
+              {/* was the demo DATE constant, permanently frozen at "Tuesday, 17 June" */}
+              <Text style={{ fontFamily: mono(500), fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: aA(accentDeep, 0.8) }}>{todayLabel()}</Text>
             </View>
             <Text style={{ fontFamily: serif(500), fontSize: 27, color: INK, letterSpacing: -0.4, marginTop: 12 }}>What's on your mind?</Text>
             <Text style={{ fontFamily: serif(400, true), fontSize: 14.5, color: aA(accentDeep, 0.85), marginTop: 6 }}>no pressure, no one else sees this</Text>

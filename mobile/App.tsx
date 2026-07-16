@@ -6,6 +6,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAppFonts } from "./src/ui/useAppFonts";
 import { PAPER } from "./src/ui/palette";
 import { AstroApp } from "./src/AstroApp";
+import { Onboarding } from "./src/onboarding/Onboarding";
+import { setProfile, hasRealProfile } from "./src/api/profile";
 
 // Web only: react-native-web draws a focus outline on inputs via a stylesheet rule that
 // inline styles can't override. It showed as a square "golden border" poking past the
@@ -38,13 +40,27 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 
 export default function App() {
   const fontsLoaded = useAppFonts();
+  // First run shows onboarding; once it captures a real birth profile (or a returning user
+  // logs in) we enter the app. Onboarding hands up the captured Profile -> setProfile(), so
+  // every daily endpoint runs on the user's real chart from here on.
+  //
+  // GAP (task #54): buildProfileFromData() returns null on the returning-user LOGIN path,
+  // because logging in captures no birth data — it has to be fetched from GET /me/profiles.
+  // Until that exists, `p` is null there and the app falls through to the SEED profile, i.e.
+  // a returning user reads Aarav's chart. getProfile() now refuses to let that happen quietly:
+  // it flags itself on the DEMO badge in dev and throws in prod. See api/profile.ts.
+  const [onboarded, setOnboarded] = React.useState(hasRealProfile());
   if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: PAPER }} />;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
         <ErrorBoundary>
-          <AstroApp />
+          {onboarded ? (
+            <AstroApp />
+          ) : (
+            <Onboarding onComplete={(p) => { if (p) setProfile(p); setOnboarded(true); }} />
+          )}
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
