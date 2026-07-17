@@ -8,6 +8,7 @@ import { PAPER } from "./src/ui/palette";
 import { AstroApp } from "./src/AstroApp";
 import { Onboarding } from "./src/onboarding/Onboarding";
 import { setProfile, hasRealProfile } from "./src/api/profile";
+import { warmUp } from "./src/api/client";
 
 // Web only: react-native-web draws a focus outline on inputs via a stylesheet rule that
 // inline styles can't override. It showed as a square "golden border" poking past the
@@ -40,6 +41,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 
 export default function App() {
   const fontsLoaded = useAppFonts();
+  // Wake the backend the instant the app opens. Render's free tier sleeps and a measured cold
+  // start took 74s, so the first chart of the day would otherwise time out. Onboarding takes a
+  // minute of typing, which is exactly the window we need — by the time it asks for a chart the
+  // server is already up. Cheaper and kinder than showing someone an error.
+  React.useEffect(() => { warmUp(); }, []);
   // First run shows onboarding; once it captures a real birth profile (or a returning user
   // logs in) we enter the app. Onboarding hands up the captured Profile -> setProfile(), so
   // every daily endpoint runs on the user's real chart from here on.

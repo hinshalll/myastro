@@ -20,6 +20,11 @@ export type RevealBundle = {
   precision_note: string | null;
 };
 
+// The last REAL chart we fetched. The Sign-up screen draws the same wheel ("your chart is
+// sealed") and must show the user's actual placements, not a second guess at them.
+let _cache: RevealBundle | null = null;
+export function cachedReveal(): RevealBundle | null { return _cache; }
+
 export async function fetchReveal(profile: Profile): Promise<RevealBundle | null> {
   try {
     // The profile already carries the honest tier from buildProfileFromData (both
@@ -31,7 +36,8 @@ export async function fetchReveal(profile: Profile): Promise<RevealBundle | null
     // is the DIVISIONALS that need the exact minute). See shared/astro/kundli.py.
     const r: any = await apiPost("/chart/reveal", { profile });
     if (!r || !r.ok) return null;
-    return r as RevealBundle;
+    _cache = r as RevealBundle;
+    return _cache;
   } catch {
     return null;
   }

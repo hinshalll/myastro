@@ -13,7 +13,8 @@ import { useSpin } from "../ui/motion";
 import {
   P, OScreen, StepChrome, PrimaryButton, TextLink, Field, PasswordField, ProviderButton, Rise, useTopPad, androidLift,
 } from "./kit";
-import { NatalWheel, Halo, buildChart } from "./Reveal";
+import { NatalWheel, Halo, emptyChart, adaptReveal } from "./Reveal";
+import { cachedReveal } from "../api/reveal";
 import type { OnbData } from "./data";
 import {
   DEV_CODE, VERIFY_IS_FAKED, sendCode, checkCode, isIndianPhone, shouldAskForPhone, shouldOfferPhone, isTruecallerAvailable,
@@ -382,7 +383,10 @@ function SealRing({ size = 176 }: { size?: number }) {
 export function Done({ data, onEnter, onReplay }: any) {
   const top = useTopPad(0);
   const first = firstName(data);
-  const chart = useMemo(() => buildChart(data), [data]);
+  // The user's REAL placements, already fetched by the Reveal a screen ago. If we somehow
+  // don't have them (returning-user login path), draw the rings alone rather than invent a
+  // second, different chart for the same person.
+  const chart = useMemo(() => { const b = cachedReveal(); return b ? adaptReveal(b) : emptyChart(); }, []);
   return (
     <OScreen crown={0.24}>
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: top, paddingHorizontal: 34 }}>

@@ -1,7 +1,22 @@
 // client.ts — the one fetch wrapper every API call goes through.
 // Adds the base URL, JSON headers, a timeout, optional auth token (for JWT endpoints later),
 // and normalizes errors into ApiError so screens can show a friendly message.
-import { API_BASE, API_TIMEOUT_MS } from "./config";
+import { API_BASE, API_TIMEOUT_MS, API_TIMEOUT_WARM_MS } from "./config";
+
+// Render's free tier sleeps when idle and a measured cold start took 74s. Rather than design
+// the app around that error, we absorb it: warmUp() is fired once at launch, so the server is
+// waking while the user is still typing their name, and is warm by the time onboarding asks
+// for a chart. Until a call succeeds we allow the long cold timeout; after that a stuck
+// request should fail fast instead of hanging someone for 90 seconds.
+let _warm = false;
+
+export function warmUp(): void {
+  if (_warm) return;
+  // Fire and forget. A 404 still proves the server is awake, which is all we need.
+  fetch(`${API_BASE}/openapi.json`, { method: "GET" })
+    .then(() => { _warm = true; })
+    .catch(() => { /* offline; the real call will report it honestly */ });
+}
 
 let _token: string | null = null;
 // Onboarding/auth will call this after Supabase sign-in so /me, /planner, /wallet, /memory work.
@@ -29,9 +44,10 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit, timeout = API_TIMEOUT_MS): Promise<T> {
+async function request<T>(path: string, init: RequestInit, timeout?: number): Promise<T> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeout);
+  const ms = timeout ?? (_warm ? API_TIMEOUT_WARM_MS : API_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), ms);
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -40,6 +56,7 @@ async function request<T>(path: string, init: RequestInit, timeout = API_TIMEOUT
     };
     if (_token) headers.Authorization = `Bearer ${_token}`;
     const res = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: ctrl.signal });
+    _warm = true;                 // it answered, so it is awake
     const text = await res.text();
     const data = text ? safeJson(text) : null;
     if (!res.ok) {
@@ -48,7 +65,7 @@ async function request<T>(path: string, init: RequestInit, timeout = API_TIMEOUT
     }
     return data as T;
   } catch (e: any) {
-    if (e?.name === "AbortError") throw new ApiError(0, "The connection timed out. Check your internet and try again.");
+    if (e?.name === "AbortError") throw new ApiError(0, "That took too long to load. Give it a moment and try again.");
     if (e instanceof ApiError) throw e;
     throw new ApiError(0, e?.message || "Could not reach the server.");
   } finally {

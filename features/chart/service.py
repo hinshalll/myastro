@@ -184,7 +184,13 @@ def _headline(chart, time_known, sun_sign, moon_sign) -> str:
     outer and inner match, it flips to a warm 'you're all of a piece' line."""
     outer = chart.lagna.sign if time_known else sun_sign
     o, i = _pre(outer), _pre(moon_sign)
-    o1, i1 = o.split(",")[0], i.split(",")[0]      # lead adjective of each
+    # ONE vocabulary for a sign, everywhere. These lead words used to come from
+    # SIGN_ESSENCE while the Reveal's "A ___ soul" headline came from _MOOD_BY_SIGN, and the
+    # two tables disagree on 8 of the 12 signs — so the same Pisces Moon was called "dreamy"
+    # in one line and "gentle" in the next, on the same screen. Two names for one thing reads
+    # as a machine talking, which is precisely the "generic" smell.
+    o1 = _MOOD_BY_SIGN.get(outer) or o.split(",")[0]
+    i1 = _MOOD_BY_SIGN.get(moon_sign) or i.split(",")[0]
     if outer == moon_sign:
         return (f"You're {o} — and more all-of-a-piece than most: what people see really is "
                 "what's underneath.")
@@ -379,13 +385,94 @@ def _clean_reveal_text(s: str) -> str:
     return s.replace(" ,", ",").strip()
 
 
-def _reveal_proof(first, chart, time_known, sun, moon, nak_shadow) -> str:
-    """The 'it knows me' line — PRE-WRITTEN from verified atoms, NO AI. Two beats:
+def _pada(lon: float) -> int:
+    """Which quarter of its nakshatra a longitude falls in (1..4).
+
+    Verified across multiple sources: a nakshatra spans 13 deg 20 min (13.3333 deg) and is cut
+    into 4 padas of 3 deg 20 min (3.3333 deg) each, giving 27 x 4 = 108 padas around the
+    zodiac, each mapping to one navamsa. So: take the remainder within the nakshatra and divide
+    by 3.3333.
+    """
+    return int((float(lon) % (40.0 / 3.0)) // (10.0 / 3.0)) + 1
+
+
+def _house_of(chart, time_known, p, moon) -> int | None:
+    """Which house a planet occupies — the honest one for this chart's birth-time tier.
+
+    time known -> houses from the ascendant, the primary frame (BPHS / Phaladeepika).
+    no time    -> houses from the MOON (Chandra lagna). Not a workaround: Parashara judges
+                  gochara from the Moon precisely because it needs no birth time, and the Moon
+                  is the classical confirming frame. Houses from a noon-placeholder ascendant
+                  would be pure fiction, which is the bug that fabricated rising signs before.
+    """
+    if time_known:
+        return getattr(p, "house", None)
+    return ((p.sign_index - moon.sign_index) % 12) + 1
+
+
+def _house_clause(h: int | None, time_known: bool) -> str:
+    """WHERE a light lands in this person's life, hung on that light's own card.
+
+    The house is the ENGINE, never the vocabulary: see M.HOUSE_PLAIN for why the word "house"
+    must not reach the screen. `time_known` no longer changes the wording — the sentence is
+    the same plain claim either way, and which FRAME produced it (ascendant, or counted from
+    the Moon when there's no birth time) is settled in _house_of and disclosed once in
+    precision_note. Saying "counted from your Moon" on the card was leaking the machinery.
+
+    It hangs on the CARD rather than the proof panel on purpose: the proof is the emotional
+    beat and it ran to ninety words once this was bolted on. The house belongs next to the
+    placement it describes anyway.
+    """
+    if not h:
+        return ""
+    return " " + M.HOUSE_PLAIN[h]
+
+
+def _reveal_season(chart, profile) -> str:
+    """The Vimshottari Mahadasha running RIGHT NOW, as one plain sentence.
+
+    This is the only line on the Reveal that is CHECKABLE rather than characterological.
+    Everything else describes a personality, which a reader can always talk themselves into;
+    this says "the last N years of your life have had a particular flavour, and it ends
+    around <date>", which they can either recognise or not. That is what makes a reading feel
+    uncanny instead of flattering, and it is honest by the same token.
+
+    PRECISION GATE (this is why it isn't just always shown): Vimshottari is seeded from the
+    Moon's exact longitude. The Moon moves ~13 degrees a day, so a birth time that is out by a
+    couple of hours moves it ~1 degree, which is ~8% of a nakshatra, which on a 20-year
+    mahadasha is well over a year of drift in the dates.
+      • exact time        -> the lord AND the end date.
+      • approximate time  -> the lord only. The running lord survives that drift; the date does not.
+      • no time at all    -> nothing. A noon placeholder would be inventing the date outright.
+    """
+    if not profile.get("birth_time_known"):
+        return ""
+    try:
+        from shared.astro.astro_calc import build_vimshottari_timeline
+        from shared.astro.retrospect import _DASHA_LORD
+        dt_birth = chart.datetime_local
+        di = build_vimshottari_timeline(dt_birth, chart.planets["Moon"].longitude,
+                                        datetime.now(dt_birth.tzinfo))
+        md = di["current_md"]
+        theme = (_DASHA_LORD.get(md, {}).get("theme") or "").split("—")[0].strip()
+    except Exception:
+        return ""
+    if not md:
+        return ""
+    if profile.get("exact_time") and di.get("md_end"):
+        return (f"And right now you're moving through a {md} season, "
+                f"{theme.lower()}, until about {di['md_end'].strftime('%B %Y')}.")
+    return f"And right now you're moving through a {md} season, {theme.lower()}."
+
+
+def _reveal_proof(first, chart, time_known, sun, moon, nak_shadow, profile=None) -> str:
+    """The 'it knows me' line — PRE-WRITTEN from verified atoms, NO AI. Three beats:
       1. the outer-vs-inner tension (who they are, from _headline), then
       2. the Moon nakshatra's gently-framed private pattern (NAK_SHADOW — the classically
-         cross-checked 'flip side', which is where the scary-accurate recognition lives).
-    Both are deterministic + verified, so it reads uncannily personal with zero
-    hallucination and covers every one of the 27 birth-stars."""
+         cross-checked 'flip side', which is where the scary-accurate recognition lives),
+      3. the Vimshottari season running right now — the one beat they can actually CHECK.
+    All deterministic + verified, so it reads uncannily personal with zero hallucination and
+    covers every one of the 27 birth-stars."""
     beats = []
     tension = _clean_reveal_text(_headline(chart, time_known, sun.sign, moon.sign))
     if tension:
@@ -397,6 +484,12 @@ def _reveal_proof(first, chart, time_known, sun, moon, nak_shadow) -> str:
     proof = " ".join(beats)
     if first and first != "you" and proof:
         proof = f"{first}, " + proof[0].lower() + proof[1:]
+    # Then the beat a horoscope column cannot do: WHEN they are living. Personality is
+    # arguable; a dated season is checkable. (WHERE the lights sit is the other one, and it
+    # hangs on the cards themselves — see _house_clause.)
+    season = _clean_reveal_text(_reveal_season(chart, profile or {}))
+    if season:
+        proof = (proof + " " + season).strip()
     return proof
 
 
@@ -433,21 +526,55 @@ def reveal(profile: dict) -> dict:
     nak_shadow = NAK_SHADOW.get(moon.nakshatra, "")
 
     mood = _MOOD_BY_SIGN.get(moon.sign) or _pre(moon.sign).split(",")[0].strip().lower()
-    sun_line = _clean_reveal_text(f"At your core, you're {_pre(sun.sign)}.")
-    moon_line = _clean_reveal_text(_first_sentence(nak_body)) or "There is a quiet, private world inside you that few people ever get to see."
-    proof = _reveal_proof(first, chart, time_known, sun, moon, nak_shadow)
-
+    # Each light's card carries its own HOUSE. This is the beat that stops the screen being a
+    # sign lookup: the sign says what flavour you are (1 of 12, arguable), the house says which
+    # part of your life it actually lands in (structural, and 144 combinations across the pair).
+    sun_h = _house_of(chart, time_known, sun, moon)
+    moon_h = _house_of(chart, time_known, moon, moon)
+    sun_line = _clean_reveal_text(f"At your core, you're {_pre(sun.sign)}.") + _house_clause(sun_h, time_known)
+    moon_line = (_clean_reveal_text(_first_sentence(nak_body))
+                 or "There is a quiet, private world inside you that few people ever get to see.")
+    # The Moon is always the 1st from itself, so that clause would be a tautology when we are
+    # counting from the Moon. Only say it when it carries information.
     if time_known:
+        moon_line += _house_clause(moon_h, True)
+    proof = _reveal_proof(first, chart, time_known, sun, moon, nak_shadow, profile)
+
+    if time_known and chart.lagna.sign == sun.sign:
+        # Sun in the 1st from the ascendant. This branch exists because the generic line
+        # ("the face you lead with, {essence}") printed the SUN CARD'S EXACT SENTENCE a second
+        # time whenever the Sun sign and rising sign matched, which is 1 in 12 charts. Two
+        # identical sentences on one screen is the single loudest "this is canned" signal there
+        # is. And the truth here is better than the template: with the Sun on the ascendant,
+        # classical texts (BPHS 11) read the identity and the self as one thing.
+        rising = {"icon": "rise", "role": "The rising", "title": f"{chart.lagna.sign} rising",
+                  "deg": rising_m["deg"],
+                  "line": _clean_reveal_text(
+                      f"Your Sun sits right on your rising sign, so the face you lead with and the "
+                      f"person underneath are the same thing. What people meet really is you, and "
+                      f"that is rarer than it sounds.")}
+    elif time_known:
         rising = {"icon": "rise", "role": "The rising", "title": f"{chart.lagna.sign} rising",
                   "deg": rising_m["deg"],
                   "line": _clean_reveal_text(f"The face you lead with, {_pre(chart.lagna.sign)}. Now sharpened by your exact minute.")}
     else:
         rising = {"icon": "rise", "role": "Your time", "title": "A Moon-led chart", "deg": None,
-                  "line": "Rich already, even without your exact time. Add it later to unlock your rising sign and houses."}
+                  "line": "Rich already, even without your exact time. This one reads from your Moon. "
+                          "Tell us the time you were born and your rising sign comes with it."}
 
     insights = [
         {"icon": "sun", "role": "The core", "title": f"Sun in {sun.sign}", "deg": sun_m["deg"], "line": sun_line},
-        {"icon": "moon", "role": "Inner tide", "title": f"Moon in {moon.nakshatra}", "deg": moon_m["deg"], "line": moon_line},
+        # Name the SIGN as well as the birth-star. The card used to read "Moon in Bharani" and
+        # never once said Aries, so the one placement most people actually know about their own
+        # chart was missing from the screen that introduces it.
+        #
+        # PADA is only named on an EXACT time. It is 1/108 rather than 1/27, so it is the
+        # sharpest thing we can say, but a pada is 3 deg 20 min wide and the Moon crosses that
+        # in about six hours. On a rough time it would be a coin-flip printed as a fact.
+        {"icon": "moon", "role": "Inner tide",
+         "title": (f"Moon in {moon.sign}, {moon.nakshatra} {_pada(moon.longitude)}"
+                   if profile.get("exact_time") else f"Moon in {moon.sign}, {moon.nakshatra}"),
+         "deg": moon_m["deg"], "line": moon_line},
         rising,
     ]
 
@@ -462,9 +589,12 @@ def reveal(profile: dict) -> dict:
         "insights": insights,
         "proof": proof,
         "ai": False,
+        # The one place the machinery IS disclosed, in plain words. Everything above reads from
+        # the Moon when there's no time (Chandra lagna, which is classical, not a fudge), and
+        # this is where we say so without the vocabulary.
         "precision_note": None if time_known else (
-            "Your birth time isn't set, so this reads from your Sun and Moon. "
-            "Add your exact time to unlock your rising sign and houses."),
+            "Your birth time isn't set, so this one reads from your Sun and Moon. It's real, "
+            "just smaller. Add the time you were born and your rising sign comes with it."),
     }
 
 

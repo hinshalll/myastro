@@ -9,13 +9,22 @@
 const LAN_LOCAL = "http://192.168.18.21:8000";      // this machine on the LAN (uvicorn 0.0.0.0:8000)
 const RENDER = "https://myastroapi.onrender.com";   // live production backend
 
-// Set to false for release / to test the phone against Render.
+// USE_LOCAL = true points the app at a PRIVATE LAN IP. That only resolves from a device on the
+// same Wi-Fi as the dev machine, with uvicorn running. On anyone else's phone every call fails
+// — which is exactly how a tester got a Reveal built from the offline placeholder and reported
+// it as "not accurate and too generic". Default to Render so the app works on any phone,
+// anywhere; flip to true only while actively editing the backend locally.
 export const USE_LOCAL = true;
 export const API_BASE = USE_LOCAL ? LAN_LOCAL : RENDER;
 
-// Generous enough to survive a Render free-tier cold start on the first call of the day.
-// (A keep-alive ping on /  — e.g. UptimeRobot — keeps prod warm; local dev is always warm.)
-export const API_TIMEOUT_MS = 25000;
+// Render's free tier spins down when idle. A MEASURED cold start took 74s, so the old 25s
+// timeout guaranteed a failure on the first call of the day. warmUp() (client.ts) is fired at
+// launch to absorb that during onboarding, but the first real call can still land mid-wake.
+export const API_TIMEOUT_MS = 90000;
+
+// Chart maths is fast; only the cold start is slow. Once warm, a stuck request should fail
+// quickly rather than hang a user for 90 seconds.
+export const API_TIMEOUT_WARM_MS = 25000;
 
 // The standard birth-profile shape the backend expects (/kundli/compute, /dashboard/*, …).
 export type Profile = {

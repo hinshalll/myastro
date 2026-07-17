@@ -6,12 +6,11 @@
 //   ACT 3   · read — the wheel returns small + calm; a mood headline, then the triad as
 //             glossy emblem tiles (each lights its wheel marker), then the violet proof line.
 //
-// WIRE: buildChart() is a deterministic mock (matches the prototype). The real reading comes
-//   from POST /chart/interpret + /companion/proof once we have the captured profile; the
-//   wheel-marker angles would come from the server's ecliptic longitudes. Left faithful for
-//   now so the screen is pixel-1:1; wiring is the next pass (see MOBILE_API_MAP.md).
+// WIRED to POST /chart/reveal: every placement, wheel angle and line is the user's REAL
+//   sidereal chart. There is NO offline chart any more and there must never be one again;
+//   see emptyChart() below for what was here and what it got wrong.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { G, Circle, Line, Path, Text as SvgText } from "react-native-svg";
@@ -27,51 +26,40 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
 // ---- tiny mock chart engine (deterministic from birth data) — WIRE to real ephemeris ----
-const SUN_SIGNS = [
-  { name: "Capricorn", from: [12, 22] }, { name: "Aquarius", from: [1, 20] },
-  { name: "Pisces", from: [2, 19] }, { name: "Aries", from: [3, 21] },
-  { name: "Taurus", from: [4, 20] }, { name: "Gemini", from: [5, 21] },
-  { name: "Cancer", from: [6, 21] }, { name: "Leo", from: [7, 23] },
-  { name: "Virgo", from: [8, 23] }, { name: "Libra", from: [9, 23] },
-  { name: "Scorpio", from: [10, 23] }, { name: "Sagittarius", from: [11, 22] },
-];
-function sunSign(m: number, d: number) {
-  if (!m || !d) return SUN_SIGNS[3];
-  let pick = SUN_SIGNS[0];
-  for (const s of SUN_SIGNS) { const [sm, sd] = s.from; if (m > sm || (m === sm && d >= sd)) pick = s; }
-  if (m === 1 && d < 20) pick = SUN_SIGNS[0];
-  return pick;
-}
-const MOON_BY = ["Rohini", "Ashwini", "Pushya", "Magha", "Chitra", "Anuradha", "Shravana", "Revati"];
-const MOON_FLAVOR: any = { Rohini: "a warm, settling star", Ashwini: "a quick, bright star", Pushya: "a nourishing, steady star", Magha: "a proud, rooted star", Chitra: "a shining, crafted star", Anuradha: "a devoted, gentle star", Shravana: "a listening, wise star", Revati: "a kind, dreamy star" };
-const MOODS = ["Settled", "Tender", "Deep", "Warm", "Capable", "Quiet"];
-
-export function buildChart(data: OnbData) {
-  const sun = sunSign(data.dobM || 0, data.dobD || 0);
-  const sunIdx = SUN_SIGNS.indexOf(sun);
-  const seed = (data.dobD || 1) * 31 + (data.dobM || 1) * 12 + ((data.name || "").length || 1) * 7;
-  const moonName = MOON_BY[seed % MOON_BY.length];
-  const mood = MOODS[seed % MOODS.length];
-  const hasRising = data.birthTimePrecision === "exact";
-  const rising = hasRising ? SUN_SIGNS[(seed + 4) % 12] : null;
-  const first = (data.name || "").trim().split(" ")[0] || "you";
-  const sunAng = sunIdx * 30 + 15;
-  const moonAng = (seed * 29 + 40) % 360;
-  const riseAng = hasRising ? (seed * 53 + 200) % 360 : null;
-  const markers = [
-    { kind: "sun", ang: sunAng, color: P.gold, glow: P.goldGlow },
-    { kind: "moon", ang: moonAng, color: P.violet, glow: P.violetGlow },
-    { kind: "rise", ang: riseAng, color: P.plum, glow: P.violetGlow },
-  ];
-  const insights = [
-    { icon: "sun", title: `Sun in ${sun.name}`, line: sun.name === "Cancer" ? "Home and feeling matter more to you than you let on." : `The steady core of how you meet the world, ${first}.` },
-    { icon: "moon", title: `Moon in ${moonName}`, line: `Your inner weather runs through ${MOON_FLAVOR[moonName]}. It's why quiet days land deep.` },
-    hasRising
-      ? { icon: "rise", title: `${rising!.name} rising`, line: "The face you lead with, and the timing of your days, now sharpened by your exact minute." }
-      : { icon: "rise", title: "A Moon-led chart", line: "Rich already, even without your exact time. Add it later to unlock your rising sign and houses." },
-  ];
-  const proof = `${first}, you tend to feel things a beat longer than most, and you steady the people around you without being asked.`;
-  return { sun, sunIdx, moonName, mood, rising, hasRising, insights, proofLine: proof, first, markers };
+/**
+ * An EMPTY wheel: rings and zodiac, no placements. `ang: null` markers are skipped by
+ * NatalWheel, so nothing is asserted until the real chart lands.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT USED TO BE HERE, AND WHY IT IS GONE.
+ *
+ * buildChart(data) invented an entire chart offline and the Reveal showed it silently
+ * whenever /chart/reveal was unreachable — which was ALWAYS on a tester's phone, because
+ * the app pointed at a private LAN IP (see api/config.ts). Measured against the real
+ * engine over 8 birthdays, it got the Sun sign wrong 6/8, the Moon nakshatra 8/8, and the
+ * rising sign 8/8:
+ *   • the Sun came from the WESTERN tropical date ranges. This app is SIDEREAL. They sit
+ *     ~24 degrees apart, so it usually named the next sign along.
+ *   • the Moon's nakshatra and the rising sign were a hash of birth day + month + THE
+ *     NUMBER OF LETTERS IN THE USER'S NAME, drawn from just 8 of the 27 birth-stars.
+ *   • the wheel's marker angles came from that same hash.
+ *   • the proof line was one sentence, identical for every human being alive.
+ * That is what "not accurate, and too generic" was. It was not the astrology; it was a
+ * placeholder wearing the astrology's clothes.
+ *
+ * The Reveal now waits for the real chart. The forming animation IS the loading state, and
+ * it simply keeps forming until the sky arrives. Nothing here may ever guess again.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function emptyChart() {
+  return {
+    mood: "", first: "", hasRising: false, insights: [] as any[], proofLine: "",
+    markers: [
+      { kind: "sun", ang: null, color: P.gold, glow: P.goldGlow },
+      { kind: "moon", ang: null, color: P.violet, glow: P.violetGlow },
+      { kind: "rise", ang: null, color: P.plum, glow: P.violetGlow },
+    ],
+  };
 }
 
 // ---- luminary glyphs (centered at 0,0, drawn on the wheel + inside gloss tiles) ----
@@ -256,8 +244,8 @@ function ProofPanel({ text, up }: { text: string; up: boolean }) {
   );
 }
 
-// map the backend /chart/reveal bundle -> the shape the wheel + cards consume (matches buildChart)
-function adaptReveal(b: RevealBundle) {
+// map the backend /chart/reveal bundle -> the shape the wheel + cards consume
+export function adaptReveal(b: RevealBundle) {
   return {
     mood: b.mood,
     first: b.first,
@@ -275,42 +263,52 @@ function adaptReveal(b: RevealBundle) {
 // ============================ STEP 4 — THE REVEAL ==================================
 export function Reveal({ data, step, onBack, onNext }: any) {
   const top = useTopPad(6);
-  // Instant local placeholder so the forming animation has a wheel immediately; swapped for
-  // the user's REAL sidereal chart (POST /chart/reveal) as soon as it arrives — well within
-  // the ~3.4s form phase. Falls back to the placeholder if offline.
-  const [chart, setChart] = useState<any>(() => buildChart(data));
+  // NO placeholder chart. This screen makes its first, biggest promise about who someone is,
+  // so it waits for the real sidereal chart (POST /chart/reveal) rather than guessing. The
+  // ~3.4s forming animation is the loading state; if the sky is slow the wheel just keeps
+  // forming, which is honest and reads as intent rather than as a spinner.
+  const [chart, setChart] = useState<any>(null);
+  const [err, setErr] = useState(false);
+  const [tries, setTries] = useState(0);
   useEffect(() => {
     let alive = true;
     const profile = buildProfileFromData(data);
-    if (profile) fetchReveal(profile).then((b) => { if (alive && b) setChart(adaptReveal(b)); }).catch(() => {});
+    if (!profile) { setErr(true); return; }
+    setErr(false);
+    fetchReveal(profile)
+      .then((b) => { if (!alive) return; if (b) setChart(adaptReveal(b)); else setErr(true); })
+      .catch(() => { if (alive) setErr(true); });
     return () => { alive = false; };
-  }, []);
+  }, [tries]);
   const [phase, setPhase] = useState("form");
   const [prog, setProg] = useState(0);
   const [closing, setClosing] = useState(false);
   const closingRef = useRef(false);
   const [shown, setShown] = useState(0);
 
-  // ACT 1: drive prog 0->1 over ~3.4s
-  useRaf((dt: number) => { setProg((p) => Math.min(1, p + (Math.min(dt, 32) / 1000) / 3.4)); }, phase === "form" && !closing);
+  // ACT 1: drive prog 0->1 over ~3.4s, but STALL just short of full until the real chart is
+  // in hand. The bar completing is a promise that there is something to show.
+  useRaf((dt: number) => {
+    setProg((p) => Math.min(chart ? 1 : 0.92, p + (Math.min(dt, 32) / 1000) / 3.4));
+  }, phase === "form" && !closing && !err);
 
   // ACT 2: at prog=1, shrink away, then switch to read. The phase-advance timeout must NOT be
   // torn down by the `closing` re-render — keep the ref guard (a fixed bug in the prototype).
   useEffect(() => {
-    if (prog >= 1 && !closingRef.current && phase === "form") {
+    if (prog >= 1 && chart && !closingRef.current && phase === "form") {
       closingRef.current = true; setClosing(true);
       const t = setTimeout(() => setPhase("read"), 560);
       return () => clearTimeout(t);
     }
-  }, [prog, phase]);
+  }, [prog, phase, chart]);
 
   // ACT 3: stagger the reading in (insights + proof + cta)
   useEffect(() => {
-    if (phase !== "read") return;
+    if (phase !== "read" || !chart) return;
     let i = 0; const total = chart.insights.length + 2;
     const iv = setInterval(() => { i += 1; setShown(i); if (i >= total) clearInterval(iv); }, 560);
     return () => clearInterval(iv);
-  }, [phase]);
+  }, [phase, chart]);
 
   // shrink/fade the forming group as it closes
   const closeV = useSharedValue(0);
@@ -320,14 +318,39 @@ export function Reveal({ data, step, onBack, onNext }: any) {
   const LOADING_LINES = ["Reading the sky at your first breath…", "Placing your Sun, Moon and rising…", "Finding the shape of you…"];
   const li = Math.min(LOADING_LINES.length - 1, Math.floor(prog * LOADING_LINES.length));
 
+  // ---------- couldn't read the sky ----------
+  // An error, not a guess. This screen tells someone who they are, so the one thing it must
+  // never do is make something up to fill the silence.
+  if (err && !chart) {
+    return (
+      <OScreen crown={0.3} stars>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
+          <Halo size={200} opacity={0.3} />
+          <Text style={{ fontFamily: serif(500), fontSize: 26, lineHeight: 34, color: P.ink, textAlign: "center", letterSpacing: -0.4 }}>
+            We couldn't read your sky just yet.
+          </Text>
+          <Text style={{ fontFamily: sans(400), fontSize: 14.5, lineHeight: 22, color: P.inkSoft, textAlign: "center", marginTop: 12 }}>
+            Your chart needs a connection to work out. Nothing is lost, your details are still here.
+          </Text>
+          <Pressable onPress={() => { setErr(false); setProg(0); setTries((n) => n + 1); }} style={{ marginTop: 26 }}>
+            <View style={{ paddingVertical: 14, paddingHorizontal: 34, borderRadius: 999, backgroundColor: P.violetDeep }}>
+              <Text style={{ fontFamily: sans(800), fontSize: 15, color: "#FFF" }}>Try again</Text>
+            </View>
+          </Pressable>
+        </View>
+      </OScreen>
+    );
+  }
+
   // ---------- ACT 1 + 2 : forming ----------
-  if (phase === "form") {
+  if (phase === "form" || !chart) {
     return (
       <OScreen crown={0.3} stars>
         <Animated.View style={[{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 34 }, closeStyle]}>
           <View style={{ alignItems: "center", justifyContent: "center" }}>
             <Halo size={348} opacity={0.42} />
-            <NatalWheel chart={chart} prog={prog} size={316} />
+            {/* no chart yet = rings only. The placements appear when they are REAL. */}
+            <NatalWheel chart={chart ?? emptyChart()} prog={prog} size={316} />
           </View>
           <View style={{ height: 30, marginTop: 30, width: "100%", alignItems: "center" }}>
             <Text style={{ fontFamily: serif(500, true), fontSize: 20, color: P.ink, textAlign: "center" }}>{LOADING_LINES[li]}</Text>

@@ -40,6 +40,49 @@ SIGN_SANSKRIT: dict[str, str] = {
 
 # ── The 12 houses as a warm "part of life". Faithful to HOUSE_MEANINGS, written
 #    as a plain noun phrase that can follow "around …" / "shows up in …".
+# Short house tags, for composing a sentence that names TWO houses without running to three
+# lines. Same significations as HOUSE_LIFE below, just compressed to the headline idea.
+# Cross-checked against BPHS (Ch. 11-24, bhava-phala), Phaladeepika (Ch. 2) and Uttara
+# Kalamrita: 1 tanu/body+self, 2 dhana/wealth+family+speech, 3 sahaja/courage+effort+siblings,
+# 4 sukha/home+mother+inner peace, 5 putra/creativity+children+romance, 6 ari/work+health+debt,
+# 7 yuvati/partnership+marriage, 8 randhra/hidden+shared+longevity, 9 dharma/faith+fortune+
+# learning, 10 karma/career+status, 11 labha/gains+friends+hopes, 12 vyaya/loss+seclusion+
+# foreign+moksha.
+# WHERE a placement lands in someone's actual life — the house, said WITHOUT ever using the
+# word "house".
+#
+# Why it reads this way: the house is the only thing that stops the Reveal being a horoscope
+# column (a sign is 1-of-12 and a reader can talk themselves into any of them; the Sun/Moon
+# house pair is 144 real combinations about the shape of THEIR chart). But "your house of
+# rest, solitude and faraway places" is astrologer-speak. Nobody is moved by being handed a
+# label from a textbook. So the house stays as the ENGINE and never appears as VOCABULARY:
+# each one is a plain-English sentence about where that part of them actually plays out.
+# Same astrology, no jargon, and it lands harder because it describes their life instead of
+# naming a chart term.
+#
+# Significations cross-checked against BPHS (bhava-phala), Phaladeepika Ch. 2 and Uttara
+# Kalamrita: 1 tanu (body/self), 2 dhana (wealth/family/speech), 3 sahaja (courage/effort/
+# siblings), 4 sukha (home/mother/inner peace), 5 putra (creativity/children/romance),
+# 6 ari (work/health/debts), 7 yuvati (partnership/marriage), 8 randhra (hidden/shared/
+# longevity), 9 dharma (faith/fortune/learning), 10 karma (career/status), 11 labha (gains/
+# friends/hopes), 12 vyaya (loss/seclusion/foreign lands/moksha).
+#
+# Each is a complete sentence: it follows the sign line directly. House rule: no dashes.
+HOUSE_PLAIN: dict[int, str] = {
+    1:  "It sits right out on the surface, in how you carry yourself and how people read you within a minute of meeting you.",
+    2:  "It plays out around money, family, and the handful of things and people you keep close.",
+    3:  "It comes out in your own effort, in your voice, and in the everyday courage nobody claps for.",
+    4:  "It lives at home, close to your family and to the private part of you that few people are let into.",
+    5:  "It comes out in what you make, who you fall for, and how you play.",
+    6:  "It plays out in the daily grind, in your health, and in the problems you quietly fix for everyone.",
+    7:  "It plays out through other people, in the ones you choose and actually commit to.",
+    8:  "It runs underneath everything, in what you share with a few people and say out loud to almost nobody.",
+    9:  "It plays out in what you believe, what you keep learning, and how far you are willing to go for it.",
+    10: "It plays out where people can see it, in your work and in what you end up known for.",
+    11: "It plays out among your people, in your circle, and in the things you are still quietly hoping for.",
+    12: "It plays out behind closed doors, in private, far from where anyone can watch.",
+}
+
 HOUSE_LIFE: dict[int, str] = {
     1:  "yourself — your body, your energy, and how you meet the world",
     2:  "family, money, and the things and people you hold close",
